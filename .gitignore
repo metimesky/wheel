@@ -27,3 +27,11 @@
 *.i*86
 *.x86_64
 *.hex
+
+# Editor / IDE
+*~
+.idea
+
+# File system
+.DS_Store
+Thumbs.db
