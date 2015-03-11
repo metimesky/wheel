@@ -1,2 +1,5 @@
-# sos
-Simple Operating System.
+# SOS
+
+"SOS" 代表 "Simple Operating System", 即简单操作系统. 它是一个单用户单处理器的操作系统, 其存在的目的就是为了学习操作系统的概念和原理.
+
+SOS 能运行在 IA-32 体系架构的 CPU 上, 工作在 32 位保护模式下, 可以使用裸机或 QEMU 等虚拟华软件运行.
