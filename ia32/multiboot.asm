@@ -4,6 +4,7 @@ extern  kernel_bss_end
 
 extern  gdt_ptr
 extern  setup_gdt
+extern  setup_tss
 
 extern  kmain
 
@@ -60,6 +61,11 @@ multiboot_entry:
     mov     es, eax
     mov     fs, eax
     mov     gs, eax
+    ;jmp     $
+    ; setup TSS
+    call    setup_tss
+    mov     ax, 0x28
+    ltr     ax
 
     ; clear the screen
     mov     edi, 0xb8000

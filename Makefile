@@ -1,7 +1,7 @@
 # Makefile for SOS
 
 # directories
-source_dir	:=	boot kernel
+source_dir	:=	ia32 kernel
 include_dir	:=	include
 build_dir	:=	build
 
