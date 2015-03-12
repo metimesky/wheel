@@ -34,11 +34,11 @@ write:		$(kernel) $(floppy)
 
 run:		$(floppy)
 	@echo "\033[1;31mexecuting qemu\033[0m"
-	@qemu-system-x86_64 -m 32 -smp 2 -fda $(floppy)
+	@qemu-system-i386 -m 32 -fda $(floppy)
 
 clean:
 	@echo "\033[1;34mcleaning objects\033[0m"
-	@rm $(objects) $(kernel)
+	@rm -rf $(build_dir)
 
 $(kernel):	$(objects) link.lds
 	@echo "\033[1;34mlinking kernel\033[0m"
@@ -50,8 +50,7 @@ $(build_dir)/%.asm.o:	%.asm
 	@mkdir -p $(@D)
 	@$(AS) $(AFLAGS) -o $@ $<
 
-$(build_dir)/%.c.o:	%.c $(headers)
+$(build_dir)/%.c.o:	%.c
 	@echo "\033[1;32mcompiling $< to $@\033[0m"
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) -o $@ $<
-
