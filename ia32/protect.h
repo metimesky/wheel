@@ -69,6 +69,10 @@ typedef struct {
                         SEG_LONG(0) | SEG_SIZE(1) | SEG_GRAN(0) | \
                         SEG_PRIV(3) | SEG_386_TSS
 
+#define IDT_386_TASK
+#define IDT_386_INT
+#define IDT_386_TRAP
+
 // TSS structure
 typedef struct {
     uint16_t prev_task;

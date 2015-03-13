@@ -10,7 +10,7 @@ tss_t tss;
 
 // only low 20 bit of limit is valid
 static uint64_t create_gdt_descriptor(uint32_t base, uint32_t limit, uint16_t flag) {
-    uint64_t descriptor;
+    uint64_t descriptor = 0;
 
     // create the high 32 bit segment
     descriptor  =  limit       & 0x000f0000;    // set limit bits 19:16
@@ -28,6 +28,10 @@ static uint64_t create_gdt_descriptor(uint32_t base, uint32_t limit, uint16_t fl
     return descriptor;
 }
 
+static uint64_t create_idt_descriptor(uint16_t selector, uint32_t offset, uint8_t flag) {
+    //
+}
+
 void setup_gdt() {
     gdt[0] = create_gdt_descriptor(0, 0, 0);                    // null descriptor
     gdt[1] = create_gdt_descriptor(0, 0xfffff, GDT_CODE_PL0);   // kernel code segment
@@ -42,4 +46,9 @@ void setup_gdt() {
 
 void setup_tss() {
     //
+}
+
+void setup_idt() {
+    idt_ptr.base  = (uint32_t)idt;
+    idt_ptr.limit = IDT_SIZE*sizeof(uint64_t) - 1;
 }
