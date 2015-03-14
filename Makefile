@@ -18,7 +18,7 @@ AFLAGS	:=	-f elf
 CC		:=	clang
 CFLAGS	:=	-c -m32 -std=c99 -I $(include_dir) \
 			-ffreestanding -fno-builtin -nostdinc -nostdlib \
-			-O2 -Wall -Wextra
+			-Wall -Wextra
 LD		:=	ld
 LFLAGS	:=	-m elf_i386 -T link.lds
 

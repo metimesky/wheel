@@ -3,7 +3,9 @@ extern  kernel_data_end
 extern  kernel_bss_end
 
 extern  gdt_ptr
+extern  idt_ptr
 extern  setup_gdt
+extern  setup_idt
 extern  setup_tss
 
 extern  kmain
@@ -61,7 +63,15 @@ multiboot_entry:
     mov     es, eax
     mov     fs, eax
     mov     gs, eax
-    ;jmp     $
+
+    ; setup IDT
+    call    setup_idt
+    lidt    [idt_ptr]
+
+    ;sti
+    int     0x40
+    jmp     $
+
     ; setup TSS
     call    setup_tss
     mov     ax, 0x28

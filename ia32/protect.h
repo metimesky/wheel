@@ -9,8 +9,8 @@ typedef struct {
 } __attribute__((packed)) gdt_ptr_t;
 
 typedef struct {
-	uint16_t limit;
-	uint32_t base;
+    uint16_t limit;
+    uint32_t base;
 } __attribute__((packed)) idt_ptr_t;
 
 #define SEG_USER(x)     ((x) << 0x04)   // Descriptor type (0 for system, 1 for code/data)
@@ -44,7 +44,7 @@ typedef struct {
 #define SEG_LDT             0x02    // LDT
 #define SEG_286_TSS_BUSY    0x03    // 16-bit TSS (Busy)
 #define SEG_286_CALL_GATE   0x04    // 16-bit Call Gate
-#define SEG_TASK_GATE       0x05    // Task Gate
+#define SEG_386_TASK_GATE   0x05    // Task Gate
 #define SEG_286_INT_GATE    0x06    // 16-bit Interrupt Gate
 #define SEG_286_TRAP_GATE   0x07    // 16-bit Trap Gate
 #define SEG_386_TSS         0x09    // 32-bit TSS (Available)
@@ -69,9 +69,18 @@ typedef struct {
                         SEG_LONG(0) | SEG_SIZE(1) | SEG_GRAN(0) | \
                         SEG_PRIV(3) | SEG_386_TSS
 
-#define IDT_386_TASK
-#define IDT_386_INT
-#define IDT_386_TRAP
+#define IDT_TASK_PL0    SEG_USER(0) | SEG_PRES(1) | \
+                        SEG_PRIV(0) | SEG_386_TASK_GATE
+#define IDT_INT_PL0     SEG_USER(0) | SEG_PRES(1) | \
+                        SEG_PRIV(0) | SEG_386_INT_GATE
+#define IDT_TRAP_PL0    SEG_USER(0) | SEG_PRES(1) | \
+                        SEG_PRIV(0) | SEG_386_TRAP_GATE
+#define IDT_TASK_PL3    SEG_USER(0) | SEG_PRES(1) | \
+                        SEG_PRIV(3) | SEG_386_TASK_GATE
+#define IDT_INT_PL3     SEG_USER(0) | SEG_PRES(1) | \
+                        SEG_PRIV(3) | SEG_386_INT_GATE
+#define IDT_TRAP_PL3    SEG_USER(0) | SEG_PRES(1) | \
+                        SEG_PRIV(3) | SEG_386_TRAP_GATE
 
 // TSS structure
 typedef struct {
@@ -159,7 +168,7 @@ typedef struct {
 
 // global data definition
 #define GDT_SIZE 6
-#define IDT_SIZE 256
+#define IDT_SIZE 128
 extern gdt_ptr_t gdt_ptr;
 extern idt_ptr_t idt_ptr;
 extern uint64_t gdt[GDT_SIZE];
