@@ -15,7 +15,7 @@ floppy	:=	fd.img
 # tool chain
 AS		:=	yasm
 AFLAGS	:=	-f elf
-CC		:=	clang
+CC		:=	gcc
 CFLAGS	:=	-c -m32 -std=c99 -I $(include_dir) \
 			-ffreestanding -fno-builtin -nostdinc -nostdlib \
 			-Wall -Wextra
@@ -48,9 +48,9 @@ $(kernel):	$(objects) link.lds
 $(build_dir)/%.asm.o:	%.asm
 	@echo "\033[1;32massembling $< to $@\033[0m"
 	@mkdir -p $(@D)
-	@$(AS) $(AFLAGS) -o $@ $<
+	$(AS) $(AFLAGS) -o $@ $<
 
 $(build_dir)/%.c.o:	%.c
 	@echo "\033[1;32mcompiling $< to $@\033[0m"
 	@mkdir -p $(@D)
-	@$(CC) $(CFLAGS) -o $@ $<
+	$(CC) $(CFLAGS) -o $@ $<

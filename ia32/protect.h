@@ -168,7 +168,7 @@ typedef struct {
 
 // global data definition
 #define GDT_SIZE 6
-#define IDT_SIZE 128
+#define IDT_SIZE 256
 extern gdt_ptr_t gdt_ptr;
 extern idt_ptr_t idt_ptr;
 extern uint64_t gdt[GDT_SIZE];

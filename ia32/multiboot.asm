@@ -2,12 +2,7 @@ extern  kernel_load_addr
 extern  kernel_data_end
 extern  kernel_bss_end
 
-extern  gdt_ptr
-extern  idt_ptr
-extern  setup_gdt
-extern  setup_idt
-extern  setup_tss
-
+extern  setup
 extern  kmain
 
 MB1_MAGIC   equ 0x1badb002
@@ -33,14 +28,14 @@ multiboot_entry:
     ; disable interruption to be safe
     cli
 
-    ; disable paging to be safe
+    ; save multiboot magic and info
+    mov     [mb_magic], eax
+    mov     [mb_info], ebx
+
+    ; disable paging for safe
     mov     eax, cr0
     and     eax, 0x7fffffff
     mov     cr0, eax
-
-    ; save magic number and multiboot info
-    mov     [mb_magic], eax
-    mov     [mb_info], ebx
     
     ; setup kernel stack poiner
     mov     esp, kstack_top
@@ -52,36 +47,17 @@ multiboot_entry:
     ; set frame base register to NULL
     mov     ebp, 0
 
-    ; setup new GDT
-    call    setup_gdt
-    lgdt    [gdt_ptr]
-    jmp     8:.flush_gdt
-.flush_gdt:
-    ; set all segment register to kernel data segment descriptor
-    mov     eax, 16
-    mov     ds, eax
-    mov     es, eax
-    mov     fs, eax
-    mov     gs, eax
-
-    ; setup IDT
-    call    setup_idt
-    lidt    [idt_ptr]
-
-    ;sti
-    int     0x40
-    jmp     $
-
-    ; setup TSS
-    call    setup_tss
-    mov     ax, 0x28
-    ltr     ax
-
     ; clear the screen
     mov     edi, 0xb8000
     mov     eax, 0x0f200f20
     mov     ecx, 1000
     rep     stosd
+
+    ; pass the parameters
+    push    dword [mb_info]
+    push    dword [mb_magic]
+    call    setup
+    sub     esp, 8
 
     call    kmain
 
@@ -92,8 +68,9 @@ multiboot_entry:
 
 [SECTION    .data]
 
-mb_magic    dd      0
-mb_info     dd      0
+mb_magic    dd  0
+mb_info     dd  0
+
 
 [SECTION    .bss]
 
