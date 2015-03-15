@@ -15,7 +15,7 @@ floppy	:=	fd.img
 # tool chain
 AS		:=	yasm
 AFLAGS	:=	-f elf
-CC		:=	gcc
+CC		:=	clang
 CFLAGS	:=	-c -m32 -std=c99 -I $(include_dir) \
 			-ffreestanding -fno-builtin -nostdinc -nostdlib \
 			-Wall -Wextra

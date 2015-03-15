@@ -46,7 +46,7 @@ static uint64_t create_idt_descriptor(uint16_t selector, uint32_t offset, uint8_
 
 // called by assembly stub
 void exception_handler(int vec, uint32_t err, uint32_t eip, uint32_t cs, uint32_t eflags) {
-    char str[] = "exception occurred!";
+    /*static*/ char *str = "exception occurred!";
     char *video = (char*)0xb8000;
     for (int i = 0; str[i]; ++i) {
         video[2*i] = str[i];
