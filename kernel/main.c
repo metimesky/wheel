@@ -10,4 +10,6 @@ void kmain() {
 	video[7] = 0x1f;
 	video[8] = 'o';
 	video[9] = 0x1f;
+
+	while (1) {}
 }

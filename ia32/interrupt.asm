@@ -25,7 +25,7 @@ global  exp19
 global  exp20
 extern  exception_handler
 
-;global  irq0
+global  irq0
 ;global  irq1
 ;global  irq2
 ;global  irq3
@@ -171,4 +171,8 @@ exception:
     ret
 %endmacro
 
-
+irq0:   ; clock interrupt
+    inc     byte [gs:0xb8000]
+    mov     al, 0x20
+    out     0x20, al
+    iretd

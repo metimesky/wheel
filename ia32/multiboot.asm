@@ -59,6 +59,7 @@ multiboot_entry:
     call    setup
     sub     esp, 8
 
+    sti
     call    kmain
 
     ; should never return here

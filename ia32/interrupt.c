@@ -8,7 +8,7 @@
 #define SLAVE_DATA  0xa1
 
 idt_ptr_t idt_ptr;
-uint64_t idt[IDT_SIZE];
+uint64_t idt[IDT_SIZE] = { 0 };
 
 void setup_8259A() {
     out_byte(MASTER_CMD, 0x11);
@@ -23,7 +23,7 @@ void setup_8259A() {
     out_byte(MASTER_DATA, 1);
     out_byte(SLAVE_DATA,  1);
 
-    out_byte(MASTER_DATA, 0xff);    // mask all interrupts
+    out_byte(MASTER_DATA, 0xfe);    // mask all interrupts
     out_byte(SLAVE_DATA,  0xff);    // mask all interrupts
 }
 
@@ -46,10 +46,32 @@ static uint64_t create_idt_descriptor(uint16_t selector, uint32_t offset, uint8_
 
 // called by assembly stub
 void exception_handler(int vec, uint32_t err, uint32_t eip, uint32_t cs, uint32_t eflags) {
-    /*static*/ char *str = "exception occurred!";
+    /*static*/ char *str[] = {
+        "divide error",
+        "debug exception",
+        "NMI",
+        "breakpoint exception",
+        "overflow",
+        "bound range exceeded",
+        "invalid opcode",
+        "no math coprocessor",
+        "double fault",
+        "coprocessor segment overrun (reserved)",
+        "invalid TSS",
+        "segment not present",
+        "stack segment fault",
+        "general protection",
+        "page fault",
+        "(reserved)",
+        "math fault",
+        "alignment check",
+        "machine check",
+        "SIMD floating point exception",
+        "virtualization exception"
+    };
     char *video = (char*)0xb8000;
-    for (int i = 0; str[i]; ++i) {
-        video[2*i] = str[i];
+    for (int i = 0; str[vec][i]; ++i) {
+        video[2*i] = str[vec][i];
         video[2*i+1] = 0x1e;
     }
 }
@@ -76,7 +98,7 @@ extern void exp18();
 extern void exp19();
 extern void exp20();
 
-// extern void irq0();
+extern void irq0();
 // extern void irq1();
 // extern void irq2();
 // extern void irq3();
@@ -117,6 +139,8 @@ void setup_idt() {
     idt[20] = create_idt_descriptor(8, (uint32_t)exp20, IDT_INT_PL0);
     
     for (int i = 21; i < 32; ++i) { idt[i] = 0; }
+
+    idt[32] = create_idt_descriptor(8, (uint32_t) irq0, IDT_INT_PL0);
 
     idt_ptr.base  = (uint32_t)idt;
     idt_ptr.limit = IDT_SIZE*sizeof(uint64_t) - 1;
