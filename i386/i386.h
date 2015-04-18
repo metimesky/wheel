@@ -82,7 +82,7 @@ typedef struct {
                         SEG_PRIV(3) | SEG_386_TRAP_GATE
 
 // TSS structure
-typedef struct {
+struct tss {
     uint32_t prev_tss;   // Previous TSS - if we used hardware task switching this would form a linked list.
     uint32_t esp0;       // The stack pointer to load when we change to kernel mode.
     uint32_t ss0;        // The stack segment to load when we change to kernel mode.
@@ -110,6 +110,29 @@ typedef struct {
     uint32_t ldt;
     uint16_t trap;
     uint16_t iobase;
-} __attribute__((packed)) tss_t;
+} __attribute__((packed));
+typedef struct tss tss_t;
+
+struct process_context {
+    uint32_t gs;    //------------------+
+    uint32_t fs;    //                  |
+    uint32_t es;    //                  |
+    uint32_t ds;    //                  |
+    uint32_t edi;   //--+               |
+    uint32_t esi;   //  |                \ save_context/
+    uint32_t ebp;   //  |                / restore_context
+    uint32_t esp_k; //   \ pushad/      |
+    uint32_t ebx;   //   / popad        |
+    uint32_t edx;   //  |               |
+    uint32_t ecx;   //  |               |
+    uint32_t eax;   //--+---------------+
+    
+    uint32_t eip;
+    uint32_t cs;
+    uint32_t eflags;
+    uint32_t esp;
+    uint32_t ss;
+} __attribute__((packed));
+typedef struct process_context process_context_t;
 
 #endif // I386_H_

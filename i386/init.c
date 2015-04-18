@@ -146,18 +146,3 @@ void interrupt_dispatcher() {
     static char *video = (char*)0xb8000;
     ++video[0];
 }
-
-void user_mode() {
-    static char *video = (char*)0xb8000;
-    int i = 240;
-    while (1) {
-        video[2*i] = 'U';
-        video[2*i+1] = 0x1f;
-        for (int a = 0; a < 1000; ++a) {
-            for (int b = 0; b < 200; ++b) {
-                for (int c = 0; c < 100; ++c) {}
-            }
-        }
-        ++i;
-    }
-}

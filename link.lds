@@ -1,4 +1,4 @@
-/* linker script for SOS */
+/* linker script for Wheel */
 
 OUTPUT_FORMAT(binary)
 

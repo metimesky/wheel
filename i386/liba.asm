@@ -91,20 +91,15 @@ load_tr:
 extern  tss
 extern  user_mode
 extern  kernel_stack_top
+extern  process_to_go
 goto_ring3:
     mov     eax, esp
     mov     dword[tss+8], 0x10
     mov     dword[tss+4], kernel_stack_top    ; save esp0
-    mov     eax, 0x23
-    mov     ds, ax
-    mov     es, ax
-    mov     fs, ax
-    mov     gs, ax
-
-    push    0x23        ; target ss
-    mov     eax, esp
-    push    eax         ; target esp
-    push    0x1202      ; target eflags, IF=1
-    push    0x1b        ; target cs, user-code, RPL=3
-    push    user_mode   ; target eip
+    mov     esp, [process_to_go]
+    pop     gs
+    pop     fs
+    pop     es
+    pop     ds
+    popad
     iretd
