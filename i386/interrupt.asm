@@ -1,5 +1,9 @@
-extern exception_dispatcher
-extern interrupt_dispatcher
+extern  exception_dispatcher
+extern  interrupt_dispatcher
+
+extern  kernel_stack_top
+extern  process_to_go
+extern  tss
 
 [SECTION    .text]
 [BITS       32]
@@ -64,6 +68,7 @@ exception_no_errcode   20
 %macro interrupt 1
 global  irq%1
 irq%1:
+    ; when interrupt occurs, esp is pointing to pcb
     save_context
 
     ; mask current interrupt, and send EOI
@@ -84,11 +89,19 @@ irq%1:
         out     0xa0, al
     %endif
 
+    ; switch to kernel stack
+    mov     esp, kernel_stack_top
+
     sti
     push    %1
     call    interrupt_dispatcher
     add     esp, 4
     cli
+
+    ; switch back to pcb
+    mov     esp, [process_to_go]
+    mov     eax, esp
+    mov     [tss+4], eax        ; set tss->esp0 to the pcb of current process
 
     ; unmask current interrupt
     %if %1 < 8      ; master chip
