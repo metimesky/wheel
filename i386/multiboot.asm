@@ -2,8 +2,8 @@ extern  kernel_load_addr
 extern  kernel_data_end
 extern  kernel_bss_end
 
-extern  setup
-extern  kmain
+extern  init
+extern  main
 
 MB1_MAGIC   equ 0x1badb002
 MB1_FLAGS   equ 1<<0|1<<1|1<<16
@@ -29,8 +29,8 @@ multiboot_entry:
     cli
 
     ; save multiboot magic and info
-    mov     [mb_magic], eax
-    mov     [mb_info], ebx
+    mov     [mb_eax], eax
+    mov     [mb_ebx], ebx
 
     ; disable paging for safe
     mov     eax, cr0
@@ -38,7 +38,7 @@ multiboot_entry:
     mov     cr0, eax
     
     ; setup kernel stack poiner
-    mov     esp, kstack_top
+    mov     esp, kernel_stack_top
 
     ; clear eflags register
     push    0
@@ -54,26 +54,29 @@ multiboot_entry:
     rep     stosd
 
     ; pass the parameters
-    push    dword [mb_info]
-    push    dword [mb_magic]
-    call    setup
+    push    dword [mb_ebx]
+    push    dword [mb_eax]
+    call    init
     sub     esp, 8
 
-    sti
-    call    kmain
+    ;sti
+    call    main
 
     ; should never return here
     cli
     hlt
     jmp     $
 
+
 [SECTION    .data]
 
-mb_magic    dd  0
-mb_info     dd  0
+mb_eax      dd  0
+mb_ebx      dd  0
 
 
 [SECTION    .bss]
 
-kstack:     resb    0x1000
-kstack_top:
+kernel_stack:   resb    0x1000
+kernel_stack_top:
+
+global  kernel_stack_top

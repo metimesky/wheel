@@ -1,7 +1,5 @@
-#ifndef IA32_PROTECT_H_
-#define IA32_PROTECT_H_ 1
-
-#include <types.h>
+#ifndef I386_H_
+#define I386_H_ 1
 
 typedef struct {
     uint16_t limit;
@@ -13,6 +11,7 @@ typedef struct {
     uint32_t base;
 } __attribute__((packed)) idt_ptr_t;
 
+// segment attribute
 #define SEG_USER(x)     ((x) << 0x04)   // Descriptor type (0 for system, 1 for code/data)
 #define SEG_PRES(x)     ((x) << 0x07)   // Present
 #define SEG_SAVL(x)     ((x) << 0x0c)   // Available for system use
@@ -84,17 +83,13 @@ typedef struct {
 
 // TSS structure
 typedef struct {
-    uint16_t prev_task;
-    uint16_t resv_1;
-    uint32_t esp0;
-    uint16_t ss0;
-    uint16_t resv_2;
-    uint32_t esp1;
-    uint16_t ss1;
-    uint16_t resv_3;
+    uint32_t prev_tss;   // Previous TSS - if we used hardware task switching this would form a linked list.
+    uint32_t esp0;       // The stack pointer to load when we change to kernel mode.
+    uint32_t ss0;        // The stack segment to load when we change to kernel mode.
+    uint32_t esp1;       // everything below here is unusued now.. 
+    uint32_t ss1;
     uint32_t esp2;
-    uint16_t ss2;
-    uint16_t resv_4;
+    uint32_t ss2;
     uint32_t cr3;
     uint32_t eip;
     uint32_t eflags;
@@ -106,73 +101,15 @@ typedef struct {
     uint32_t ebp;
     uint32_t esi;
     uint32_t edi;
-    uint16_t es;
-    uint16_t resv_5;
-    uint16_t cs;
-    uint16_t resv_6;
-    uint16_t ss;
-    uint16_t resv_7;
-    uint16_t ds;
-    uint16_t resv_8;
-    uint16_t fs;
-    uint16_t resv_9;
-    uint16_t gs;
-    uint16_t resv_a;
-    uint16_t ldt;
-    uint16_t resv_b;
-    uint16_t T;
-    uint16_t io_map;
+    uint32_t es;
+    uint32_t cs;
+    uint32_t ss;
+    uint32_t ds;
+    uint32_t fs;
+    uint32_t gs;
+    uint32_t ldt;
+    uint16_t trap;
+    uint16_t iobase;
 } __attribute__((packed)) tss_t;
 
-// typedef struct {
-//     uint16_t prev_task;
-//     uint16_t;
-//     uint32_t esp0;
-//     uint16_t ss0;
-//     uint16_t;
-//     uint32_t esp1;
-//     uint16_t ss1;
-//     uint16_t;
-//     uint32_t esp2;
-//     uint16_t ss2;
-//     uint16_t;
-//     uint32_t cr3;
-//     uint32_t eip;
-//     uint32_t eflags;
-//     uint32_t eax;
-//     uint32_t ecx;
-//     uint32_t edx;
-//     uint32_t ebx;
-//     uint32_t esp;
-//     uint32_t ebp;
-//     uint32_t esi;
-//     uint32_t edi;
-//     uint16_t es;
-//     uint16_t;
-//     uint16_t cs;
-//     uint16_t;
-//     uint16_t ss;
-//     uint16_t;
-//     uint16_t ds;
-//     uint16_t;
-//     uint16_t fs;
-//     uint16_t;
-//     uint16_t gs;
-//     uint16_t;
-//     uint16_t ldt;
-//     uint16_t;
-//     uint16_t T;
-//     uint16_t io_map;
-// } __attribute__((packed)) tss_t;
-
-
-// global data definition
-#define GDT_SIZE 6
-#define IDT_SIZE 256
-extern gdt_ptr_t gdt_ptr;
-extern idt_ptr_t idt_ptr;
-extern uint64_t gdt[GDT_SIZE];
-extern uint64_t idt[IDT_SIZE];
-extern tss_t tss;
-
-#endif // IA32_PROTECT_H_
+#endif // I386_H_
