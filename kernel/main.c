@@ -1,5 +1,6 @@
 #include <types.h>
 #include <process.h>
+#include <libk.h>
 
 pcb_t ps[16];
 pcb_t *process_to_go = NULL;
@@ -11,14 +12,18 @@ int i = 240;
 
 void sample_process_a() {
     static char *video = (char*)0xb8000;
+    char ca = '0';
     //int i = 240;
     while (1) {
         video[2*i] = 'A';
         video[2*i+1] = 0x1f;
-        ++i;
-        for (int a = 0; a < 1000; ++a) {
+        video[2*i+2] = ca;
+        video[2*i+3] = 0x1f;
+        ++ca;
+        i += 2;
+        for (int a = 0; a < 100; ++a) {
             for (int b = 0; b < 200; ++b) {
-                for (int c = 0; c < 100; ++c) {}
+                for (int c = 0; c < 300; ++c) {}
             }
         }
     }
@@ -26,14 +31,18 @@ void sample_process_a() {
 
 void sample_process_b() {
     static char *video = (char*)0xb8000;
+    char cb = '0';
     //int i = 240;
     while (1) {
         video[2*i] = 'B';
         video[2*i+1] = 0x0e;
-        ++i;
-        for (int a = 0; a < 1000; ++a) {
+        video[2*i+2] = cb;
+        video[2*i+3] = 0x0e;
+        ++cb;
+        i += 2;
+        for (int a = 0; a < 100; ++a) {
             for (int b = 0; b < 200; ++b) {
-                for (int c = 0; c < 100; ++c) {}
+                for (int c = 0; c < 300; ++c) {}
             }
         }
     }

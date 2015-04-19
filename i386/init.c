@@ -2,6 +2,7 @@
 #include <libk.h>
 #include "i386.h"
 #include "interrupt.h"
+#include "multiboot.h"
 #include "liba.h"
 
 #define GDT_SIZE 6
@@ -67,6 +68,9 @@ void init(uint32_t eax, uint32_t ebx) {
     gdt_ptr.limit = GDT_SIZE*sizeof(uint64_t) - 1;
     
     load_gdtr(&gdt_ptr);
+
+    // initialize 8253 PIT
+    //
 
     // initialize 8259A
 #define MASTER_CMD  0x20
@@ -135,6 +139,9 @@ void init(uint32_t eax, uint32_t ebx) {
     tss.iobase = sizeof(tss);   // no IO map
 
     load_tr(0x28);              // the selector of tss segment
+
+    //initialize memory
+    multiboot_info_t *mbi = (multiboot_info_t*)ebx;
 }
 
 void exception_dispatcher() {

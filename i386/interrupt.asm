@@ -92,16 +92,16 @@ irq%1:
     ; switch to kernel stack
     mov     esp, kernel_stack_top
 
-    ;sti
-    ;push    %1
+    sti
+    push    %1
     call    interrupt_dispatcher
-    ;add     esp, 4
-    ;cli
+    add     esp, 4
+    cli
 
     ; switch back to pcb
     mov     esp, [process_to_go]
     mov     eax, esp
-    add     eax, 68
+    add     eax, 68             ; esp should be the bottom of struct context
     mov     [tss+4], eax        ; set tss->esp0 to the pcb of current process
 
     ; unmask current interrupt
