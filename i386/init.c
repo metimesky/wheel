@@ -142,7 +142,10 @@ void exception_dispatcher() {
     video[158] = '!';
 }
 
+extern void schedule();
+
 void interrupt_dispatcher() {
     static char *video = (char*)0xb8000;
     ++video[0];
+    //schedule();
 }

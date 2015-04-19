@@ -117,17 +117,7 @@ irq%1:
     iretd
 %endmacro
 
-;interrupt   0
-
-global  irq0
-
-irq0:
-    inc     byte[gs:0xb8000]
-    mov     al, 0x20
-    out     0x20, al
-    iretd
-
-
+interrupt   0
 interrupt   1
 interrupt   2
 interrupt   3

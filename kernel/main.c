@@ -3,25 +3,44 @@
 
 pcb_t ps[16];
 pcb_t *process_to_go = NULL;
+int current_pid;
 
 extern goto_ring3();
 
-void sample_process() {
+int i = 240;
+
+void sample_process_a() {
     static char *video = (char*)0xb8000;
-    int i = 240;
+    //int i = 240;
     while (1) {
-        video[2*i] = 'U';
+        video[2*i] = 'A';
         video[2*i+1] = 0x1f;
+        ++i;
         for (int a = 0; a < 1000; ++a) {
             for (int b = 0; b < 200; ++b) {
                 for (int c = 0; c < 100; ++c) {}
             }
         }
-        ++i;
     }
 }
 
-char stack[4096];
+void sample_process_b() {
+    static char *video = (char*)0xb8000;
+    //int i = 240;
+    while (1) {
+        video[2*i] = 'B';
+        video[2*i+1] = 0x0e;
+        ++i;
+        for (int a = 0; a < 1000; ++a) {
+            for (int b = 0; b < 200; ++b) {
+                for (int c = 0; c < 100; ++c) {}
+            }
+        }
+    }
+}
+
+char stack_a[4096];
+char stack_b[4096];
 
 void main() {
     char *video = (char*)0xb8000;
@@ -38,18 +57,41 @@ void main() {
     video[10] = 'l';
     video[11] = 0x1f;
 
-    process_to_go = &ps[0];
-    process_to_go->context.cs = 0x18|3;
-    process_to_go->context.ds = 0x20|3;
-    process_to_go->context.es = 0x20|3;
-    process_to_go->context.fs = 0x20|3;
-    process_to_go->context.ss = 0x20|3;
-    process_to_go->context.gs = 0x20|3;
-    process_to_go->context.eip = (uint32_t)sample_process;
-    process_to_go->context.esp = (uint32_t)stack+4096;
-    process_to_go->context.eflags = 0x1202;
+    ps[0].pid = 0;
+    ps[0].context.cs = 0x18|3;
+    ps[0].context.ds = 0x20|3;
+    ps[0].context.es = 0x20|3;
+    ps[0].context.fs = 0x20|3;
+    ps[0].context.ss = 0x20|3;
+    ps[0].context.gs = 0x20|3;
+    ps[0].context.eip = (uint32_t)sample_process_a;
+    ps[0].context.esp = (uint32_t)stack_a+4096;
+    ps[0].context.eflags = 0x1202;
+    //
+    ps[1].pid = 1;
+    ps[1].context.cs = 0x18|3;
+    ps[1].context.ds = 0x20|3;
+    ps[1].context.es = 0x20|3;
+    ps[1].context.fs = 0x20|3;
+    ps[1].context.ss = 0x20|3;
+    ps[1].context.gs = 0x20|3;
+    ps[1].context.eip = (uint32_t)sample_process_b;
+    ps[1].context.esp = (uint32_t)stack_b+4096;
+    ps[1].context.eflags = 0x1202;
+
+
+    process_to_go = &ps[1];
+    current_pid = 1;
 
     goto_ring3();
     while (1) {}
 }
 
+void schedule() {
+    if (current_pid == 0) {
+        current_pid = 1;
+    } else {
+        current_pid = 0;
+    }
+    process_to_go = &ps[current_pid];
+}
