@@ -93,10 +93,12 @@ extern  user_mode
 extern  kernel_stack_top
 extern  process_to_go
 goto_ring3:
-    mov     eax, esp
     mov     dword[tss+8], 0x10
     mov     dword[tss+4], kernel_stack_top    ; save esp0
     mov     esp, [process_to_go]
+    mov     eax, esp
+    add     eax, 68
+    mov     dword[tss+4], eax
     pop     gs
     pop     fs
     pop     es

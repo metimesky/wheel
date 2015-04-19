@@ -147,5 +147,5 @@ extern void schedule();
 void interrupt_dispatcher() {
     static char *video = (char*)0xb8000;
     ++video[0];
-    //schedule();
+    schedule();
 }
