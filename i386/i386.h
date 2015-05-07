@@ -1,15 +1,17 @@
 #ifndef I386_H_
 #define I386_H_ 1
 
-typedef struct {
+struct gdt_ptr {
     uint16_t limit;
     uint32_t base;
-} __attribute__((packed)) gdt_ptr_t;
+} __attribute__((packed));
+typedef struct gdt_ptr gdt_ptr_t;
 
-typedef struct {
+struct idt_ptr {
     uint16_t limit;
     uint32_t base;
-} __attribute__((packed)) idt_ptr_t;
+} __attribute__((packed));
+typedef struct idt_ptr idt_ptr_t;
 
 // segment attribute
 #define SEG_USER(x)     ((x) << 0x04)   // Descriptor type (0 for system, 1 for code/data)
