@@ -70,7 +70,7 @@ void init(uint32_t eax, uint32_t ebx) {
     load_gdtr(&gdt_ptr);
 
     // initialize 8253 PIT
-    //
+    // TODO: add code to init 8253
 
     // initialize 8259A
 #define MASTER_CMD  0x20
@@ -142,6 +142,14 @@ void init(uint32_t eax, uint32_t ebx) {
 
     //initialize memory
     multiboot_info_t *mbi = (multiboot_info_t*)ebx;
+    multiboot_memory_map_t *mmap_addr = (multiboot_memory_map_t*)mbi->mmap_addr;
+    uint32_t mmap_length = mbi->mmap_length;
+
+    multiboot_memory_map_t *entry = mmap_addr;
+    while (entry + sizeof(multiboot_memory_map_t) < mmap_addr + mmap_length) {
+        //
+        entry = (multiboot_memory_map_t*)((unsigned int)entry + entry->size + sizeof(unsigned int));
+    }
 }
 
 void exception_dispatcher() {
