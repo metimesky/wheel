@@ -29,3 +29,6 @@ multiboot_entry:
     mov     [0xb8000], ax
 
     jmp     $
+
+;[section .data]
+;    mb_eax  dd  0
