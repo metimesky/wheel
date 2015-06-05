@@ -1,5 +1,6 @@
-; This file is responsible for the initial setup. It is the first piece of code
-; to be executed after the booting stage.
+; This is the first piece of code to be executed after the booting stage.
+; These code is responsible for detecting and setting up long mode,
+; new GDT, and initial PAE paging. Then it jumps into `stage1.c`.
 
 global wheel_stage0
 extern wheel_stage1
@@ -54,27 +55,22 @@ enter_long_mode:
     and     eax, 0x7fffffff
     mov     cr0, eax
 
-    ; clear 16KB of memory for page table.
+    ; clear 8KB of memory for 2 page tables, which covers 512GB address space.
     mov     edi, pml4t
     mov     cr3, edi
     xor     eax, eax
-    mov     ecx, 4096
+    mov     ecx, 2048
     rep     stosd
     mov     edi, cr3
 
-    ; setup PLM4, PLT, PDT
-    mov     dword [edi], 0x1003
-    add     dword [edi], pml4t
-    add     edi, 0x1000
-    mov     dword [edi], 0x2003
-    add     dword [edi], pml4t
-    add     edi, 0x1000
-    mov     dword [edi], 0x3003
-    add     dword [edi], pml4t
+    ; setup Page-Map Level-4 (PML4) Table, only 1 entry
+    mov     dword [edi], 0x1003     ; present, read/write
+    add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
 
-    mov     ebx, 0x00000003
-    mov     ecx, 512
+    ; setup Page Directory Pointer (PDP) Table, 512 entries
+    mov     ebx, 0x00000083         ; present, read/write, 1G granularity
+    mov     ecx, 512                ; 512 entries in total
 .set_entry:
     mov     dword [edi], ebx
     add     ebx, 0x1000
@@ -122,7 +118,7 @@ no_long_mode:
     hlt
     jmp     $
 
-.err_msg        db      "Error 0: CPU is not compatible with 64-bit mode."
+.err_msg        db      "CPU is not compatible with 64-bit mode."
 .err_msg_len    equ     $ - .err_msg
 
 [BITS 64]
@@ -148,9 +144,7 @@ long_mode_entry:
     sub     rsp, 16
     ;call    main
 
-    mov     al, 'K'
-    mov     ah, 0x4e
-    mov     [0xb8000], ax
+    mov     eax, [0x1000000]
 
     ; halt on return
     hlt
@@ -204,6 +198,6 @@ mb_ebx:
 kernel_stack:   resb 0x1000
 kernel_stack_top:
 
-; reserve 16KB for page tables.
+; reserve 8KB for page tables.
 ALIGN 0x1000
-pml4t:          resb 0x4000
+pml4t:          resb 0x2000
