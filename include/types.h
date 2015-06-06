@@ -14,4 +14,16 @@ typedef uint32_t            size_t;
 
 #define NULL ((void*)0)
 
+#define INT32_MIN -2147483648
+#define INT32_MAX 2147483647
+
+#define UINT32_MIN 0
+#define UINT32_MAX 4294967296
+
+#define INT64_MIN -9223372036854775808L
+#define INT64_MAX 9223372036854775807L
+
+#define UINT64_MIN 0L
+#define UINT64_MAX 18446744073709551616L
+
 #endif // __TYPES_H__

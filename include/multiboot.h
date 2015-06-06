@@ -167,8 +167,6 @@ struct multiboot_mmap_entry {
     uint32_t size;
     uint64_t addr;
     uint64_t len;
-    //uint32_t addr, addr2;
-    //uint32_t len, len2;
     #define MULTIBOOT_MEMORY_AVAILABLE              1
     #define MULTIBOOT_MEMORY_RESERVED               2
     uint32_t type;

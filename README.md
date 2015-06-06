@@ -17,3 +17,7 @@ Wheel 使用 make 进行编译链接操作, make 命令会创建 build 目录, �
 ### Multiboot
 
 Multiboot is the spec Wheel follow. With multiboot, Wheel can be booted using grub.
+
+### Portability
+
+Wheel does not care about portability. Thus this os is currently bind tightly with AMD64 arch.

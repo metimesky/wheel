@@ -2,12 +2,13 @@
 ; These code is responsible for detecting and setting up long mode,
 ; new GDT, and initial PAE paging. Then it jumps into `stage1.c`.
 
-global wheel_stage0
-extern wheel_stage1
+global wheel_init
+
+extern wheel_main
 
 [section .text]
 [BITS 32]
-wheel_stage0:
+wheel_init:
     ; disable interrupt
     cli
 
@@ -139,12 +140,8 @@ long_mode_entry:
     xor     rsi, rsi
     mov     edi, [mb_eax]   ; zero extend to rdi
     mov     esi, [mb_ebx]   ; zero extend to rsi
-    call    wheel_stage1
-
+    call    wheel_main
     sub     rsp, 16
-    ;call    main
-
-    mov     eax, [0x1000000]
 
     ; halt on return
     hlt

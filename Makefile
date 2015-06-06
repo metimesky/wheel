@@ -1,7 +1,7 @@
 # Makefile for Wheel Operating System
 
 # directories
-source_dir  :=  boot #kernel libk
+source_dir  :=  boot kernel memory library
 include_dir :=  include
 build_dir   :=  build
 

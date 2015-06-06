@@ -1,11 +1,11 @@
 ; This assembly stub does nothing but boot the system.
-; Once the system is up, it jumps into stage0.asm.
+; Once the system is up, it jumps into init.asm.
 
 extern  kernel_load_addr
 extern  kernel_data_end
 extern  kernel_bss_end
 
-extern  wheel_stage0
+extern  wheel_init
 
 MB1_MAGIC   equ 0x1badb002              ; magic number
 MB1_FLAGS   equ 1<<0|1<<1|1<<16         ; aligned, mem info, address info valid
@@ -26,5 +26,5 @@ multiboot_header:
     dd      multiboot_entry     ; entry_addr
 
 multiboot_entry:
-    ; jump into stage0.asm
-    jmp     wheel_stage0
+    ; jump into init.asm
+    jmp     wheel_init
