@@ -17,7 +17,7 @@ AS      :=  yasm
 AF      :=  -f elf64
 CC      :=  clang
 CF      :=  -c -std=c99 -I $(include_dir) \
-            -ffreestanding -fno-builtin -nostdinc -nostdlib \
+            -ffreestanding -fno-builtin -nostdlib \
             -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-3dnow \
             -fno-sanitize=address -Wall -Wextra
 LD      :=  ld

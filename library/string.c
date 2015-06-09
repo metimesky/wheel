@@ -1,4 +1,4 @@
-#include <types.h>
+#include <env.h>
 #include <string.h>
 
 int strlen(const char* s) {
@@ -107,10 +107,19 @@ char* i64_to_str(long long value, char *buf, int base) {
         return u64_to_str(value, buf, base);
     }
 }
+/*
+int vsprintf(char *buf, const char *fmt, va_list args) {
+    const char *p = fmt ? fmt : "";
+    for (; *p; ++p) {
+        if (*p != '%') {
+
+        }
+    }
+}
 
 // string buf is at most n chars long, leaving room for the trailing NULL.
 // return value does not contain the trailing null.
-int snprintf_private(char *buf, int n, const char *fmt, void **args) {
+int snprintf_private(char *buf, int n, const char *fmt, va_list args) {
     char num_buf[65];
     int idx = 0;
     int l = 0;
@@ -129,26 +138,26 @@ int snprintf_private(char *buf, int n, const char *fmt, void **args) {
             case 'd':
             case 'i':
                 // signed decimal integer
-                i32_to_str(num_buf, (int) args[idx], 10);
-                ++idx;
+                i32_to_str(num_buf, va_arg(args, int), 10);
+                // ++idx;
                 goto append_num_buf;
                 break;
             case 'u':
                 // unsigned decimal integer
-                u32_to_str(num_buf, (unsigned int) args[idx], 10);
-                ++idx;
+                u32_to_str(num_buf, va_arg(args, unsigned int), 10);
+                // ++idx;
                 goto append_num_buf;
                 break;
             case 'o':
                 // unsigned octal integer
-                u32_to_str(num_buf, (unsigned int) args[idx], 8);
-                ++idx;
+                u32_to_str(num_buf, va_arg(args, unsigned int), 8);
+                // ++idx;
                 goto append_num_buf;
                 break;
             case 'x':
                 // unsigned hexademical integer
-                u32_to_str(num_buf, (unsigned int) args[idx], 16);
-                ++idx;
+                u32_to_str(num_buf, va_arg(args, unsigned int), 16);
+                // ++idx;
                 goto append_num_buf;
 append_num_buf:
                 strncpy(&buf[j], num_buf, n - j - 1);
@@ -162,14 +171,17 @@ append_num_buf:
                 break;
             case 'c':
                 // character
-                buf[j] = args[idx];
+                buf[j] = va_arg(args, char);
                 ++j;
-                ++idx;
+                // ++idx;
                 break;
             case 's':
                 // string
-                strncpy(&buf[j], (char *) args[idx], n - j - 1);
-                l = strlen((char *) args[idx]);
+            {
+                const char *str = va_arg(args, char*);
+                strncpy(&buf[j], str, n - j - 1);
+                l = strlen(str);
+            }
                 if (j + l >= n - 1) {
                     buf[n-1] = '\0';
                     return n - 1;
@@ -195,12 +207,18 @@ append_num_buf:
 }
 
 int sprintf(char *s, const char *fmt, ...) {
-    void **args = (void *) &fmt;
-    return snprintf_private(s, INT32_MAX, fmt, &args[1]);
+    va_list args;
+    va_start(args, fmt);
+    int ret = snprintf_private(s, INT32_MAX, fmt, &args[1]);
+    va_end(args);
+    return ret;
 }
 
 int snprintf(char *s, int n, const char *fmt, ...) {
-    void **args = (void *) &fmt;
-    return snprintf_private(s, n, fmt, &args[1]);
-
+    va_list args;
+    va_start(args, fmt);
+    int ret = snprintf_private(s, n, fmt, &args[1]);
+    va_end(args);
+    return ret;
 }
+*/

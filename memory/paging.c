@@ -1,8 +1,9 @@
-#include <types.h>
+#include <env.h>
+#include "paging.h"
 
-extern uint64_t kernel_bss_end;
+extern char kernel_bss_end;
 
-typedef unsigned long long frame_t;
+//typedef unsigned long long frame_t;
 
 #define USED_4K(f)  ((f) &  1)
 #define USED_2M(f)  ((f) &  2)
@@ -21,6 +22,8 @@ void physical_memory_manager_init(int size) {
 
 	// clear the memory
 	for (int i = 0; i < size; ++i) {
-		frames[0] = 0L;
+		frames[i].linear = 0L;
+		frames[i].pid = 0;
+		frames[i].attr = 0;
 	}
 }

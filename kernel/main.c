@@ -1,4 +1,4 @@
-#include <types.h>
+#include <env.h>
 #include <multiboot.h>
 #include <string.h>
 
@@ -123,23 +123,51 @@ void read_info(uint32_t eax, uint32_t ebx) {
             ++line;
         }
     }
-
-    char s[128];
-    sprintf(s, "hello, world!");
-    raw_write(s, 0x0f, 80 * (line++));
-    sprintf(s, "number is %d in decimal", 123);
-    raw_write(s, 0x0f, 80 * (line++));
-    sprintf(s, "and is 0x%x in hex", 0xDeadBeef);
-    raw_write(s, 0x0f, 80 * (line++));
 }
 
-extern int snprintf_private(char *buf, int n, const char *fmt, void **args);
+extern char kernel_load_addr;
+extern char kernel_end;
+extern char kernel_text_start;
+extern char kernel_text_end;
+extern char kernel_data_start;
+extern char kernel_data_end;
+extern char kernel_bss_start;
+extern char kernel_bss_end;
+
+extern char kernel_stack;
+extern char pml4t;
 
 void wheel_main(uint32_t eax, uint32_t ebx) {
     read_info(eax, ebx);
 
-    char s[128];
-    uint64_t args[] = {1, 2, 3};
-    snprintf_private(s, INT32_MAX, "hello, world! %d, %d and %d", args);
-    raw_write(s, 0x1e, 15*80);
+    char buf[64];
+    int line = 8;
+    raw_write("kernel start:", 0x0b, 80*line);
+    raw_write(u64_to_str((uint64_t) &kernel_load_addr, buf, 16), 0x0b, 80*line+14);
+    raw_write("kernel end:", 0x0b, 80*line+40);
+    raw_write(u64_to_str((uint64_t) &kernel_end, buf, 16), 0x0b, 80*line+40+12);
+    ++line;
+    //
+    raw_write("text start:", 0x0b, 80*line);
+    raw_write(u64_to_str((uint64_t) &kernel_text_start, buf, 16), 0x0b, 80*line+14);
+    raw_write("text end:", 0x0b, 80*line+40);
+    raw_write(u64_to_str((uint64_t) &kernel_text_end, buf, 16), 0x0b, 80*line+40+12);
+    ++line;
+    //
+    raw_write("data start:", 0x0b, 80*line);
+    raw_write(u64_to_str((uint64_t) &kernel_data_start, buf, 16), 0x0b, 80*line+14);
+    raw_write("data end:", 0x0b, 80*line+40);
+    raw_write(u64_to_str((uint64_t) &kernel_data_end, buf, 16), 0x0b, 80*line+40+12);
+    ++line;
+    //
+    raw_write("bss start:", 0x0b, 80*line);
+    raw_write(u64_to_str((uint64_t) &kernel_bss_start, buf, 16), 0x0b, 80*line+14);
+    raw_write("bss end:", 0x0b, 80*line+40);
+    raw_write(u64_to_str((uint64_t) &kernel_bss_end, buf, 16), 0x0b, 80*line+40+12);
+    ++line;
+    //
+    raw_write("kernel stack:", 0x0b, 80*line);
+    raw_write(u64_to_str((uint64_t) &kernel_stack, buf, 16), 0x0b, 80*line+14);
+    raw_write("pml4t:", 0x0b, 80*line+40);
+    raw_write(u64_to_str((uint64_t) &pml4t, buf, 16), 0x0b, 80*line+40+12);
 }

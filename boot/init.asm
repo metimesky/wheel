@@ -6,6 +6,9 @@ global wheel_init
 
 extern wheel_main
 
+global kernel_stack
+global pml4t
+
 [section .text]
 [BITS 32]
 wheel_init:
@@ -56,11 +59,11 @@ enter_long_mode:
     and     eax, 0x7fffffff
     mov     cr0, eax
 
-    ; clear 8KB of memory for 2 page tables, which covers 512GB address space.
+    ; clear 16KB of memory for 4 page tables, which covers 2MB address space.
     mov     edi, pml4t
     mov     cr3, edi
     xor     eax, eax
-    mov     ecx, 2048
+    mov     ecx, 4096
     rep     stosd
     mov     edi, cr3
 
@@ -69,9 +72,19 @@ enter_long_mode:
     add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
 
-    ; setup Page Directory Pointer (PDP) Table, 512 entries
-    mov     ebx, 0x00000083         ; present, read/write, 1G granularity
-    mov     ecx, 512                ; 512 entries in total
+    ; setup Page Directory Pointer (PDP) Table, only 1 entry
+    mov     dword [edi], 0x2003     ; present, read/write
+    add     dword [edi], pml4t      ; pointing to pml4t+8K (PD Table)
+    add     edi, 0x1000
+
+    ; setup Page Directory (PD) Table, only 1 entry
+    mov     dword [edi], 0x3003     ; present, read/write
+    add     dword [edi], pml4t      ; pointing to pml4t+12K (Page Table)
+    add     edi, 0x1000
+
+    ; setup Page Table, 512 entries
+    mov     ebx, 0x00000003         ; present, read/write
+    mov     ecx, 512
 .set_entry:
     mov     dword [edi], ebx
     add     ebx, 0x1000
@@ -153,37 +166,37 @@ gdt:                        ; Global Descriptor Table (64-bit).
 .null:  equ     $ - gdt     ; null descriptor
     dq      0
 .code0: equ     $ - gdt     ; code descriptor
-    dw      0               ;  - limit [0:15]
-    dw      0               ;  - base [0:15]
-    db      0               ;  - base [16:23]
-    db      10011000b       ;  - Present, DPL=0, non-conforming
-    db      00100000b       ;  - 64-bit
-    db      0               ;  - base [24:31]
+    dw      0               ; -- limit [0:15]
+    dw      0               ; -- base [0:15]
+    db      0               ; -- base [16:23]
+    db      10011000b       ; -- Present, DPL=0, non-conforming
+    db      00100000b       ; -- 64-bit
+    db      0               ; -- base [24:31]
 .data0: equ     $ - gdt     ; data descriptor
-    dw      0               ;  - limit [0:15]
-    dw      0               ;  - base [0:15]
-    db      0               ;  - base [16:23]
-    db      10010000b       ;  - Present, DPL=0
-    db      0               ;  - limit [16:19] and attr
-    db      0               ;  - base [24:31]
+    dw      0               ; -- limit [0:15]
+    dw      0               ; -- base [0:15]
+    db      0               ; -- base [16:23]
+    db      10010000b       ; -- Present, DPL=0
+    db      0               ; -- limit [16:19] and attr
+    db      0               ; -- base [24:31]
 .code3: equ     $ - gdt     ; code descriptor
-    dw      0               ;  - limit [0:15]
-    dw      0               ;  - base [0:15]
-    db      0               ;  - base [16:23]
-    db      11111000b       ;  - Present, DPL=0, non-conforming
-    db      00100000b       ;  - 64-bit
-    db      0               ;  - base [24:31]
+    dw      0               ; -- limit [0:15]
+    dw      0               ; -- base [0:15]
+    db      0               ; -- base [16:23]
+    db      11111000b       ; -- Present, DPL=0, non-conforming
+    db      00100000b       ; -- 64-bit
+    db      0               ; -- base [24:31]
 .data3: equ     $ - gdt     ; data descriptor
-    dw      0               ;  - limit [0:15]
-    dw      0               ;  - base [0:15]
-    db      0               ;  - base [16:23]
-    db      11110000b       ;  - Present, DPL=0
-    db      0               ;  - limit [16:19] and attr
-    db      0               ;  - base [24:31]
+    dw      0               ; -- limit [0:15]
+    dw      0               ; -- base [0:15]
+    db      0               ; -- base [16:23]
+    db      11110000b       ; -- Present, DPL=0
+    db      0               ; -- limit [16:19] and attr
+    db      0               ; -- base [24:31]
 
 .ptr:                       ; The GDT-pointer.
-    dw      $ - gdt - 1     ; - Limit.
-    dq      gdt             ; - Base.
+    dw      $ - gdt - 1     ; -- Limit.
+    dq      gdt             ; -- Base.
 
 mb_eax:
     dd      0
@@ -195,6 +208,6 @@ mb_ebx:
 kernel_stack:   resb 0x1000
 kernel_stack_top:
 
-; reserve 8KB for page tables.
+; reserve 16KB for page tables.
 ALIGN 0x1000
-pml4t:          resb 0x2000
+pml4t:          resb 0x4000
