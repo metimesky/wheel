@@ -81,7 +81,7 @@ char* itoa(int value, char *buf, int base) {
     }
 }
 
-extern void physical_memory_manager_init(int size);
+extern uint64_t paging_init(uint32_t mmap_addr, uint32_t mmap_length);
 
 void read_info(uint32_t eax, uint32_t ebx) {
     if (MULTIBOOT_BOOTLOADER_MAGIC != eax) {
@@ -94,20 +94,15 @@ void read_info(uint32_t eax, uint32_t ebx) {
 
     int line = 0;
 
-    // are `mem_*` valid?
-    if (mbi->flags & (1 << 0)) {
+    // are `mem_*` and `mmap_*` valid?
+    if (mbi->flags & (1<<0) && mbi->flags & (1<<6)) {
         raw_write("lower memory (KB):", 0x0f, 80*line);
         raw_write(u32_to_str(mbi->mem_lower, buf, 10), 0x0f, 80*line + 19);
         raw_write("upper memory (KB):", 0x0f, 80*line + 30);
         raw_write(u32_to_str(mbi->mem_upper, buf, 10), 0x0f, 80*line + 49);
         ++line;
 
-        // how many 4KB frames do we have.
-        physical_memory_manager_init(mbi->mem_upper >> 2);
-    }
-
-    /* Are mmap * valid? */
-    if (mbi->flags & (1 << 6)) {
+        //
         multiboot_memory_map_t *mmap = (multiboot_memory_map_t *) mbi->mmap_addr;
         while ((uint32_t) mmap < mbi->mmap_addr + mbi->mmap_length) {
             raw_write("Addr:", 0x0d, 80*line);
@@ -122,6 +117,14 @@ void read_info(uint32_t eax, uint32_t ebx) {
             mmap = (multiboot_memory_map_t *)((uint32_t) mmap + mmap->size + sizeof(uint32_t));
             ++line;
         }
+
+        // init page allocator
+        uint64_t pn = paging_init(mbi->mmap_addr, mbi->mmap_length);
+        raw_write("Number of page is ", 0x1f, 80*line);
+        raw_write(u64_to_str(pn, buf, 10), 0x1f, 80*line+18);
+    } else {
+        raw_write("Memory information is not accessible.", 0x4e, 0);
+        while (1) {}
     }
 }
 

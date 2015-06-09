@@ -3,11 +3,10 @@
 ; new GDT, and initial PAE paging. Then it jumps into `stage1.c`.
 
 global wheel_init
-
-extern wheel_main
-
 global kernel_stack
 global pml4t
+
+extern wheel_main
 
 [section .text]
 [BITS 32]
