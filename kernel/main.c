@@ -1,6 +1,7 @@
 #include <env.h>
 #include <multiboot.h>
 #include <string.h>
+#include "../memory/paging.h"
 
 void raw_write(const char *str, char attr, int pos) {
     static char* const video = (char*) 0xb8000;
@@ -9,80 +10,6 @@ void raw_write(const char *str, char attr, int pos) {
         video[2 * (pos+i) + 1] = attr;
     }
 }
-
-char* utoa(unsigned int value, char *str, int base) {
-    static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-
-    /* Check whether base is valid. */
-    if ((base < 2) || (base > 36)) {
-        str[0] = '\0';
-        return NULL;
-    }
-
-    /* Convert to string. Digits are in reverse order.  */
-    int i = 0;
-    unsigned int remainder = 0;
-    do {
-        remainder = value % base;
-        str[i++] = digits[remainder];
-        value = value / base;
-    } while (value != 0);
-    str[i] = '\0';
-
-    /* Reverse string.  */
-    char tmp;
-    int j;
-    for (j=0, --i; j<i; ++j, --i) {
-        tmp = str[j];
-        str[j] = str[i];
-        str[i] = tmp;
-    }
-
-    return str;
-}
-
-char* ultoa(unsigned long long value, char *str, int base) {
-    static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-  
-    /* Check whether base is valid. */
-    if ((base < 2) || (base > 36)) {
-        str[0] = '\0';
-        return NULL;
-    }
-
-    /* Convert to string. Digits are in reverse order.  */
-    int i = 0;
-    unsigned int remainder = 0;
-    do {
-        remainder = value % base;
-        str[i++] = digits[remainder];
-        value = value / base;
-    } while (value != 0);
-    str[i] = '\0';
-  
-    /* Reverse string.  */
-    char tmp;
-    int j;
-    for (j=0, --i; j<i; ++j, --i) {
-        tmp = str[j];
-        str[j] = str[i];
-        str[i] = tmp;
-    }
-  
-    return str;
-}
-
-char* itoa(int value, char *buf, int base) {
-    if (value < 0) {
-        buf[0] = '-';
-        return u32_to_str(-value, &buf[1], base);
-    } else {
-        return u32_to_str(value, buf, base);
-    }
-}
-
-extern uint64_t paging_init(uint32_t mmap_addr, uint32_t mmap_length);
-
 void read_info(uint32_t eax, uint32_t ebx) {
     if (MULTIBOOT_BOOTLOADER_MAGIC != eax) {
         raw_write("Bootloader magic number is invalid.", 0x4e, 0);
@@ -120,8 +47,6 @@ void read_info(uint32_t eax, uint32_t ebx) {
 
         // init page allocator
         uint64_t pn = paging_init(mbi->mmap_addr, mbi->mmap_length);
-        raw_write("Number of page is ", 0x1f, 80*line);
-        raw_write(u64_to_str(pn, buf, 10), 0x1f, 80*line+18);
     } else {
         raw_write("Memory information is not accessible.", 0x4e, 0);
         while (1) {}

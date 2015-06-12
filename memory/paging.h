@@ -8,4 +8,6 @@ struct frame {
 } __attribute__((packed));
 typedef struct frame frame_t;
 
+void paging_init(uint32_t size, uint32_t mmap_addr, uint32_t mmap_length)
+
 #endif // __PAGING_H__
