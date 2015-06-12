@@ -1,5 +1,5 @@
-#ifndef __PAGING_H__
-#define __PAGING_H__ 1
+#ifndef __PAGE_ALLOC_H__
+#define __PAGE_ALLOC_H__ 1
 
 struct frame {
     uint64_t linear;    // the linear address this frame mapped to
@@ -10,4 +10,4 @@ typedef struct frame frame_t;
 
 void paging_init(uint32_t size, uint32_t mmap_addr, uint32_t mmap_length)
 
-#endif // __PAGING_H__
+#endif // __PAGE_ALLOC_H__

@@ -1,5 +1,5 @@
 #include <env.h>
-#include "paging.h"
+#include "page_alloc.h"
 #include <multiboot.h>
 
 extern char kernel_bss_end;
