@@ -22,7 +22,7 @@ uint64_t buddy_num[8];
 
 // param: size -- the size of physical memory in KB.
 void paging_init(uint32_t mmap_addr, uint32_t mmap_length) {
-    uint64_t i = 0;
+    size_t i = 0;
     // initialize 4K buddy map
     buddy_map[0] = (uint8_t *) &kernel_bss_end;
     multiboot_memory_map_t *mmap = (multiboot_memory_map_t *) mmap_addr;
@@ -46,7 +46,7 @@ void paging_init(uint32_t mmap_addr, uint32_t mmap_length) {
                 buddy_map[0][i >> 3] &= ~(1 << (i & 7));
             }
         }
-        mmap = (multiboot_memory_map_t *)((uint32_t) mmap + mmap->size + sizeof(uint32_t));
+        mmap = (multiboot_memory_map_t *) ((uint32_t) mmap + mmap->size + sizeof(uint32_t));
     }
     frame_num = i;
     buddy_num[0] = (i + 127) & ~127;
