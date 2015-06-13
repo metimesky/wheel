@@ -8,14 +8,14 @@
 
 size_t strlen(const char* s) {
     const char *start = s;
-    while (s & (sizeof(long) - 1)) {
+    while ((size_t) s & (sizeof(long) - 1)) {
         if (!*s) {
             return s - start;
         }
         ++s;
     }
     unsigned long *aligned_s = (unsigned long *) s;
-    for (; !HASNULL(*aligned_s); ++aligned_s;) {}
+    for (; !HASNULL(*aligned_s); ++aligned_s) {}
     s = (const char *) aligned_s;
     for (; *s; ++s) {}
     return s - start;

@@ -1,7 +1,7 @@
 #include <env.h>
 #include <multiboot.h>
 #include <string.h>
-#include "../memory/paging.h"
+#include "../memory/page_alloc.h"
 
 void raw_write(const char *str, char attr, int pos) {
     static char* const video = (char*) 0xb8000;
@@ -10,6 +10,7 @@ void raw_write(const char *str, char attr, int pos) {
         video[2 * (pos+i) + 1] = attr;
     }
 }
+
 void read_info(uint32_t eax, uint32_t ebx) {
     if (MULTIBOOT_BOOTLOADER_MAGIC != eax) {
         raw_write("Bootloader magic number is invalid.", 0x4e, 0);
@@ -46,7 +47,7 @@ void read_info(uint32_t eax, uint32_t ebx) {
         }
 
         // init page allocator
-        uint64_t pn = paging_init(mbi->mmap_addr, mbi->mmap_length);
+        paging_init(mbi->mmap_addr, mbi->mmap_length);
     } else {
         raw_write("Memory information is not accessible.", 0x4e, 0);
         while (1) {}

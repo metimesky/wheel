@@ -49,7 +49,7 @@ static inline void bitmap_copy(unsigned long *dst, const unsigned long *src, int
     }
 }
 
-void bitmap_set(size_t *bitmap, size_t bit);
-void bitmap_clear(size_t *bitmap, size_t bit);
+void bitmap_set(unsigned long *map, int i, int len);
+void bitmap_clear(unsigned long *map, int i, int len);
 
 #endif // __BITMAP_H__
