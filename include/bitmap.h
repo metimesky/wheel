@@ -21,7 +21,7 @@
 
 // set entire bitmap to zeros, including trailing extra bits
 static inline void bitmap_zero(unsigned long *dst, int nbits) {
-    if (nbits < BITS_PER_LONG) {
+    if (nbits <= BITS_PER_LONG) {
         *dst = 0UL;
     } else {
         int len = BITS_TO_LONGS(nbits) * sizeof(unsigned long);
@@ -49,7 +49,8 @@ static inline void bitmap_copy(unsigned long *dst, const unsigned long *src, int
     }
 }
 
-void bitmap_set(size_t *bitmap, size_t bit);
-void bitmap_clear(size_t *bitmap, size_t bit);
+void linux_bitmap_set(unsigned long *map, int start, int nr);
+void bitmap_set(unsigned long *map, int start, int len);
+void bitmap_clear(unsigned long *map, int start, int len);
 
 #endif // __BITMAP_H__

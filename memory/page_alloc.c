@@ -1,56 +1,49 @@
-#include <env.h>
 #include "page_alloc.h"
+#include <env.h>
 #include <multiboot.h>
 
 extern char kernel_bss_end;
 
-//typedef unsigned long long frame_t;
+// frame_t *frames = NULL;
+unsigned long frame_num = 0;     // how many 4K frames are there
 
-#define USED_4K(f)  ((f) &  1)
-#define USED_2M(f)  ((f) &  2)
-#define USED_1G(f)  ((f) &  4)
-#define PAGE_4K(f)  ((f) &  8)
-#define PAGE_2M(f)  ((f) & 16)
-#define PAGE_1G(f)  ((f) & 32)
-#define VIRTUAL(f)  ((f) & 0xfffffffffffff000)
-
-frame_t *frames = NULL;
-uint64_t frame_num = 0;     // how many 4K frames are there
-
-uint8_t* buddy_map[8];
-uint64_t buddy_num[8];
+// in the bitmap, 1 indicates free and usable page
+unsigned long *buddy_map[19];
+unsigned long  buddy_num[19];
 
 // param: size -- the size of physical memory in KB.
 void paging_init(uint32_t mmap_addr, uint32_t mmap_length) {
-    size_t i = 0;
     // initialize 4K buddy map
-    buddy_map[0] = (uint8_t *) &kernel_bss_end;
+    buddy_map[0] = (unsigned long *) &kernel_bss_end;
     multiboot_memory_map_t *mmap = (multiboot_memory_map_t *) mmap_addr;
     while ((uint32_t) mmap < (mmap_addr + mmap_length)) {
         if (MULTIBOOT_MEMORY_AVAILABLE == mmap->type) {
-            uint64_t start = mmap->addr;
-            uint64_t end   = start + mmap->len;
+            int start = mmap->addr;
+            int end   = start + mmap->len;
 
             // round start upward and end downward to 4K boundary
-            start += 0x1000 - 1;
+            start += 4096 - 1;
             start >>= 12;
             end >>= 12;
 
             // fill the gap between two usable memory region
-            for (; i < start; ++i) {
-                buddy_map[0][i >> 3] |= 1 << (i & 7);
-            }
+            bitmap_clear(buddy_map[0], frame_num, start - frame_num);
 
-            // fill the range (this implicitly rounded down `end` to 4K)
-            for (; i < end; ++i) {
-                buddy_map[0][i >> 3] &= ~(1 << (i & 7));
-            }
+            // fill the range
+            bitmap_set(buddy_map[0], start, end - start);
+            
+            frame_num = end;
         }
         mmap = (multiboot_memory_map_t *) ((uint32_t) mmap + mmap->size + sizeof(uint32_t));
     }
-    frame_num = i;
-    buddy_num[0] = (i + 127) & ~127;
+
+    // align frame number to 2**18
+    bitmap_clear(buddy_map[0], frame_num, 0x40000 - frame_num % 0x40000);
+    buddy_num[0] = frame_num + 0x40000 - 1;
+    buddy_num[0] %= 0x40000;
+    
     // fill the rest part with ones
+    int i;
     for (; i < buddy_num[0]; ++i) {
         buddy_map[0][i >> 3] |= 1 << (i & 7);
     }

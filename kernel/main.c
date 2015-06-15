@@ -1,7 +1,8 @@
 #include <env.h>
 #include <multiboot.h>
 #include <string.h>
-#include "../memory/paging.h"
+#include <bitmap.h>
+#include "../memory/page_alloc.h"
 
 void raw_write(const char *str, char attr, int pos) {
     static char* const video = (char*) 0xb8000;
@@ -10,6 +11,7 @@ void raw_write(const char *str, char attr, int pos) {
         video[2 * (pos+i) + 1] = attr;
     }
 }
+
 void read_info(uint32_t eax, uint32_t ebx) {
     if (MULTIBOOT_BOOTLOADER_MAGIC != eax) {
         raw_write("Bootloader magic number is invalid.", 0x4e, 0);
@@ -46,7 +48,7 @@ void read_info(uint32_t eax, uint32_t ebx) {
         }
 
         // init page allocator
-        uint64_t pn = paging_init(mbi->mmap_addr, mbi->mmap_length);
+        paging_init(mbi->mmap_addr, mbi->mmap_length);
     } else {
         raw_write("Memory information is not accessible.", 0x4e, 0);
         while (1) {}
@@ -68,7 +70,7 @@ extern char pml4t;
 void wheel_main(uint32_t eax, uint32_t ebx) {
     read_info(eax, ebx);
 
-    char buf[64];
+    char buf[128];
     int line = 8;
     raw_write("kernel start:", 0x0b, 80*line);
     raw_write(u64_to_str((uint64_t) &kernel_load_addr, buf, 16), 0x0b, 80*line+14);
@@ -98,4 +100,18 @@ void wheel_main(uint32_t eax, uint32_t ebx) {
     raw_write(u64_to_str((uint64_t) &kernel_stack, buf, 16), 0x0b, 80*line+14);
     raw_write("pml4t:", 0x0b, 80*line+40);
     raw_write(u64_to_str((uint64_t) &pml4t, buf, 16), 0x0b, 80*line+40+12);
+    ++line;
+
+    unsigned long bitmap;
+    bitmap_zero(&bitmap, 8*sizeof(long));
+    raw_write(u64_to_str(bitmap, buf, 2), 0x1e, 80*line);
+    ++line;
+
+    bitmap_set(&bitmap, 5, 40);
+    raw_write(u64_to_str(bitmap, buf, 2), 0x1e, 80*line);
+    ++line;
+
+    bitmap_clear(&bitmap, 12, 18);
+    raw_write(u64_to_str(bitmap, buf, 2), 0x1e, 80*line);
+    ++line;
 }
