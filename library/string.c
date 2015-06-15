@@ -42,7 +42,7 @@ char *strncpy(char *dst, const char *src, size_t n) {
     return dst;
 }
 
-void *my_memcpy(void *dst, const void *src, size_t n) {
+void *memcpy(void *dst, const void *src, size_t n) {
     char *t = (char *) dst;
     char *s = (char *) src;
     if (!(n < sizeof(long) || (size_t) t & (sizeof(long) - 1) || (size_t) s & (sizeof(long) - 1))) {
@@ -66,7 +66,7 @@ void *my_memcpy(void *dst, const void *src, size_t n) {
     return dst;
 }
 
-void *my_memset(void *dst, int val, size_t n) {
+void *memset(void *dst, int val, size_t n) {
     char *ptr = (char *) dst;
     for (; ((size_t) ptr & (sizeof(long) - 1)) && (n > 0); --n) {
         *ptr++ = (char)val;
