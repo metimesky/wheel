@@ -32,7 +32,7 @@ static uint64_t bit_merge_up(uint64_t data) {
     ret &= 0xffff0000ffff0000UL;
     // XXXXXXXX|XXXXXXXX|00000000|00000000|XXXXXXXX|XXXXXXXX|00000000|00000000
 
-    ret |= (ret << 16) 0x0000ffff0000ffffUL;
+    ret |= (ret << 16) & 0x0000ffff0000ffffUL;
     ret &= 0xffffffff00000000UL;
     // XXXXXXXX|XXXXXXXX|XXXXXXXX|XXXXXXXX|00000000|00000000|00000000|00000000
 
@@ -63,7 +63,7 @@ static uint64_t bit_merge_down(uint64_t data) {
     ret &= 0x0000ffff0000ffffUL;
     // 00000000|00000000|XXXXXXXX|XXXXXXXX|00000000|00000000|XXXXXXXX|XXXXXXXX
 
-    ret |= (ret >> 16) 0xffff0000ffff0000UL;
+    ret |= (ret >> 16) & 0xffff0000ffff0000UL;
     ret &= 0x00000000ffffffffUL;
     // 00000000|00000000|00000000|00000000|XXXXXXXX|XXXXXXXX|XXXXXXXX|XXXXXXXX
 
@@ -86,19 +86,19 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
             end >>= 12;
 
             // fill the gap between two usable memory region
-            bitmap_clear(buddy_map[0], frame_num, start - frame_num);
+            bitmap_clear(buddy_map[0], buddy_num[0], start - buddy_num[0]);
 
             // fill the range
             bitmap_set(buddy_map[0], start, end - start);
+
+            // mark the current end as total frame num
+            buddy_num[0] = end;
         }
         mmap = (multiboot_memory_map_t *) ((uint32_t) mmap + mmap->size + sizeof(uint32_t));
     }
 
     // set extra bits to zero
-    buddy_map[end / BITS_PER_UINT64] &= BITMAP_LAST_UINT64_MASK(end);
-
-    // total frame number of 4K buddy
-    buddy_num[0] = end;
+    buddy_map[0][buddy_num[0] / BITS_PER_UINT64] &= BITMAP_LAST_UINT64_MASK(buddy_num[0]);
     
     // set buddy order 2 to 8
     for (int order = 1; order < 8; ++order) {
@@ -107,7 +107,7 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
 
         // how many blocks we have for this order
         buddy_map[order] = buddy_map[order - 1] + num_of_uint64;
-        buddy_num[order] = (buddy_num[order - 1] + (1 << order) - 1) >> order;
+        buddy_num[order] = (buddy_num[order - 1] + 1) >> 1;
 
         bitmap_zero(buddy_map[order], buddy_num[order]);
 
