@@ -1,24 +1,5 @@
 #include "bitmap.h"
 
-void linux_bitmap_set(uint64_t *map, int start, int nr) {
-    uint64_t *p = map + (start / BITS_PER_UINT64);
-    const int size = start + nr;
-    int bits_to_set = BITS_PER_UINT64 - (start % BITS_PER_UINT64);
-    uint64_t mask_to_set = BITMAP_FIRST_UINT64_MASK(start);
-
-    while (nr - bits_to_set >= 0) {
-        *p |= mask_to_set;
-        nr -= bits_to_set;
-        bits_to_set = BITS_PER_UINT64;
-        mask_to_set = ~0UL;
-        p++;
-    }
-    if (nr) {
-        mask_to_set &= BITMAP_LAST_UINT64_MASK(size);
-        *p |= mask_to_set;
-    }
-}
-
 void bitmap_set(uint64_t *map, int start, int len) {
     // calculate the first long affected.
     uint64_t *p = map + start / BITS_PER_UINT64;

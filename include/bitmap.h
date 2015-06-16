@@ -46,7 +46,6 @@ static inline void bitmap_copy(uint64_t *dst, const uint64_t *src, int nbits) {
     }
 }
 
-void linux_bitmap_set(uint64_t *map, int start, int nr);
 void bitmap_set(uint64_t *map, int start, int len);
 void bitmap_clear(uint64_t *map, int start, int len);
 

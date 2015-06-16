@@ -16,23 +16,23 @@ static uint64_t bit_merge_up(uint64_t data) {
     ret &= 0xaaaaaaaaaaaaaaaaUL;
     // X0X0X0X0|X0X0X0X0|X0X0X0X0|X0X0X0X0|X0X0X0X0|X0X0X0X0|X0X0X0X0|X0X0X0X0
 
-    ret |= (ret << 1) & 0x5555555555555555UL;
+    ret |= ret << 1;
     ret &= 0xccccccccccccccccUL;
     // XX00XX00|XX00XX00|XX00XX00|XX00XX00|XX00XX00|XX00XX00|XX00XX00|XX00XX00
 
-    ret |= (ret << 2) & 0x3333333333333333UL;
+    ret |= ret << 2;
     ret &= 0xf0f0f0f0f0f0f0f0UL;
     // XXXX0000|XXXX0000|XXXX0000|XXXX0000|XXXX0000|XXXX0000|XXXX0000|XXXX0000
 
-    ret |= (ret << 4) & 0x0f0f0f0f0f0f0f0fUL;
+    ret |= ret << 4;
     ret &= 0xff00ff00ff00ff00UL;
     // XXXXXXXX|00000000|XXXXXXXX|00000000|XXXXXXXX|00000000|XXXXXXXX|00000000
 
-    ret |= (ret << 8) & 0x00ff00ff00ff00ffUL;
+    ret |= ret << 8;
     ret &= 0xffff0000ffff0000UL;
     // XXXXXXXX|XXXXXXXX|00000000|00000000|XXXXXXXX|XXXXXXXX|00000000|00000000
 
-    ret |= (ret << 16) & 0x0000ffff0000ffffUL;
+    ret |= ret << 16;
     ret &= 0xffffffff00000000UL;
     // XXXXXXXX|XXXXXXXX|XXXXXXXX|XXXXXXXX|00000000|00000000|00000000|00000000
 
@@ -47,23 +47,23 @@ static uint64_t bit_merge_down(uint64_t data) {
     ret &= 0x5555555555555555UL;
     // 0X0X0X0X|0X0X0X0X|0X0X0X0X|0X0X0X0X|0X0X0X0X|0X0X0X0X|0X0X0X0X|0X0X0X0X
 
-    ret |= (ret >> 1) & 0xaaaaaaaaaaaaaaaaUL;
+    ret |= ret >> 1;
     ret &= 0x3333333333333333UL;
     // 00XX00XX|00XX00XX|00XX00XX|00XX00XX|00XX00XX|00XX00XX|00XX00XX|00XX00XX
 
-    ret |= (ret >> 2) & 0xccccccccccccccccUL;
+    ret |= ret >> 2;
     ret &= 0x0f0f0f0f0f0f0f0fUL;
     // 0000XXXX|0000XXXX|0000XXXX|0000XXXX|0000XXXX|0000XXXX|0000XXXX|0000XXXX
 
-    ret |= (ret >> 4) & 0xf0f0f0f0f0f0f0f0UL;
+    ret |= ret >> 4;
     ret &= 0x00ff00ff00ff00ffUL;
     // 00000000|XXXXXXXX|00000000|XXXXXXXX|00000000|XXXXXXXX|00000000|XXXXXXXX
 
-    ret |= (ret >> 8) & 0xff00ff00ff00ff00UL;
+    ret |= ret >> 8;
     ret &= 0x0000ffff0000ffffUL;
     // 00000000|00000000|XXXXXXXX|XXXXXXXX|00000000|00000000|XXXXXXXX|XXXXXXXX
 
-    ret |= (ret >> 16) & 0xffff0000ffff0000UL;
+    ret |= ret >> 16;
     ret &= 0x00000000ffffffffUL;
     // 00000000|00000000|00000000|00000000|XXXXXXXX|XXXXXXXX|XXXXXXXX|XXXXXXXX
 
