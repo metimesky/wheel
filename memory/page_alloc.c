@@ -71,7 +71,7 @@ static uint64_t bit_merge_down(uint64_t data) {
 }
 
 void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
-    // initialize 4K buddy map using multiboot info
+    // initialize 4K buddy map (order 0) using multiboot info
     buddy_map[0] = (uint64_t *) (((uint64_t) &kernel_bss_end + sizeof(uint64_t) - 1) & ~(sizeof(uint64_t) - 1));
     multiboot_memory_map_t *mmap = (multiboot_memory_map_t *) mmap_addr;
     int start = -1, end = -1;
@@ -100,7 +100,7 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
     // set extra bits to zero
     buddy_map[0][buddy_num[0] / BITS_PER_UINT64] &= BITMAP_LAST_UINT64_MASK(buddy_num[0]);
     
-    // set buddy order 2 to 8
+    // set buddy order 1 to 7
     for (int order = 1; order < 8; ++order) {
         // Note it's the number of previous order map
         int num_of_uint64 = BITS_TO_UINT64(buddy_num[order - 1]);
@@ -119,3 +119,33 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
         }
     }
 }
+
+// return value of 0 means fail, since physical page 0 is never used
+uint64_t alloc_pages(int order) {
+    if (order < 8) {
+        // search in corresponding bitmap for non-zero uint64
+        int len = BITS_TO_UINT64(buddy_num[order]);
+        int i;
+        for (i = 0; i < len && buddy_map[order][i] == 0; ++i) {}
+        if (i == len) {
+            // we are at the end of bitmap, indicates we haven't found any page
+            return 0;
+        } else {
+            // we have found a page. The bit is in buddy[level][i], but we have to
+            // know the exact (bit) index.
+            uint64_t data = buddy_map[order][i];
+
+            // clear the bit
+            buddy_map[order][i] = data & (data - 1);
+
+            // count trailing zeros
+            uint64_t addr = BITS_PER_UINT64 * i + __builtin_ctz(data);
+            addr <<= 12;    // move address 12 bits left, forming valid page address
+            return addr;
+        }
+    }
+}
+
+void free_pages(uint64_t addr, int order) {
+}
+
