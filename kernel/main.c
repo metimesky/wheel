@@ -48,7 +48,7 @@ void read_info(uint32_t eax, uint32_t ebx) {
         }
 
         // init page allocator
-        paging_init(mbi->mmap_addr, mbi->mmap_length);
+        page_alloc_init(mbi->mmap_addr, mbi->mmap_length);
     } else {
         raw_write("Memory information is not accessible.", 0x4e, 0);
         while (1) {}
