@@ -118,6 +118,9 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
                                       : bit_merge_down(buddy_map[order - 1][i]);
         }
     }
+
+    // now consider memory occupied by kernel
+    ;
 }
 
 // return value of 0 means fail, since physical page 0 is never used

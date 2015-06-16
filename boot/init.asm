@@ -71,6 +71,17 @@ enter_long_mode:
     add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
 
+    ; PDP 512
+    mov     ebx, 0x00000083         ; present, read/write, 1G granularity
+    mov     ecx, 512                ; 512 entries in total
+.set_pdp_entry:
+    mov     dword [edi], ebx
+    add     ebx, 0x1000
+    add     edi, 8
+    loop    .set_pdp_entry
+
+    jmp     pae
+
     ; setup Page Directory Pointer (PDP) Table, only 1 entry
     mov     dword [edi], 0x2003     ; present, read/write
     add     dword [edi], pml4t      ; pointing to pml4t+8K (PD Table)
@@ -90,6 +101,7 @@ enter_long_mode:
     add     edi, 8
     loop    .set_entry
 
+pae:
     ; enable PAE-paging
     mov     eax, cr4
     or      eax, 1 << 5

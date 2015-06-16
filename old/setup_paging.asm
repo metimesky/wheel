@@ -36,3 +36,16 @@
 ; reserve 16KB for page tables.
 ALIGN 0x1000
 pml4t:          resb 0x4000
+
+
+
+;=======================================
+
+    ; PDP 512
+    mov     ebx, 0x00000083         ; present, read/write, 1G granularity
+    mov     ecx, 512                ; 512 entries in total
+.set_pdp_entry:
+    mov     dword [edi], ebx
+    add     ebx, 0x1000
+    add     edi, 8
+    loop    .set_pdp_entry
