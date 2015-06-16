@@ -174,19 +174,11 @@ char *i64_to_str(long long value, char *buf, int base) {
     }
 }
 
-/*
+
+// the syntax for a placeholder is:
+// %[flags][width][.precision][length]type
 int vsprintf(char *buf, const char *fmt, va_list args) {
-    int len;
-    unsigned long num;
-    int i, base;
     const char *s;
-
-    int flags;      // flags to number()
-
-    int field_width;    // width of output field
-    int precision;      // min. # of digits for integers; max
-                        //number of chars for from string
-    int qualifier;      // 'h', 'l', or 'L' for integer fields
 
     char *str;
     for (str = buf; *fmt; ++fmt) {
@@ -194,131 +186,42 @@ int vsprintf(char *buf, const char *fmt, va_list args) {
             *str++ = *fmt;
             continue;
         }
-
-        // process flags
-        flags = 0;
-again:
-        ++fmt;  // this could skip first '%'
-        switch (*fmt) {
-        case '-':   flags |= LEFT;      goto again;
-        case '+':   flags |= PLUS;      goto again;
-        case ' ':   flags |= SPACE;     goto again;
-        case '#':   flags |= SPECIAL;   goto again;
-        case '0':   flags |= ZEROPAD;   goto again;
-        default:    break;
-        }
-
-        // get field width
-        field_width = -1;
-        if ('0' <= *fmt && *fmt <= '9') {
-            field_width = skip_atoi(&fmt);
-        } else if (*fmt == '*') {
-            ++fmt;
-            // it's the next argument
-            field_width = va_arg(args, int);
-            if (field_width < 0) {
-                field_width = -field_width;
-                flags |= LEFT;
-            }
-        }
-
-        // get precision
-        precision = -1;
-        if (*fmt == '.') {
-            ++fmt;
-            if (isdigit(*fmt)) {
-                precision = skip_atoi(&fmt);
-            } else if (*fmt == '*') {
-                ++fmt;
-                // it's the next argument
-                precision = va_arg(args, int);
-            }
-            if (precision < 0) {
-                precision = 0;
-            }
-        }
-
-        // get the conversion qualifier
-        qualifier = -1;
-        if (*fmt == 'h' || *fmt == 'l' || *fmt == 'L') {
-            qualifier = *fmt;
-            ++fmt;
-        }
-
-        // default base
-        base = 10;
-
+        ++fmt;
         switch (*fmt) {
         case 'c':
-            if (!(flags & LEFT)) {
-                while (--field_width > 0) {
-                    *str++ = ' ';
-                }
-            }
             *str++ = (unsigned char)va_arg(args, int);
-            while (--field_width > 0) {
-                *str++ = ' ';
-            }
-            continue;
-
+            break;
         case 's':
             s = va_arg(args, char *);
-            len = strnlen(s, precision);
-
-            if (!(flags & LEFT)) {
-                while (len < field_width--) {
-                    *str++ = ' ';
-                }
+            for (int i = 0; s[i]; ++i) {
+                *str++ = s[i];
             }
-            for (i = 0; i < len; ++i) {
-                *str++ = *s++;
-            }
-            while (len < field_width--) {
-                *str++ = ' ';
-            }
-            continue;
-
+            break;
         case 'p':
-            if (field_width == -1) {
-                field_width = 2 * sizeof(void *);
-                flags |= ZEROPAD;
-            }
-            str = number(str,
-                     (unsigned long)va_arg(args, void *), 16,
-                     field_width, precision, flags);
-            continue;
-
-        case 'n':
-            if (qualifier == 'l') {
-                long *ip = va_arg(args, long *);
-                *ip = (str - buf);
-            } else {
-                int *ip = va_arg(args, int *);
-                *ip = (str - buf);
-            }
-            continue;
-
+            u64_to_str((uint64_t) va_arg(args, void *), str, 16);
+            str += strlen(str);
+            break;
         case '%':
             *str++ = '%';
-            continue;
-
-            // integer number formats - set up the flags and "break"
+            break;
         case 'o':
-            base = 8;
+            u64_to_str(va_arg(args, uint64_t), str, 8);
+            str += strlen(str);
             break;
-
         case 'x':
-            flags |= SMALL;
         case 'X':
-            base = 16;
+            u64_to_str(va_arg(args, uint64_t), str, 16);
+            str += strlen(str);
             break;
-
         case 'd':
         case 'i':
-            flags |= SIGN;
-        case 'u':
+            i64_to_str(va_arg(args, int64_t), str, 10);
+            str += strlen(str);
             break;
-
+        case 'u':
+            u64_to_str(va_arg(args, uint64_t), str, 10);
+            str += strlen(str);
+            break;
         default:
             *str++ = '%';
             if (*fmt) {
@@ -326,139 +229,17 @@ again:
             } else {
                 --fmt;
             }
-            continue;
+            break;
         }
-        if (qualifier == 'l') {
-            num = va_arg(args, unsigned long);
-        } else if (qualifier == 'h') {
-            num = (unsigned short)va_arg(args, int);
-            if (flags & SIGN) {
-                num = (short)num;
-            }
-        } else if (flags & SIGN) {
-            num = va_arg(args, int);
-        } else {
-            num = va_arg(args, unsigned int);
-        }
-        str = number(str, num, base, field_width, precision, flags);
     }
     *str = '\0';
     return str - buf;
 }
-*/
 
-/*
-int vsprintf(char *buf, const char *fmt, va_list args) {
-    const char *p = fmt ? fmt : "";
-    for (; *p; ++p) {
-        if (*p != '%') {
-
-        }
-    }
-}
-
-// string buf is at most n chars long, leaving room for the trailing NULL.
-// return value does not contain the trailing null.
-int snprintf_private(char *buf, int n, const char *fmt, va_list args) {
-    char num_buf[65];
-    int idx = 0;
-    int l = 0;
-    int j = 0;
-    for (int i = 0; fmt[i] && j < n - 1; ++i) {
-        if (fmt[i] == '%') {
-            ++i;
-            switch (fmt[i]) {
-            case '\0':
-                // trailing percent mark
-                buf[j] = '%';
-                ++j;
-                buf[j] = '\0';
-                return j;
-                break;
-            case 'd':
-            case 'i':
-                // signed decimal integer
-                i32_to_str(num_buf, va_arg(args, int), 10);
-                // ++idx;
-                goto append_num_buf;
-                break;
-            case 'u':
-                // unsigned decimal integer
-                u32_to_str(num_buf, va_arg(args, unsigned int), 10);
-                // ++idx;
-                goto append_num_buf;
-                break;
-            case 'o':
-                // unsigned octal integer
-                u32_to_str(num_buf, va_arg(args, unsigned int), 8);
-                // ++idx;
-                goto append_num_buf;
-                break;
-            case 'x':
-                // unsigned hexademical integer
-                u32_to_str(num_buf, va_arg(args, unsigned int), 16);
-                // ++idx;
-                goto append_num_buf;
-append_num_buf:
-                strncpy(&buf[j], num_buf, n - j - 1);
-                l = strlen(num_buf);
-                if (j + l >= n - 1) {
-                    buf[n-1] = '\0';
-                    return n - 1;
-                } else {
-                    j += l;
-                }
-                break;
-            case 'c':
-                // character
-                buf[j] = va_arg(args, char);
-                ++j;
-                // ++idx;
-                break;
-            case 's':
-                // string
-            {
-                const char *str = va_arg(args, char*);
-                strncpy(&buf[j], str, n - j - 1);
-                l = strlen(str);
-            }
-                if (j + l >= n - 1) {
-                    buf[n-1] = '\0';
-                    return n - 1;
-                } else {
-                    j += l;
-                }
-                break;
-            case '%':
-                // percent mark
-                buf[j] = '%';
-                ++j;
-                break;
-            default:
-                break;
-            }
-        } else {
-            buf[j] = fmt[i];
-            ++j;
-        }
-    }
-    buf[j] = '\0';
-    return j;
-}
-
-int sprintf(char *s, const char *fmt, ...) {
+int sprintf(char *buf, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    int ret = snprintf_private(s, INT32_MAX, fmt, &args[1]);
+    int ret = vsprintf(buf, fmt, args);
     va_end(args);
     return ret;
 }
-
-int snprintf(char *s, int n, const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    int ret = snprintf_private(s, n, fmt, &args[1]);
-    va_end(args);
-    return ret;
-}
-*/
