@@ -120,7 +120,14 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
     }
 
     // now consider memory occupied by kernel
-    ;
+    // calculate the address of last byte kernel currently use.
+    uint64_t last_byte = (uint64_t) buddy_map[7] + BITS_TO_UINT64(buddy_num[7]) * sizeof(uint64_t) - 1;
+    uint64_t page_num = last_byte >> 12;
+    for (int i = 0; i < 8; ++i) {
+        bitmap_clear(buddy_map[i], page_num);
+        page_num += 1;
+        page_num >>= 1;
+    }
 }
 
 // return value of 0 means fail, since physical page 0 is never used
