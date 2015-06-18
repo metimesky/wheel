@@ -75,7 +75,7 @@ void wheel_main(uint32_t eax, uint32_t ebx) {
 
     char buf[128];
     int line = 8;
-/*
+// /*
     raw_write("kernel start:", 0x0b, 80*line);
     raw_write(u64_to_str((uint64_t) &kernel_load_addr, buf, 16), 0x0b, 80*line+14);
     raw_write("kernel end:", 0x0b, 80*line+40);
@@ -105,7 +105,7 @@ void wheel_main(uint32_t eax, uint32_t ebx) {
     raw_write("pml4t:", 0x0b, 80*line+40);
     raw_write(u64_to_str((uint64_t) &pml4t, buf, 16), 0x0b, 80*line+40+12);
     ++line;
-*/
+// */
     sprintf(buf, "hello, world!");
     raw_write(buf, 0x4e, 80*line);
     ++line;

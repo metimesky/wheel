@@ -1,0 +1,80 @@
+// shrink data into half by and neighbouring bits
+// only higher half of the return value is valid
+static uint64_t bit_merge_up(uint64_t data) {
+    uint64_t ret = data;
+    ret &= ret << 1;
+    ret &= 0xaaaaaaaaaaaaaaaaUL;
+    // X0X0X0X0|X0X0X0X0|X0X0X0X0|X0X0X0X0|X0X0X0X0|X0X0X0X0|X0X0X0X0|X0X0X0X0
+
+    ret |= ret << 1;
+    ret &= 0xccccccccccccccccUL;
+    // XX00XX00|XX00XX00|XX00XX00|XX00XX00|XX00XX00|XX00XX00|XX00XX00|XX00XX00
+
+    ret |= ret << 2;
+    ret &= 0xf0f0f0f0f0f0f0f0UL;
+    // XXXX0000|XXXX0000|XXXX0000|XXXX0000|XXXX0000|XXXX0000|XXXX0000|XXXX0000
+
+    ret |= ret << 4;
+    ret &= 0xff00ff00ff00ff00UL;
+    // XXXXXXXX|00000000|XXXXXXXX|00000000|XXXXXXXX|00000000|XXXXXXXX|00000000
+
+    ret |= ret << 8;
+    ret &= 0xffff0000ffff0000UL;
+    // XXXXXXXX|XXXXXXXX|00000000|00000000|XXXXXXXX|XXXXXXXX|00000000|00000000
+
+    ret |= ret << 16;
+    ret &= 0xffffffff00000000UL;
+    // XXXXXXXX|XXXXXXXX|XXXXXXXX|XXXXXXXX|00000000|00000000|00000000|00000000
+
+    return ret;
+}
+
+// shrink data into half by and neighbouring bits
+// only lower half of the return value is valid
+static uint64_t bit_merge_down(uint64_t data) {
+    uint64_t ret = data;
+    ret &= ret >> 1;
+    ret &= 0x5555555555555555UL;
+    // 0X0X0X0X|0X0X0X0X|0X0X0X0X|0X0X0X0X|0X0X0X0X|0X0X0X0X|0X0X0X0X|0X0X0X0X
+
+    ret |= ret >> 1;
+    ret &= 0x3333333333333333UL;
+    // 00XX00XX|00XX00XX|00XX00XX|00XX00XX|00XX00XX|00XX00XX|00XX00XX|00XX00XX
+
+    ret |= ret >> 2;
+    ret &= 0x0f0f0f0f0f0f0f0fUL;
+    // 0000XXXX|0000XXXX|0000XXXX|0000XXXX|0000XXXX|0000XXXX|0000XXXX|0000XXXX
+
+    ret |= ret >> 4;
+    ret &= 0x00ff00ff00ff00ffUL;
+    // 00000000|XXXXXXXX|00000000|XXXXXXXX|00000000|XXXXXXXX|00000000|XXXXXXXX
+
+    ret |= ret >> 8;
+    ret &= 0x0000ffff0000ffffUL;
+    // 00000000|00000000|XXXXXXXX|XXXXXXXX|00000000|00000000|XXXXXXXX|XXXXXXXX
+
+    ret |= ret >> 16;
+    ret &= 0x00000000ffffffffUL;
+    // 00000000|00000000|00000000|00000000|XXXXXXXX|XXXXXXXX|XXXXXXXX|XXXXXXXX
+
+    return ret;
+}
+
+// set buddy order 1 to 7
+    for (int order = 1; order < 8; ++order) {
+        // Note it's the number of previous order map
+        int num_of_uint64 = BITS_TO_UINT64(buddy_num[order - 1]);
+
+        // how many blocks we have for this order
+        buddy_map[order] = buddy_map[order - 1] + num_of_uint64;
+        buddy_num[order] = (buddy_num[order - 1] + 1) >> 1;
+
+        bitmap_zero(buddy_map[order], buddy_num[order]);
+
+        // Note that we are iterating over PREVIOUS order of map!
+        for (int i = 0; i < num_of_uint64; ++i) {
+            buddy_map[order][i >> 1] |= (i & 1)
+                                      ? bit_merge_up(buddy_map[order - 1][i])
+                                      : bit_merge_down(buddy_map[order - 1][i]);
+        }
+    }

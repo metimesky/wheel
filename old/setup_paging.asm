@@ -41,7 +41,14 @@ pml4t:          resb 0x4000
 
 ;=======================================
 
-    ; PDP 512
+[section .text]
+[BITS 32]
+    ; setup Page-Map Level-4 (PML4) Table, only 1 entry
+    mov     dword [edi], 0x1003     ; present, read/write
+    add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
+    add     edi, 0x1000
+
+    ; setup Page Directory Pointer (PDP) Table, 512 entry
     mov     ebx, 0x00000083         ; present, read/write, 1G granularity
     mov     ecx, 512                ; 512 entries in total
 .set_pdp_entry:

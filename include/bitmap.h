@@ -33,7 +33,7 @@ static inline void bitmap_fill(uint64_t *dst, int nbits) {
         int len = (nlongs - 1) * sizeof(uint64_t);
         __builtin_memset(dst, 0xff,  len);
     }
-    dst[nlongs - 1] = BITMAP_LAST_LONG_MASK(nbits);
+    dst[nlongs - 1] = BITMAP_LAST_UINT64_MASK(nbits);
 }
 
 // copy bitmap from src to dst, including trialing zeros

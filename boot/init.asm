@@ -58,7 +58,7 @@ enter_long_mode:
     and     eax, 0x7fffffff
     mov     cr0, eax
 
-    ; clear 16KB of memory for 4 page tables, which covers 2MB address space.
+    ; clear 16KB of memory for 4 page tables
     mov     edi, pml4t
     mov     cr3, edi
     xor     eax, eax
@@ -71,37 +71,15 @@ enter_long_mode:
     add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
 
-    ; PDP 512
+    ; setup Page Directory Pointer (PDP) Table, 512 entry, covering 512GB
     mov     ebx, 0x00000083         ; present, read/write, 1G granularity
     mov     ecx, 512                ; 512 entries in total
-.set_pdp_entry:
+.fill_entry:
     mov     dword [edi], ebx
     add     ebx, 0x1000
     add     edi, 8
-    loop    .set_pdp_entry
+    loop    .fill_entry
 
-    jmp     pae
-
-    ; setup Page Directory Pointer (PDP) Table, only 1 entry
-    mov     dword [edi], 0x2003     ; present, read/write
-    add     dword [edi], pml4t      ; pointing to pml4t+8K (PD Table)
-    add     edi, 0x1000
-
-    ; setup Page Directory (PD) Table, only 1 entry
-    mov     dword [edi], 0x3003     ; present, read/write
-    add     dword [edi], pml4t      ; pointing to pml4t+12K (Page Table)
-    add     edi, 0x1000
-
-    ; setup Page Table, 512 entries
-    mov     ebx, 0x00000003         ; present, read/write
-    mov     ecx, 512
-.set_entry:
-    mov     dword [edi], ebx
-    add     ebx, 0x1000
-    add     edi, 8
-    loop    .set_entry
-
-pae:
     ; enable PAE-paging
     mov     eax, cr4
     or      eax, 1 << 5
