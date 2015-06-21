@@ -21,7 +21,7 @@ CF      :=  -c -std=c99 -I $(include_dir) \
             -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-3dnow \
             -fno-sanitize=address -Wall -Wextra
 LD      :=  ld
-LF      :=  -T link.lds -z max-page-size=0x1000 -Map wheel.map
+LF      :=  -T link.lds -z max-page-size=0x1000 -Map $(build_dir)/wheel.map
 
 # pseudo-targets
 .PHONY: all bin write run clean
