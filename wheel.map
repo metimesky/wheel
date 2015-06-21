@@ -4,6 +4,29 @@ Common symbol       size              file
 
 buddy_num           0x40              build/memory/page_alloc.c.o
 buddy_map           0x40              build/memory/page_alloc.c.o
+buf                 0x100             build/memory/page_alloc.c.o
+
+Discarded input sections
+
+ .comment       0x0000000000000000       0x4e build/kernel/main.c.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 build/kernel/main.c.o
+ .eh_frame      0x0000000000000000       0xa8 build/kernel/main.c.o
+ .comment       0x0000000000000000       0x4e build/memory/page_alloc.c.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 build/memory/page_alloc.c.o
+ .eh_frame      0x0000000000000000       0xc0 build/memory/page_alloc.c.o
+ .comment       0x0000000000000000       0x4e build/memory/virt_alloc.c.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 build/memory/virt_alloc.c.o
+ .comment       0x0000000000000000       0x4e build/library/bitmap.c.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 build/library/bitmap.c.o
+ .eh_frame      0x0000000000000000       0x50 build/library/bitmap.c.o
+ .comment       0x0000000000000000       0x4e build/library/string.c.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 build/library/string.c.o
+ .eh_frame      0x0000000000000000      0x150 build/library/string.c.o
 
 Memory Configuration
 
@@ -12,106 +35,111 @@ Name             Origin             Length             Attributes
 
 Linker script and memory map
 
+
+/DISCARD/
+ *(.comment)
+ *(.note.GNU-stack)
+ *(.eh_frame)
+ *(.comment)
+ *(.note.GNU-stack)
+ *(.eh_frame)
                 0x0000000000100000                . = 0x100000
                 0x0000000000100000                kernel_load_addr = .
+                0x0000000000100000                text_start_addr = .
 
-.text           0x0000000000100000     0x26af
+.text           0x0000000000100000     0x2b0f
                 0x0000000000100000                kernel_text_start = .
  *(.boot)
  .boot          0x0000000000100000       0x29 build/boot/boot.asm.o
- *(.text)
+ *(.text*)
  *fill*         0x0000000000100029        0x7 90
  .text          0x0000000000100030        0x0 build/boot/boot.asm.o
  .text          0x0000000000100030      0x14f build/boot/init.asm.o
                 0x0000000000100030                wheel_init
  *fill*         0x000000000010017f        0x1 90
- .text          0x0000000000100180      0x68a build/kernel/main.c.o
+ .text          0x0000000000100180      0xa07 build/kernel/main.c.o
                 0x0000000000100180                raw_write
                 0x0000000000100210                read_info
-                0x00000000001005e0                wheel_main
- *fill*         0x000000000010080a        0x6 90
- .text          0x0000000000100810      0xaa4 build/memory/page_alloc.c.o
-                0x0000000000100810                page_alloc_init
-                0x0000000000100d30                find_free_pages
-                0x0000000000100f70                alloc_pages
-                0x0000000000101140                free_pages
- .text          0x00000000001012b4        0x0 build/memory/virt_alloc.c.o
- *fill*         0x00000000001012b4        0xc 90
- .text          0x00000000001012c0      0x2ff build/library/bitmap.c.o
-                0x00000000001012c0                bitmap_set
-                0x0000000000101440                bitmap_clear
- *fill*         0x00000000001015bf        0x1 90
- .text          0x00000000001015c0     0x10ef build/library/string.c.o
-                0x00000000001015c0                strlen
-                0x00000000001016d0                strcpy
-                0x0000000000101740                strncpy
-                0x00000000001017f0                memcpy
-                0x00000000001019e0                memset
-                0x0000000000101be0                u32_to_str
-                0x0000000000101d10                u64_to_str
-                0x0000000000101e50                i32_to_str
-                0x0000000000101ee0                i64_to_str
-                0x0000000000101f70                vsprintf
-                0x0000000000102650                sprintf
-                0x00000000001026af                kernel_text_end = .
-                0x00000000001026af                kernel_text_start = .
+                0x00000000001003b0                wheel_main
+ *fill*         0x0000000000100b87        0x9 90
+ .text          0x0000000000100b90      0xb8c build/memory/page_alloc.c.o
+                0x0000000000100b90                page_alloc_init
+                0x0000000000101180                find_free_pages
+                0x00000000001013c0                alloc_pages
+                0x00000000001015a0                free_pages
+ .text          0x000000000010171c        0x0 build/memory/virt_alloc.c.o
+ *fill*         0x000000000010171c        0x4 90
+ .text          0x0000000000101720      0x2ff build/library/bitmap.c.o
+                0x0000000000101720                bitmap_set
+                0x00000000001018a0                bitmap_clear
+ *fill*         0x0000000000101a1f        0x1 90
+ .text          0x0000000000101a20     0x10ef build/library/string.c.o
+                0x0000000000101a20                strlen
+                0x0000000000101b30                strcpy
+                0x0000000000101ba0                strncpy
+                0x0000000000101c50                memcpy
+                0x0000000000101e40                memset
+                0x0000000000102040                u32_to_str
+                0x0000000000102170                u64_to_str
+                0x00000000001022b0                i32_to_str
+                0x0000000000102340                i64_to_str
+                0x00000000001023d0                vsprintf
+                0x0000000000102ab0                sprintf
+                0x0000000000102b0f                kernel_text_end = .
+                0x0000000000102b0f                kernel_text_start = .
  *(.boot)
- *(.text)
-                0x00000000001026af                kernel_text_end = .
+ *(.text*)
+                0x0000000000102b0f                kernel_text_end = .
 
-.rodata.str1.1  0x00000000001026af       0x82
+.data           0x0000000000102b10      0x164
+                0x0000000000102b10                kernel_data_start = .
+ *(.rodata*)
+ .rodata        0x0000000000102b10        0x8 build/kernel/main.c.o
  .rodata.str1.1
-                0x00000000001026af       0x82 build/kernel/main.c.o
+                0x0000000000102b18       0x70 build/kernel/main.c.o
+ *fill*         0x0000000000102b88        0x8 00000000
+ .rodata        0x0000000000102b90       0xa5 build/library/string.c.o
+ *(.data*)
+ *fill*         0x0000000000102c35        0x3 00000000
+ .data          0x0000000000102c38       0x3a build/boot/init.asm.o
+ *fill*         0x0000000000102c72        0x2 00000000
+ .data          0x0000000000102c74        0x0 build/kernel/main.c.o
+ .data          0x0000000000102c74        0x0 build/memory/page_alloc.c.o
+ .data          0x0000000000102c74        0x0 build/memory/virt_alloc.c.o
+ .data          0x0000000000102c74        0x0 build/library/bitmap.c.o
+ .data          0x0000000000102c74        0x0 build/library/string.c.o
+                0x0000000000102c74                kernel_data_end = .
+                0x0000000000102c74                kernel_data_start = .
+ *(.rodata*)
+ *(.data*)
+                0x0000000000102c74                kernel_data_end = .
+                0x0000000000102c74                data_end_addr = .
 
-.eh_frame       0x0000000000102738      0x2d0
- .eh_frame      0x0000000000102738       0x70 build/kernel/main.c.o
- .eh_frame      0x00000000001027a8       0xc0 build/memory/page_alloc.c.o
- .eh_frame      0x0000000000102868       0x50 build/library/bitmap.c.o
- .eh_frame      0x00000000001028b8      0x150 build/library/string.c.o
-
-.data           0x0000000000102a10       0xf4
-                0x0000000000102a10                kernel_data_start = .
- *(.rodata)
- .rodata        0x0000000000102a10        0x8 build/kernel/main.c.o
- *fill*         0x0000000000102a18        0x8 00000000
- .rodata        0x0000000000102a20       0xa5 build/library/string.c.o
- *(.data)
- *fill*         0x0000000000102ac5        0x3 00000000
- .data          0x0000000000102ac8       0x3a build/boot/init.asm.o
- *fill*         0x0000000000102b02        0x2 00000000
- .data          0x0000000000102b04        0x0 build/kernel/main.c.o
- .data          0x0000000000102b04        0x0 build/memory/page_alloc.c.o
- .data          0x0000000000102b04        0x0 build/memory/virt_alloc.c.o
- .data          0x0000000000102b04        0x0 build/library/bitmap.c.o
- .data          0x0000000000102b04        0x0 build/library/string.c.o
-                0x0000000000102b04                kernel_data_end = .
-                0x0000000000102b04                kernel_data_start = .
- *(.rodata)
- *(.data)
-                0x0000000000102b04                kernel_data_end = .
-
-.bss            0x0000000000103000     0x6000
+.bss            0x0000000000103000     0x6004
                 0x0000000000103000                kernel_bss_start = .
  *(COMMON)
- COMMON         0x0000000000103000       0x80 build/memory/page_alloc.c.o
+ COMMON         0x0000000000103000      0x180 build/memory/page_alloc.c.o
                 0x0000000000103000                buddy_num
                 0x0000000000103040                buddy_map
+                0x0000000000103080                buf
  *(.bss)
- *fill*         0x0000000000103080      0xf80 00000000
+ *fill*         0x0000000000103180      0xe80 00000000
  .bss           0x0000000000104000     0x5000 build/boot/init.asm.o
                 0x0000000000104000                kernel_stack
                 0x0000000000105000                pml4t
- .bss           0x0000000000109000        0x0 build/kernel/main.c.o
- .bss           0x0000000000109000        0x0 build/memory/page_alloc.c.o
- .bss           0x0000000000109000        0x0 build/memory/virt_alloc.c.o
- .bss           0x0000000000109000        0x0 build/library/bitmap.c.o
- .bss           0x0000000000109000        0x0 build/library/string.c.o
-                0x0000000000109000                kernel_bss_end = .
-                0x0000000000109000                kernel_bss_start = .
+ .bss           0x0000000000109000        0x4 build/kernel/main.c.o
+                0x0000000000109000                line
+ .bss           0x0000000000109004        0x0 build/memory/page_alloc.c.o
+ .bss           0x0000000000109004        0x0 build/memory/virt_alloc.c.o
+ .bss           0x0000000000109004        0x0 build/library/bitmap.c.o
+ .bss           0x0000000000109004        0x0 build/library/string.c.o
+                0x0000000000109004                kernel_bss_end = .
+                0x0000000000109004                kernel_bss_start = .
  *(COMMON)
  *(.bss)
-                0x0000000000109000                kernel_bss_end = .
-                0x0000000000109000                kernel_end = .
+                0x0000000000109004                kernel_bss_end = .
+                0x0000000000109004                bss_end_addr = .
+                0x0000000000109004                kernel_end = .
 LOAD build/boot/boot.asm.o
 LOAD build/boot/init.asm.o
 LOAD build/kernel/main.c.o
@@ -122,25 +150,8 @@ LOAD build/library/string.c.o
 LOAD link.lds
                 0x0000000000100000                . = 0x100000
                 0x0000000000100000                kernel_load_addr = .
+                0x0000000000100000                text_start_addr = .
+                0x0000000000100000                data_end_addr = .
+                0x0000000000100000                bss_end_addr = .
                 0x0000000000100000                kernel_end = .
 OUTPUT(build/kernel.bin binary)
-
-.comment        0x0000000000000000      0x186
- .comment       0x0000000000000000       0x4e build/kernel/main.c.o
- .comment       0x000000000000004e       0x4e build/memory/page_alloc.c.o
- .comment       0x000000000000009c       0x4e build/memory/virt_alloc.c.o
- .comment       0x00000000000000ea       0x4e build/library/bitmap.c.o
- .comment       0x0000000000000138       0x4e build/library/string.c.o
-
-.note.GNU-stack
-                0x0000000000000000        0x0
- .note.GNU-stack
-                0x0000000000000000        0x0 build/kernel/main.c.o
- .note.GNU-stack
-                0x0000000000000000        0x0 build/memory/page_alloc.c.o
- .note.GNU-stack
-                0x0000000000000000        0x0 build/memory/virt_alloc.c.o
- .note.GNU-stack
-                0x0000000000000000        0x0 build/library/bitmap.c.o
- .note.GNU-stack
-                0x0000000000000000        0x0 build/library/string.c.o

@@ -2,6 +2,7 @@
 #include <env.h>
 #include <multiboot.h>
 #include <bitmap.h>
+#include <string.h>
 #include "utils.h"
 
 /* 物理内存管理（buddy算法）
@@ -24,7 +25,9 @@ uint64_t *buddy_map[8];
 // 表示各阶buddy_map的长度，存储的是有效二进制位的个数，而非数组中uint64_t的个数
 uint64_t buddy_num[8];
 
-//extern void raw_write(const char *str, char attr, int pos);
+char buf[256];
+extern int line;
+extern void raw_write(const char *str, char attr, int pos);
 
 // 初始化页分配器，根据内存布局建立buddy位图
 void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
@@ -45,6 +48,11 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
             start += 4096 - 1;
             start >>= 12;
             end >>= 12;
+
+            raw_write(u64_to_str(buddy_num[0], buf, 16), 0x0d, 80*line);
+            raw_write(u64_to_str(start, buf, 16), 0x0d, 80*line+30);
+            raw_write(u64_to_str(end, buf, 16), 0x0d, 80*line+60);
+            ++line;
 
             // 填充不可用空间和可用空间
             bitmap_clear(buddy_map[0], buddy_num[0], start - buddy_num[0]);
@@ -113,21 +121,32 @@ uint64_t find_free_pages(int order) {
 
 // 分配一个 `order` 阶的块，返回起始物理地址，若找不到则返回0
 uint64_t alloc_pages(int order) {
+    //raw_write("finding order ", 0x1f, 80*line);
+    //raw_write(u64_to_str(order, buf, 10), 0x1f, 80*line+14);
+    //++line;
     uint64_t idx = find_free_pages(order);
     if (idx) {
+        //raw_write("found!", 0x1f, 80*line-10);
         BIT_CLEAR(buddy_map[order], idx);
-        return idx << 12;
+        return (idx << order) << 12;
     }
-    for (int new_order = order; new_order < 8; ++new_order) {
-        if (idx = find_free_pages(new_order)) {
+    for (int new_order = order+1; new_order < 8; ++new_order) {
+        //raw_write("finding order ", 0x1f, 80*line);
+        //raw_write(u64_to_str(new_order, buf, 10), 0x1f, 80*line+14);
+        //++line;
+        idx = find_free_pages(new_order);
+        if (idx) {
+            //raw_write("found!", 0x1f, 80*line-10);
+            //raw_write(u64_to_str(idx, buf, 10), 0x1f, 80*line-40);
             while (new_order > order) {
                 BIT_CLEAR(buddy_map[new_order], idx);
                 idx <<= 1;
+                --new_order;
                 BIT_SET(buddy_map[new_order], idx);
                 BIT_SET(buddy_map[new_order], idx+1);
             }
             BIT_CLEAR(buddy_map[new_order], idx);
-            return idx << 12;
+            return (idx << order) << 12;
         }
     }
     return 0;
@@ -136,6 +155,7 @@ uint64_t alloc_pages(int order) {
 // 回收一个order阶的块
 void free_pages(uint64_t addr, int order) {
     addr >>= 12;
+    addr >>= order;
     BIT_SET(buddy_map[order], addr);
     for (; order < 7 && BIT_TEST(buddy_map[order], addr^1); ++order) {
         // if two neighbouring block can be merged, then merge them
@@ -145,126 +165,3 @@ void free_pages(uint64_t addr, int order) {
         BIT_SET(buddy_map[order+1], addr);
     }
 }
-
-/*
-// return value of 0 means fail, since physical page 0 is never used
-// only alloc continuous pages, doesn't care about mapping.
-uint64_t alloc_pages(int order) {
-    if (order < 7) {
-        // 0~6阶的物理页能从单个uint64_t内部获得
-        // when 0 <= order < 8, a single bit can contain that order
-        // search in corresponding bitmap for non-zero uint64
-        int len = BITS_TO_UINT64(buddy_num[order]);
-        int i;
-        // find the first non-zero uint64, which contains the bit we want.
-        for (i = 0; i < len && buddy_map[order][i] == 0; ++i) {}
-        if (i == len) {
-            // we are at the end of bitmap, indicates we haven't found any page
-            return 0UL;
-        } else {
-            // we have found a page. The bit is in buddy[level][i], but we have to
-            // know the exact (bit) index.
-            uint64_t data = buddy_map[order][i];
-
-            // count trailing zeros
-            uint64_t addr = BITS_PER_UINT64 * i + __builtin_ctz(data);
-            // TODO: marking bitmap to zero can be done in a single for loop, bottom-up
-            int index = addr, len = 1;
-            // clear bits in this and lower order maps
-            for (int l = order; l >= 0; --l) {
-                bitmap_clear(buddy_map[l], index, len);
-                index <<= 1;
-                len <<= 1;
-            }
-            // clear bits in higher order maps
-            index = addr >> 1;
-            for (int l = order+1; l < 8; ++l) {
-                bitmap_clear(buddy_map[l], index, 1);
-                index >>= 1;
-            }
-
-            addr <<= 12;    // move address 12 bits left, forming valid page address
-            return addr;
-        }
-    } else if (order < 14) {
-        // have to span multi-bits.
-        // 1M, 2M, 4M, 8M, 16M, 32M
-        // 2   4   8   16  32   64
-        //  8   9   10  11  12  13
-        // we need to find 2**(order-7) continuous ones.
-        uint64_t adder = 1UL;
-        uint64_t mask = 0x8000000000000000UL;
-        for (int shift = 1 << (order - 7); shift < 64; shift <<= 1) {
-            adder |= adder << shift;
-            mask  |= mask >> shift;
-        }
-        switch (order) {
-        case 8:     // 1M, 2bits
-            adder = 0x5555555555555555UL;
-            mask  = 0xaaaaaaaaaaaaaaaaUL;
-            // adder |= adder << 2;
-            // adder |= adder << 4;
-            // adder |= adder << 8;
-            // adder |= adder << 16;
-            // adder |= adder << 32;
-            break;
-        case 9:     // 2M, 4bits
-            adder = 0x1111111111111111UL;
-            mask  = 0x8888888888888888UL;
-            // adder |= adder << 4;
-            // adder |= adder << 8;
-            // adder |= adder << 16;
-            // adder |= adder << 32;
-            break;
-        case 10:    // 4M, 8bits
-            adder = 0x0101010101010101UL;
-            mask  = 0x8080808080808080UL;
-            // adder |= adder << 8;
-            // adder |= adder << 16;
-            // adder |= adder << 32;
-            break;
-        case 11:    // 8M, 16bits
-            adder = 0x0001000100010001UL;
-            mask  = 0x8000800080008000UL;
-            // adder |= adder << 16;
-            // adder |= adder << 32;
-            break;
-        case 12:    // 16M, 32bits
-            adder = 0x0000000100000001UL;
-            mask  = 0x8000000080000000UL;
-            // adder |= adder << 32;
-            break;
-        case 13:    // 32M, 64bits
-            adder = 0x0000000000000001UL;
-            mask  = 0x8000000000000000UL;
-            break;
-        }
-        int len = BITS_TO_UINT64(buddy_num[7]);
-        int i;
-        for (i = 0; i < len; ++i) {
-            if (buddy_map[7][i] & ~(buddy_map[7][i] + adder) & mask) {
-                break;
-            }
-        }
-        if (i == len) {
-            // didn't find
-            return 0UL;
-        } else {
-            // we have to know which 
-        }
-    } else {
-        // span multiple uint64.
-        // order:   14,  15,   16,   17,   18, 19, 20, 21, 22,  23,  ...
-        // memory:  64M, 128M, 256M, 512M, 1G, 2G, 4G, 8G, 16G, 32G, ...
-        // #uint64: 2    4     8     16    32  64  128 256 512  1024
-        // First we have to check if we have enough memory.
-        uint64_t a = 1 << (order - 13); // how many uint64 do we span
-        int len = BITS_TO_UINT64(buddy_num[7]);
-        int i;
-        for (i = 0; i < len; ++i) {
-            //
-        }
-    }
-}
-*/
-

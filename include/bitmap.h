@@ -17,9 +17,9 @@
     (((i) % BITS_PER_UINT64) ? (1UL << ((i) % BITS_PER_UINT64)) - 1 : ~0UL)
 
 // operation on individual bit
-#define BIT_TEST(map, i)    (map[(i)/BITS_PER_UINT64] & (1UL << ((i) % BITS_PER_UINT64)))
-#define BIT_SET(map, i)     map[(i)/BITS_PER_UINT64] |= 1UL << ((i) % BITS_PER_UINT64)
-#define BIT_CLEAR(map, i)   map[(i)/BITS_PER_UINT64] &= ~(1UL << ((i) % BITS_PER_UINT64))
+#define BIT_TEST(map, i)    ((map)[(i)/BITS_PER_UINT64] & (1UL << ((i) % BITS_PER_UINT64)))
+#define BIT_SET(map, i)     (map)[(i)/BITS_PER_UINT64] |= 1UL << ((i) % BITS_PER_UINT64)
+#define BIT_CLEAR(map, i)   (map)[(i)/BITS_PER_UINT64] &= ~(1UL << ((i) % BITS_PER_UINT64))
 
 // set entire bitmap to zeros, including trailing extra bits
 static inline void bitmap_zero(uint64_t *dst, int nbits) {
