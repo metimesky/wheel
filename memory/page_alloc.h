@@ -14,6 +14,7 @@ typedef struct frame frame_t;
 
 void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length);
 
+uint64_t find_free_pages(int order);
 uint64_t alloc_pages(int order);
 void free_pages(uint64_t addr, int order);
 

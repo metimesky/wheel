@@ -70,12 +70,23 @@ extern char pml4t;
 extern uint64_t *buddy_map[8];
 extern uint64_t buddy_num[8];
 
+static uint64_t count_trailing_zeros(uint64_t data) {
+    uint64_t count = 0;
+    if (!(data & ((1UL << 32) - 1))) { data >>= 32; count += 32; }
+    if (!(data & ((1UL << 16) - 1))) { data >>= 16; count += 16; }
+    if (!(data & ((1UL <<  8) - 1))) { data >>=  8; count +=  8; }
+    if (!(data & ((1UL <<  4) - 1))) { data >>=  4; count +=  4; }
+    if (!(data & ((1UL <<  2) - 1))) { data >>=  2; count +=  2; }
+    if (!(data & ((1UL <<  1) - 1))) { data >>=  1; count +=  1; }
+    return count;
+}
+
 void wheel_main(uint32_t eax, uint32_t ebx) {
     read_info(eax, ebx);
 
     char buf[128];
     int line = 8;
-// /*
+/*
     raw_write("kernel start:", 0x0b, 80*line);
     raw_write(u64_to_str((uint64_t) &kernel_load_addr, buf, 16), 0x0b, 80*line+14);
     raw_write("kernel end:", 0x0b, 80*line+40);
@@ -105,26 +116,26 @@ void wheel_main(uint32_t eax, uint32_t ebx) {
     raw_write("pml4t:", 0x0b, 80*line+40);
     raw_write(u64_to_str((uint64_t) &pml4t, buf, 16), 0x0b, 80*line+40+12);
     ++line;
-// */
-    sprintf(buf, "hello, world!");
-    raw_write(buf, 0x4e, 80*line);
-    ++line;
-    //
-    sprintf(buf, "number is %d", 123654);
-    raw_write(buf, 0x4e, 80*line);
-    ++line;
-    //
-    sprintf(buf, "kernel ends at %p", &kernel_bss_end);
-    raw_write(buf, 0x4e, 80*line);
-    ++line;
-    //
-    sprintf(buf, "char %c and string %s", 'c', "lorem ipsum");
-    raw_write(buf, 0x4e, 80*line);
-    ++line;
+*/
 
-    for (int order = 0; order < 8; ++order) {
-        raw_write(u64_to_str((uint64_t) buddy_map[order], buf, 16), 0x0a, 80*line);
-        raw_write(u64_to_str(buddy_num[order], buf, 10), 0x0a, 80*line+30);
+/*    for (int i = 0; i < 8; ++i) {
+        raw_write(u64_to_str((uint64_t) buddy_map[i], buf, 16), 0x0b, 80*line);
+        raw_write(u64_to_str((uint64_t) buddy_num[i], buf, 10), 0x0b, 80*line+40);
         ++line;
-    }
+    }*/
+    raw_write(u64_to_str(buddy_map[2][0], buf, 2), 0x0b, 80*line); ++line;
+    raw_write(u64_to_str(buddy_map[2][1], buf, 2), 0x0b, 80*line); ++line;
+    raw_write(u64_to_str(buddy_map[2][2], buf, 2), 0x0b, 80*line); ++line;
+    raw_write(u64_to_str(buddy_map[2][3], buf, 2), 0x0b, 80*line); ++line;
+    raw_write(u64_to_str(buddy_map[2][4], buf, 2), 0x0b, 80*line); ++line;
+    
+//    raw_write(u64_to_str(find_free_pages(0), buf, 16), 0x0b, 80*line); ++line;
+/*    raw_write(u64_to_str(alloc_pages(0), buf, 16), 0x0b, 80*line); ++line;
+    raw_write(u64_to_str(alloc_pages(0), buf, 16), 0x0b, 80*line); ++line;
+    raw_write(u64_to_str(alloc_pages(0), buf, 16), 0x0b, 80*line); ++line;
+    raw_write(u64_to_str(alloc_pages(0), buf, 16), 0x0b, 80*line); ++line;
+    raw_write(u64_to_str(alloc_pages(0), buf, 16), 0x0b, 80*line); ++line;
+    raw_write(u64_to_str(alloc_pages(0), buf, 16), 0x0b, 80*line); ++line;
+    raw_write(u64_to_str(alloc_pages(0), buf, 16), 0x0b, 80*line); ++line;
+    raw_write(u64_to_str(alloc_pages(0), buf, 16), 0x0b, 80*line); ++line;*/
 }
