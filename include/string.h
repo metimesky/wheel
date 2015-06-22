@@ -8,8 +8,6 @@ size_t strlen(const char* s);
 char* strcpy(char* dst, const char* src);
 char* strncpy(char* dst, const char* src, size_t n);
 
-
-
 char* u32_to_str(unsigned int value, char *str, int base);
 char* u64_to_str(unsigned long long value, char *str, int base);
 char* i32_to_str(int value, char *str, int base);

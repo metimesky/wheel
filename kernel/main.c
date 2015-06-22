@@ -14,6 +14,7 @@ void raw_write(const char *str, char attr, int pos) {
     }
 }
 
+/*
 void read_info(uint32_t eax, uint32_t ebx) {
     if (MULTIBOOT_BOOTLOADER_MAGIC != eax) {
         raw_write("Bootloader magic number is invalid.", 0x4e, 0);
@@ -39,22 +40,14 @@ void read_info(uint32_t eax, uint32_t ebx) {
         while (1) {}
     }
 }
-
-extern char kernel_load_addr;
-extern char kernel_end;
-extern char kernel_text_start;
-extern char kernel_text_end;
-extern char kernel_data_start;
-extern char kernel_data_end;
-extern char kernel_bss_start;
-extern char kernel_bss_end;
-
-extern char kernel_stack;
-extern char pml4t;
-
-extern uint64_t *buddy_map[8];
-extern uint64_t buddy_num[8];
+*/
 
 void wheel_main(uint32_t eax, uint32_t ebx) {
-    read_info(eax, ebx);
+    if (MULTIBOOT_BOOTLOADER_MAGIC != eax) {
+        panic("Bootloader magic number is invalid.");
+    }
+    multiboot_info_t *mbi = (multiboot_info_t *) ebx;
+    page_alloc_init(mbi->mmap_addr, mbi->mmap_length);
+    //
+    while (1) {}
 }
