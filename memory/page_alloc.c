@@ -25,10 +25,6 @@ uint64_t *buddy_map[8];
 // 表示各阶buddy_map的长度，存储的是有效二进制位的个数，而非数组中uint64_t的个数
 uint64_t buddy_num[8];
 
-char buf[256];
-extern int line;
-extern void raw_write(const char *str, char attr, int pos);
-
 // 初始化页分配器，根据内存布局建立buddy位图
 void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
     // 内核结束的位置就是位图的起始地址，但必须8字节对齐
@@ -48,11 +44,6 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
             start += 4096 - 1;
             start >>= 12;
             end >>= 12;
-
-            raw_write(u64_to_str(buddy_num[0], buf, 16), 0x0d, 80*line);
-            raw_write(u64_to_str(start, buf, 16), 0x0d, 80*line+30);
-            raw_write(u64_to_str(end, buf, 16), 0x0d, 80*line+60);
-            ++line;
 
             // 填充不可用空间和可用空间
             bitmap_clear(buddy_map[0], buddy_num[0], start - buddy_num[0]);
@@ -91,7 +82,7 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
     }
 }
 
-// 计算data二进制表示中后缀0的个数
+// 计算data二进制表示中后缀0的个数，使用二分查找的方法
 static uint64_t count_trailing_zeros(uint64_t data) {
     uint64_t count = 0;
     if (!(data & ((1UL << 32) - 1))) { data >>= 32; count += 32; }
@@ -106,6 +97,8 @@ static uint64_t count_trailing_zeros(uint64_t data) {
 // 寻找一个 `order` 阶的内存块，返回这个块在位图中的下标，而非地址
 // 如果找不到符合条件的内存块，则返回零。
 // 该函数仅寻找合适的内存块，并不去分配，也不会破坏更大块的可用性。
+// 如果该函数返回零，不表示内存不足，仅表示没有最合适的空闲内存块，但程序可以申请更大的块，
+// 并将其分裂为若干小的可用块，然后使用其中一个。
 uint64_t find_free_pages(int order) {
     if (order < 8) {
         // 在对应位图中寻找非全零的单元
@@ -121,24 +114,20 @@ uint64_t find_free_pages(int order) {
 
 // 分配一个 `order` 阶的块，返回起始物理地址，若找不到则返回0
 uint64_t alloc_pages(int order) {
-    //raw_write("finding order ", 0x1f, 80*line);
-    //raw_write(u64_to_str(order, buf, 10), 0x1f, 80*line+14);
-    //++line;
+    // 首先寻找最合适大小的空闲内存块
     uint64_t idx = find_free_pages(order);
     if (idx) {
-        //raw_write("found!", 0x1f, 80*line-10);
         BIT_CLEAR(buddy_map[order], idx);
         return (idx << order) << 12;
     }
+
+    // 如果没有找到，就寻找更大的内存块
     for (int new_order = order+1; new_order < 8; ++new_order) {
-        //raw_write("finding order ", 0x1f, 80*line);
-        //raw_write(u64_to_str(new_order, buf, 10), 0x1f, 80*line+14);
-        //++line;
         idx = find_free_pages(new_order);
         if (idx) {
-            //raw_write("found!", 0x1f, 80*line-10);
-            //raw_write(u64_to_str(idx, buf, 10), 0x1f, 80*line-40);
+            // 如果找到了空闲块，不断将其二分，直到划分到预期粒度为止
             while (new_order > order) {
+                // 将这一阶的内存块标记为不可用
                 BIT_CLEAR(buddy_map[new_order], idx);
                 idx <<= 1;
                 --new_order;

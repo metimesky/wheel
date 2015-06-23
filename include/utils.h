@@ -16,8 +16,9 @@ static inline void panic(char *msg) {
 
 #define assert(cond) if (!(cond)) panic("ASSERT FAIL: " __FILE__ "(" mstr(__LINE__) "): \"" #cond "\"")
 
-static inline void cpuid(int code, uint32_t* a, uint32_t* d) {
-    __asm__ volatile ( "cpuid" : "=a"(*a), "=d"(*d) : "0"(code) : "ebx", "ecx" );
-}
+// static inline void cpuid(int code, uint32_t* a, uint32_t* d) {
+//     __asm__ volatile ( "cpuid" : "=a"(*a), "=d"(*d) : "0"(code) : "ebx", "ecx" );
+// }
+extern void load_idtr(uint64_t addr);
 
 #endif // __UTILS_H__
