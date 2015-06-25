@@ -145,8 +145,6 @@ long_mode_entry:
     call    wheel_main
     sub     rsp, 16
 
-    sti
-    int 120
     ; halt on return
     hlt
     jmp     $
