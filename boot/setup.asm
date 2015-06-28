@@ -146,6 +146,8 @@ long_mode_entry:
     sub     rsp, 16
 
     ; halt on return
+    ;ud2
+    sti
     hlt
     jmp     $
 

@@ -9,6 +9,8 @@ global out_byte
 global out_word
 global out_dword
 
+global io_wait
+
 global cpu_id
 
 [section text]
@@ -51,7 +53,8 @@ out_dword:
     ret
 
 io_wait:
-    out     0x80, 0
+    xor     rax, rax
+    out     0x80, al
     ret
 
 ; void cpu_id(uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx);

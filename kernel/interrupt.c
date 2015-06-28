@@ -1,6 +1,7 @@
 #include "interrupt.h"
 #include <env.h>
 #include <utils.h>
+#include <string.h>
 
 struct idt_entry {
     uint16_t offset_low;
@@ -18,24 +19,96 @@ struct idt_ptr {
 } __attribute__((packed));
 typedef struct idt_ptr idt_ptr_t;
 
-void handler() {
-    raw_write("INTERRUPT!", 0x1e, 23*80);
+void int_handler(uint32_t errcode, uint64_t rip, uint64_t rflags, uint64_t rsp, uint64_t no) {
+    char buf[128];
+    sprintf(buf, "INTERRUPT #%d! err: %d, rip: %d, rflags: %x, rsp: %x", no, errcode, rip, rflags, rsp);
+    raw_write(buf, 0x1e, 23*80);
     while (1) {}
 }
 
 idt_entry_t idt[INT_NUM];
 idt_ptr_t idtr;
+void* interrupt_handler_table[INT_NUM];
+
+extern void hwint0();
+extern void hwint1();
+extern void hwint2();
+extern void hwint3();
+extern void hwint4();
+extern void hwint5();
+extern void hwint6();
+extern void hwint7();
+extern void hwint8();
+extern void hwint9();
+extern void hwint10();
+extern void hwint11();
+extern void hwint12();
+extern void hwint13();
+extern void hwint14();
+extern void hwint15();
+extern void hwint16();
+extern void hwint17();
+extern void hwint18();
+extern void hwint19();
+extern void hwint30();
+
+extern void hwint32();
+extern void hwint33();
+extern void hwint34();
+extern void hwint35();
+
+void fill_idt_entry(idt_entry_t *entry, void *handler) {
+    entry->selector = 8;
+    entry->offset_low = ((uint64_t) handler) & 0xffff;
+    entry->offset_mid = ((uint64_t) handler >> 16) & 0xffff;
+    entry->offset_high = ((uint64_t) handler >> 32) & 0xffffffff;
+    entry->attr = 0x8e00; // Present, 64-bit Interrupt Gate, no IST
+}
+
+void clock() {
+    static char *video = (char*) 0xb8000;
+    ++video[0];
+}
 
 void idt_init() {
+    for (int i = 0; i < INT_NUM; ++i) {
+        interrupt_handler_table[i] = (void*) int_handler;
+    }
+
+    memset(idt, 0, sizeof(idt));
+
+    // init entry 0~19
+    fill_idt_entry(&idt[0], hwint0);
+    fill_idt_entry(&idt[1], hwint1);
+    fill_idt_entry(&idt[2], hwint2);
+    fill_idt_entry(&idt[3], hwint3);
+    fill_idt_entry(&idt[4], hwint4);
+    fill_idt_entry(&idt[5], hwint5);
+    fill_idt_entry(&idt[6], hwint6);
+    fill_idt_entry(&idt[7], hwint7);
+    fill_idt_entry(&idt[8], hwint8);
+    fill_idt_entry(&idt[9], hwint9);
+    fill_idt_entry(&idt[10], hwint10);
+    fill_idt_entry(&idt[11], hwint11);
+    fill_idt_entry(&idt[12], hwint12);
+    fill_idt_entry(&idt[13], hwint13);
+    fill_idt_entry(&idt[14], hwint14);
+    fill_idt_entry(&idt[15], hwint15);
+    fill_idt_entry(&idt[16], hwint16);
+    fill_idt_entry(&idt[17], hwint17);
+    fill_idt_entry(&idt[18], hwint18);
+    fill_idt_entry(&idt[19], hwint19);
+
+    // init entry 30
+    fill_idt_entry(&idt[30], hwint30);
+
+    // external interrupts
+    fill_idt_entry(&idt[32], hwint32);  // clock
+    interrupt_handler_table[32] = (void*) clock;
+    fill_idt_entry(&idt[33], hwint33);  // keyboard
+
     idtr.base = (uint64_t) idt;
     idtr.limit = INT_NUM * sizeof(idt_entry_t) - 1;
-    for (int i = 0; i < INT_NUM; ++i) {
-        idt[i].selector = 8;
-        idt[i].offset_low = ((uint64_t) &handler) & 0xffff;
-        idt[i].offset_mid = ((uint64_t) &handler >> 16) & 0xffff;
-        idt[i].offset_high = ((uint64_t) &handler >> 32) & 0xffffffff;
-        idt[i].attr = 0x8e00; // Present, 64-bit Interrupt Gate, no IST
-    }
     load_idtr(&idtr);
 }
 
@@ -105,7 +178,7 @@ void init_8259() {
     out_byte(PIC2_DAT, ICW4_8086);
     io_wait();
 
-    out_byte(PIC1_DAT, 0xff);
+    out_byte(PIC1_DAT, 0xfe);
     out_byte(PIC2_DAT, 0xff);
 }
 

@@ -67,5 +67,5 @@ void wheel_main(uint32_t eax, uint32_t ebx) {
     page_alloc_init(mbi->mmap_addr, mbi->mmap_length);
     interrupt_init();
     //
-    while (1) {}
+    //while (1) {}
 }

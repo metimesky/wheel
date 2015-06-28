@@ -4,6 +4,6 @@
 extern void interrupt_init();
 
 #define INT_NUM 128
-extern void* interrupt_handler[INT_NUM];
+extern void* interrupt_handler_table[INT_NUM];
 
 #endif // __INTERRUPT_H__
