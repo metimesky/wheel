@@ -19,12 +19,20 @@ struct idt_ptr {
 } __attribute__((packed));
 typedef struct idt_ptr idt_ptr_t;
 
-void int_handler(uint32_t errcode, uint64_t rip, uint64_t rflags, uint64_t rsp, uint64_t no) {
+void int_handler(int vec_no, uint32_t errcode, uint64_t rip, uint64_t rflags, uint64_t rsp, uint64_t ss) {
     char buf[128];
-    sprintf(buf, "INTERRUPT #%d! err: %d, rip: %d, rflags: %x, rsp: %x", no, errcode, rip, rflags, rsp);
+    sprintf(buf, "INTERRUPT #%d! err: %d, rip: %x, rflags: %x, rsp: %x, ret ss: %x", vec_no, errcode, rip, rflags, rsp, ss);
     raw_write(buf, 0x1e, 23*80);
     while (1) {}
 }
+
+// void clock_handler(int vec_no, uint32_t errcode, uint64_t rip, uint64_t rflags, uint64_t rsp, uint64_t ss) {
+//     char buf[128];
+//     sprintf(buf, "CLOCK #%d! err: %d, rip: %x, rflags: %x, rsp: %x, ret ss: %x", vec_no, errcode, rip, rflags, rsp, ss);
+//     raw_write(buf, 0x1e, 22*80);
+//     char *video = (char*)0xb8000;
+//     ++video[0];
+// }
 
 idt_entry_t idt[INT_NUM];
 idt_ptr_t idtr;
@@ -56,6 +64,8 @@ extern void hwint32();
 extern void hwint33();
 extern void hwint34();
 extern void hwint35();
+extern void hwint64();
+extern void clock_entry();
 
 void fill_idt_entry(idt_entry_t *entry, void *handler) {
     entry->selector = 8;
@@ -63,11 +73,22 @@ void fill_idt_entry(idt_entry_t *entry, void *handler) {
     entry->offset_mid = ((uint64_t) handler >> 16) & 0xffff;
     entry->offset_high = ((uint64_t) handler >> 32) & 0xffffffff;
     entry->attr = 0x8e00; // Present, 64-bit Interrupt Gate, no IST
+    entry->reserved = 0;
 }
 
-void clock() {
+void clock_handler(
+    uint64_t no,
+    uint64_t rip,
+    uint16_t cs,
+    uint64_t rflags,
+    uint64_t rsp,
+    uint16_t ss
+) {
+    char buf[128];
     static char *video = (char*) 0xb8000;
     ++video[0];
+    sprintf(buf, "CLOCK: %x!, cs:rip => %x:%x, ss:rsp => %x:%x, rflags: %x", no, cs, rip, ss, rsp, rflags);
+    raw_write(buf, 0x0c, 24*80);
 }
 
 void idt_init() {
@@ -103,9 +124,12 @@ void idt_init() {
     fill_idt_entry(&idt[30], hwint30);
 
     // external interrupts
-    fill_idt_entry(&idt[32], hwint32);  // clock
-    interrupt_handler_table[32] = (void*) clock;
-    fill_idt_entry(&idt[33], hwint33);  // keyboard
+    fill_idt_entry(&idt[32], clock_entry);  // clock
+    interrupt_handler_table[32] = (void*) clock_handler;
+    //fill_idt_entry(&idt[33], hwint33);  // keyboard
+
+    fill_idt_entry(&idt[64], clock_entry);
+    interrupt_handler_table[64] = (void*) clock_handler;
 
     idtr.base = (uint64_t) idt;
     idtr.limit = INT_NUM * sizeof(idt_entry_t) - 1;

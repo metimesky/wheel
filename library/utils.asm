@@ -1,6 +1,7 @@
 ;; under x64, parameters are passed by rdi, rsi, rdx, rcx, r8, r9, ...
 
 global load_idtr
+global load_tr
 
 global in_byte
 global in_word
@@ -17,6 +18,11 @@ global cpu_id
 [BITS 64]
 load_idtr:
     lidt    [rdi]
+    ret
+
+load_tr:
+    mov     rax, rdi
+    ltr     ax
     ret
 
 in_byte:

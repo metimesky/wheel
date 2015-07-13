@@ -21,3 +21,7 @@ Multiboot is the spec Wheel follow. With multiboot, Wheel can be booted using gr
 ### Portability
 
 Wheel does not care about portability. Thus this os is currently bind tightly with AMD64 arch.
+
+### 长方式之坑
+
+64-bit 限制了分段机制的使用，但是仍然会用到段。而且 64-bit 模式下，段描述符的长度有8字节和16字节两种，例如在GDT中，16字节的描述符相当于占两个8字节描述符的位置。CPU根据偏移访问某描述符时，有些情况下将index乘8，另一些时候乘16。

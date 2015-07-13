@@ -17,6 +17,7 @@ static inline void panic(char *msg) {
 #define assert(cond) if (!(cond)) panic("ASSERT FAIL: " __FILE__ "(" mstr(__LINE__) "): \"" #cond "\"")
 
 extern void load_idtr(uint64_t addr);
+extern void load_tr(uint16_t sel);
 
 extern uint8_t in_byte(uint16_t port);
 extern uint16_t in_word(uint16_t port);

@@ -52,6 +52,7 @@ wheel_init:
     test    edx, 1 << 29
     jz      no_long_mode
 
+global enter_long_mode
 enter_long_mode:
     ; disable paging (to be safe)
     mov     eax, cr0
@@ -71,14 +72,24 @@ enter_long_mode:
     add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
 
-    ; setup Page Directory Pointer (PDP) Table, 512 entry, covering 512GB
-    mov     ebx, 0x00000083         ; present, read/write, 1G granularity
-    mov     ecx, 512                ; 512 entries in total
-.fill_entry:
+    ; setup Page Directory Pointer (PDP) Table, only 1 entry
+    mov     dword [edi], 0x2003     ; present, read/write
+    add     dword [edi], pml4t      ; pointing to pml4t+8K (PD Table)
+    add     edi, 0x1000
+
+    ; setup Page Directory (PD) Table, only 1 entry
+    mov     dword [edi], 0x3003     ; present, read/write
+    add     dword [edi], pml4t      ; pointing to pml4t+12K (Page Table)
+    add     edi, 0x1000
+
+    ; setup Page Table, 512 entries
+    mov     ebx, 0x00000003         ; present, read/write
+    mov     ecx, 512
+.set_entry:
     mov     dword [edi], ebx
     add     ebx, 0x1000
     add     edi, 8
-    loop    .fill_entry
+    loop    .set_entry
 
     ; enable PAE-paging
     mov     eax, cr4
@@ -97,7 +108,7 @@ enter_long_mode:
     mov     cr0, eax
 
     ; enter 64-bit submode
-    lgdt    [gdt.ptr]
+    lgdt    [gdt_ptr]
 
     ; jump to real 64-bit code
     jmp     gdt.code0:long_mode_entry
@@ -106,6 +117,7 @@ enter_long_mode:
     hlt
     jmp     $
 
+global no_long_mode
 no_long_mode:
     ; write error message
     mov     edi, 0xb8000
@@ -125,6 +137,7 @@ no_long_mode:
 .err_msg_len    equ     $ - .err_msg
 
 [BITS 64]
+global long_mode_entry
 long_mode_entry:
     mov     ax, gdt.data0
     mov     ds, ax
@@ -138,12 +151,14 @@ long_mode_entry:
     mov     ecx, 500
     rep     stosq
 
+    ;call    init_tss
+    ;ltr
+
     xor     rdi, rdi
     xor     rsi, rsi
     mov     edi, [mb_eax]   ; zero extend to rdi
     mov     esi, [mb_ebx]   ; zero extend to rsi
     call    wheel_main
-    sub     rsp, 16
 
     ; halt on return
     ;ud2
@@ -151,8 +166,14 @@ long_mode_entry:
     hlt
     jmp     $
 
+global get_cs
+get_cs:
+    mov     ax, cs
+    ret
+
 [section .data]
 [BITS 32]
+global gdt
 gdt:                        ; Global Descriptor Table (64-bit).
 .null:  equ     $ - gdt     ; null descriptor
     dq      0
@@ -161,31 +182,36 @@ gdt:                        ; Global Descriptor Table (64-bit).
     dw      0               ; -- base [0:15]
     db      0               ; -- base [16:23]
     db      10011000b       ; -- Present, DPL=0, non-conforming
-    db      00100000b       ; -- 64-bit
+    db      10100000b       ; -- 64-bit, and limit[16:19]
     db      0               ; -- base [24:31]
 .data0: equ     $ - gdt     ; data descriptor
     dw      0               ; -- limit [0:15]
     dw      0               ; -- base [0:15]
     db      0               ; -- base [16:23]
-    db      10010000b       ; -- Present, DPL=0
-    db      0               ; -- limit [16:19] and attr
+    db      10010010b       ; -- Present, DPL=0, writable
+    db      11000000b       ; -- limit [16:19] and attr
     db      0               ; -- base [24:31]
 .code3: equ     $ - gdt     ; code descriptor
     dw      0               ; -- limit [0:15]
     dw      0               ; -- base [0:15]
     db      0               ; -- base [16:23]
     db      11111000b       ; -- Present, DPL=0, non-conforming
-    db      00100000b       ; -- 64-bit
+    db      10100000b       ; -- 64-bit, and limit[16:19]
     db      0               ; -- base [24:31]
 .data3: equ     $ - gdt     ; data descriptor
-    dw      0               ; -- limit [0:15]
+    dw      0              ; -- limit [0:15]
     dw      0               ; -- base [0:15]
     db      0               ; -- base [16:23]
-    db      11110000b       ; -- Present, DPL=0
-    db      0               ; -- limit [16:19] and attr
+    db      11110010b       ; -- Present, DPL=0, writable
+    db      11000000b       ; -- limit [16:19] and attr
     db      0               ; -- base [24:31]
+.tss:   equ     $ - gdt
+    dq      0               ; 64-bit TSS, to be filled later
+    dq      0               ; 64-bit TSS is double quadword
 
-.ptr:                       ; The GDT-pointer.
+gdt_limit   equ $ - gdt
+
+gdt_ptr:                    ; The GDT-pointer.
     dw      $ - gdt - 1     ; -- Limit.
     dq      gdt             ; -- Base.
 
