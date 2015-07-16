@@ -13,15 +13,46 @@ struct idt_entry {
 } __attribute__((packed));
 typedef struct idt_entry idt_entry_t;
 
+
+
+
+
+struct context {
+    uint64_t r15;
+    uint64_t r14;
+    uint64_t r13;
+    uint64_t r12;
+    uint64_t r11;
+    uint64_t r10;
+    uint64_t rbp;
+    uint64_t rbx;
+    uint64_t rax;
+    uint64_t r9;
+    uint64_t r8;
+    uint64_t rcx;
+    uint64_t rdx;
+    uint64_t rsi;
+    uint64_t rdi;
+    uint64_t gs;
+    uint64_t fs;
+    uint64_t errcode;
+    uint64_t rip;
+    uint64_t cs;
+    uint64_t rflags;
+    uint64_t rsp;
+    uint64_t ss;
+} __attribute__((packed));
+typedef struct context context_t;
+
 struct idt_ptr {
     uint16_t limit;
     uint64_t base;
 } __attribute__((packed));
 typedef struct idt_ptr idt_ptr_t;
 
-void int_handler(int vec_no, uint32_t errcode, uint64_t rip, uint64_t rflags, uint64_t rsp, uint64_t ss) {
+void int_handler(context_t *ctx) {
     char buf[128];
-    sprintf(buf, "INTERRUPT #%d! err: %d, rip: %x, rflags: %x, rsp: %x, ret ss: %x", vec_no, errcode, rip, rflags, rsp, ss);
+    sprintf(buf, "INTERRUPT! err: %d, rip: %x, rflags: %x, rsp: %x, ret ss: %x", ctx->errcode, ctx->rip, ctx->rflags, ctx->rsp, ctx->ss);
     raw_write(buf, 0x1e, 23*80);
     while (1) {}
 }
@@ -38,34 +69,32 @@ idt_entry_t idt[INT_NUM];
 idt_ptr_t idtr;
 void* interrupt_handler_table[INT_NUM];
 
-extern void hwint0();
-extern void hwint1();
-extern void hwint2();
-extern void hwint3();
-extern void hwint4();
-extern void hwint5();
-extern void hwint6();
-extern void hwint7();
-extern void hwint8();
-extern void hwint9();
-extern void hwint10();
-extern void hwint11();
-extern void hwint12();
-extern void hwint13();
-extern void hwint14();
-extern void hwint15();
-extern void hwint16();
-extern void hwint17();
-extern void hwint18();
-extern void hwint19();
-extern void hwint30();
+extern void exception_entry0();
+extern void exception_entry1();
+extern void exception_entry2();
+extern void exception_entry3();
+extern void exception_entry4();
+extern void exception_entry5();
+extern void exception_entry6();
+extern void exception_entry7();
+extern void exception_entry8();
+extern void exception_entry9();
+extern void exception_entry10();
+extern void exception_entry11();
+extern void exception_entry12();
+extern void exception_entry13();
+extern void exception_entry14();
+extern void exception_entry15();
+extern void exception_entry16();
+extern void exception_entry17();
+extern void exception_entry18();
+extern void exception_entry19();
+extern void exception_entry30();
 
-extern void hwint32();
-extern void hwint33();
-extern void hwint34();
-extern void hwint35();
-extern void hwint64();
-extern void clock_entry();
+extern void hw_int_entry0();
+extern void hw_int_entry1();
+extern void hw_int_entry2();
+extern void hw_int_entry3();
 
 void fill_idt_entry(idt_entry_t *entry, void *handler) {
     entry->selector = 8;
@@ -89,6 +118,7 @@ void clock_handler(
     ++video[0];
     sprintf(buf, "CLOCK: %x!, cs:rip => %x:%x, ss:rsp => %x:%x, rflags: %x", no, cs, rip, ss, rsp, rflags);
     raw_write(buf, 0x0c, 24*80);
+    while (1) {}
 }
 
 void idt_init() {
@@ -99,37 +129,33 @@ void idt_init() {
     memset(idt, 0, sizeof(idt));
 
     // init entry 0~19
-    fill_idt_entry(&idt[0], hwint0);
-    fill_idt_entry(&idt[1], hwint1);
-    fill_idt_entry(&idt[2], hwint2);
-    fill_idt_entry(&idt[3], hwint3);
-    fill_idt_entry(&idt[4], hwint4);
-    fill_idt_entry(&idt[5], hwint5);
-    fill_idt_entry(&idt[6], hwint6);
-    fill_idt_entry(&idt[7], hwint7);
-    fill_idt_entry(&idt[8], hwint8);
-    fill_idt_entry(&idt[9], hwint9);
-    fill_idt_entry(&idt[10], hwint10);
-    fill_idt_entry(&idt[11], hwint11);
-    fill_idt_entry(&idt[12], hwint12);
-    fill_idt_entry(&idt[13], hwint13);
-    fill_idt_entry(&idt[14], hwint14);
-    fill_idt_entry(&idt[15], hwint15);
-    fill_idt_entry(&idt[16], hwint16);
-    fill_idt_entry(&idt[17], hwint17);
-    fill_idt_entry(&idt[18], hwint18);
-    fill_idt_entry(&idt[19], hwint19);
+    fill_idt_entry(&idt[0], exception_entry0);
+    fill_idt_entry(&idt[1], exception_entry1);
+    fill_idt_entry(&idt[2], exception_entry2);
+    fill_idt_entry(&idt[3], exception_entry3);
+    fill_idt_entry(&idt[4], exception_entry4);
+    fill_idt_entry(&idt[5], exception_entry5);
+    fill_idt_entry(&idt[6], exception_entry6);
+    fill_idt_entry(&idt[7], exception_entry7);
+    fill_idt_entry(&idt[8], exception_entry8);
+    fill_idt_entry(&idt[9], exception_entry9);
+    fill_idt_entry(&idt[10], exception_entry10);
+    fill_idt_entry(&idt[11], exception_entry11);
+    fill_idt_entry(&idt[12], exception_entry12);
+    fill_idt_entry(&idt[13], exception_entry13);
+    fill_idt_entry(&idt[14], exception_entry14);
+    fill_idt_entry(&idt[15], exception_entry15);
+    fill_idt_entry(&idt[16], exception_entry16);
+    fill_idt_entry(&idt[17], exception_entry17);
+    fill_idt_entry(&idt[18], exception_entry18);
+    fill_idt_entry(&idt[19], exception_entry19);
 
     // init entry 30
-    fill_idt_entry(&idt[30], hwint30);
+    fill_idt_entry(&idt[30], exception_entry30);
 
     // external interrupts
-    fill_idt_entry(&idt[32], clock_entry);  // clock
-    interrupt_handler_table[32] = (void*) clock_handler;
-    //fill_idt_entry(&idt[33], hwint33);  // keyboard
-
-    fill_idt_entry(&idt[64], clock_entry);
-    interrupt_handler_table[64] = (void*) clock_handler;
+    fill_idt_entry(&idt[32], hw_int_entry0);  // clock
+    // fill_idt_entry(&idt[33], hw_int_entry1);  // keyboard
 
     idtr.base = (uint64_t) idt;
     idtr.limit = INT_NUM * sizeof(idt_entry_t) - 1;
