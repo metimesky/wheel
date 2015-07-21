@@ -3,23 +3,100 @@
 ; array of C function pointers
 extern interrupt_handler_table
 
-[BITS 64]
+; Interrupt with no error code, pushes a 0 error code
+%macro define_isr 1
+global isr%1
+isr%1:
+    push    0xffffffffffffffff
+    push    %1
+    jmp     common_handler      ; jump to the common interrupt handling code
+%endmacro
+
+; Interrupt with an error code
+%macro define_isr_e 1
+    push    %1
+    jmp     common_handler      ; jump to the common interrupt handling code
+%endmacro
+
+common_handler:
+    ; check if we are comming from user-mode
+    testl   $3, 24(%rsp)
+    jnz     common_user_handler
+
+    ; push the rest of the interrupt frame to the stack
+    save
+
+    cld
+
+    ; Frame pointer is the iframe.
+    mov    rbp, rsp
+
+    ; Set the RF (resume flag) in RFLAGS. This prevents an instruction
+    ; breakpoint on the instruction we're returning to to trigger a debug
+    ; exception.
+    ; orq     $X86_EFLAGS_RESUME, IFRAME_flags(%rbp)
+
+    subq    rsp, 512
+    andq    rsp, ~15    ; clear lowest 4 bits
+    ;fxsaveq (%rsp)
+
+    ; Call the interrupt handler.
+    mov     rdi, rbp
+    call    [interrupt_handler_table + 8 * %1]
+
+    ;fxrstorq    (%rsp)
+    mov     rsp, rbp
+
+    ; restore the saved registers.
+    restore
+
+    iretq
+
+; interrupt from user-mode need special treatement
+common_user_handler:
+    swapgs
+
+    ; push the rest of the interrupt frame to the stack
+    save
+
+    cld
+
+    ; Frame pointer is the iframe.
+    mov    rbp, rsp
+
+    ; Set the RF (resume flag) in RFLAGS. This prevents an instruction
+    ; breakpoint on the instruction we're returning to to trigger a debug
+    ; exception.
+    ; orq     $X86_EFLAGS_RESUME, IFRAME_flags(%rbp)
+
+    subq    rsp, 512
+    andq    rsp, ~15    ; clear lowest 4 bits
+    ;fxsaveq (%rsp)
+
+    ; Call the interrupt handler.
+    mov     rdi, rbp
+    call    [interrupt_handler_table + 8 * %1]
+
+    ;fxrstorq    (%rsp)
+    mov     rsp, rbp
+
+    ; restore the saved registers.
+    restore
+
+    iretq
+    nop
 
 ; save the context, after ss, rsp, rflags, cs, rip
 %macro save 0
-    push    fs
-    push    gs
-    ;push    es
-    ;push    ds
-    push    rdi
-    push    rsi
-    push    rdx
-    push    rcx
-    push    r8
-    push    r9
     push    rax
     push    rbx
+    push    rcx
+    push    rdx
+    push    rdi
+    push    rsi
     push    rbp
+    push    r8
+    push    r9
     push    r10
     push    r11
     push    r12
@@ -36,19 +113,15 @@ extern interrupt_handler_table
     pop     r12
     pop     r11
     pop     r10
-    pop     rbp
-    pop     rbx
-    pop     rax
     pop     r9
     pop     r8
-    pop     rcx
-    pop     rdx
+    pop     rbp
     pop     rsi
     pop     rdi
-    ;pop     ds
-    ;pop     es
-    pop     gs
-    pop     fs
+    pop     rdx
+    pop     rcx
+    pop     rbx
+    pop     rax
 %endmacro
 
 ; macro to define exception routine entry
