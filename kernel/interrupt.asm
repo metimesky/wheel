@@ -3,6 +3,8 @@
 ; array of C function pointers
 extern interrupt_handler_table
 
+[BITS 64]
+
 ; save the context, after ss, rsp, rflags, cs, rip
 %macro save 0
     push    fs
@@ -85,7 +87,7 @@ hw_int_entry%1:
     ; push a fake error code to keep stack aligned
     push    0xffffffffffffffff
 
-    save    ; save the context from register
+    ;save    ; save the context from register
 
     ; send EOI
     mov     al, 0x20
@@ -100,7 +102,7 @@ hw_int_entry%1:
     add     rdi, 88
     call    [interrupt_handler_table + 8 * (%1 + IRQ_BASE)]
 
-    restore ; restore context to register
+    ;restore ; restore context to register
 
     iretq
     ;db      0x48, 0xcf

@@ -13,9 +13,11 @@ struct idt_entry {
 } __attribute__((packed));
 typedef struct idt_entry idt_entry_t;
 
-
-
-
+struct idt_ptr {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed));
+typedef struct idt_ptr idt_ptr_t;
 
 struct context {
     uint64_t r15;
@@ -44,17 +46,16 @@ struct context {
 } __attribute__((packed));
 typedef struct context context_t;
 
-struct idt_ptr {
-    uint16_t limit;
-    uint64_t base;
-} __attribute__((packed));
-typedef struct idt_ptr idt_ptr_t;
-
 void int_handler(context_t *ctx) {
     char buf[128];
     sprintf(buf, "INTERRUPT! err: %d, rip: %x, rflags: %x, rsp: %x, ret ss: %x", ctx->errcode, ctx->rip, ctx->rflags, ctx->rsp, ctx->ss);
     raw_write(buf, 0x1e, 23*80);
     while (1) {}
+}
+
+void clock_handler() {
+    static char *video = (char*) 0xb8000;
+    ++video[0];
 }
 
 // void clock_handler(int vec_no, uint32_t errcode, uint64_t rip, uint64_t rflags, uint64_t rsp, uint64_t ss) {
@@ -105,21 +106,21 @@ void fill_idt_entry(idt_entry_t *entry, void *handler) {
     entry->reserved = 0;
 }
 
-void clock_handler(
-    uint64_t no,
-    uint64_t rip,
-    uint16_t cs,
-    uint64_t rflags,
-    uint64_t rsp,
-    uint16_t ss
-) {
-    char buf[128];
-    static char *video = (char*) 0xb8000;
-    ++video[0];
-    sprintf(buf, "CLOCK: %x!, cs:rip => %x:%x, ss:rsp => %x:%x, rflags: %x", no, cs, rip, ss, rsp, rflags);
-    raw_write(buf, 0x0c, 24*80);
-    while (1) {}
-}
+// void clock_handler(
+//     uint64_t no,
+//     uint64_t rip,
+//     uint16_t cs,
+//     uint64_t rflags,
+//     uint64_t rsp,
+//     uint16_t ss
+// ) {
+//     char buf[128];
+//     static char *video = (char*) 0xb8000;
+//     ++video[0];
+//     sprintf(buf, "CLOCK: %x!, cs:rip => %x:%x, ss:rsp => %x:%x, rflags: %x", no, cs, rip, ss, rsp, rflags);
+//     raw_write(buf, 0x0c, 24*80);
+//     while (1) {}
+// }
 
 void idt_init() {
     for (int i = 0; i < INT_NUM; ++i) {
@@ -155,6 +156,7 @@ void idt_init() {
 
     // external interrupts
     fill_idt_entry(&idt[32], hw_int_entry0);  // clock
+    interrupt_handler_table[32] = clock_handler;
     // fill_idt_entry(&idt[33], hw_int_entry1);  // keyboard
 
     idtr.base = (uint64_t) idt;
