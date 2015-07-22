@@ -3,6 +3,62 @@
 #include <utils.h>
 #include <string.h>
 
+extern void isr0();
+extern void isr1();
+extern void isr2();
+extern void isr3();
+extern void isr4();
+extern void isr5();
+extern void isr6();
+extern void isr7();
+extern void isr8();
+extern void isr9();
+extern void isr10();
+extern void isr11();
+extern void isr12();
+extern void isr13();
+extern void isr14();
+extern void isr15();
+extern void isr16();
+extern void isr17();
+extern void isr18();
+extern void isr19();
+extern void isr20();
+extern void isr21();
+extern void isr22();
+extern void isr23();
+extern void isr24();
+extern void isr25();
+extern void isr26();
+extern void isr27();
+extern void isr28();
+extern void isr29();
+extern void isr30();
+extern void isr31();
+extern void isr32();
+extern void isr33();
+extern void isr34();
+extern void isr35();
+
+#define PIC1        0x20        /* IO base address for master PIC */
+#define PIC2        0xA0        /* IO base address for slave PIC */
+#define PIC1_CMD    PIC1
+#define PIC1_DAT    (PIC1+1)
+#define PIC2_CMD    PIC2
+#define PIC2_DAT    (PIC2+1)
+
+#define ICW1_ICW4   0x01        /* ICW4 (not) needed */
+#define ICW1_SINGLE 0x02        /* Single (cascade) mode */
+#define ICW1_INTERVAL4  0x04        /* Call address interval 4 (8) */
+#define ICW1_LEVEL  0x08        /* Level triggered (edge) mode */
+#define ICW1_INIT   0x10        /* Initialization - required! */
+
+#define ICW4_8086   0x01        /* 8086/88 (MCS-80/85) mode */
+#define ICW4_AUTO   0x02        /* Auto (normal) EOI */
+#define ICW4_BUF_SLAVE  0x08        /* Buffered mode/slave */
+#define ICW4_BUF_MASTER 0x0C        /* Buffered mode/master */
+#define ICW4_SFNM   0x10        /* Special fully nested (not) */
+
 struct idt_entry {
     uint16_t offset_low;
     uint16_t selector;
@@ -46,6 +102,10 @@ struct int_frame {
 } __attribute__((packed));
 typedef struct int_frame int_frame_t;
 
+idt_entry_t idt[INT_NUM];
+idt_ptr_t idtr;
+void* interrupt_handler_table[INT_NUM];
+
 void int_handler(int_frame_t *ctx) {
     char buf[128];
     char *video = (char*) 0xb8000;
@@ -56,7 +116,7 @@ void int_handler(int_frame_t *ctx) {
             out_byte(PIC2_CMD, 0x20);   // slave chip
         }
         out_byte(PIC1_CMD, 0x20);   // master chip
-        
+
         switch (ctx->vec_no) {
         case 32:    // clock
             ++video[0];
@@ -73,47 +133,6 @@ void int_handler(int_frame_t *ctx) {
         while (1) {}
     }
 }
-
-idt_entry_t idt[INT_NUM];
-idt_ptr_t idtr;
-void* interrupt_handler_table[INT_NUM];
-
-extern void isr0();
-extern void isr1();
-extern void isr2();
-extern void isr3();
-extern void isr4();
-extern void isr5();
-extern void isr6();
-extern void isr7();
-extern void isr8();
-extern void isr9();
-extern void isr10();
-extern void isr11();
-extern void isr12();
-extern void isr13();
-extern void isr14();
-extern void isr15();
-extern void isr16();
-extern void isr17();
-extern void isr18();
-extern void isr19();
-extern void isr20();
-extern void isr21();
-extern void isr22();
-extern void isr23();
-extern void isr24();
-extern void isr25();
-extern void isr26();
-extern void isr27();
-extern void isr28();
-extern void isr29();
-extern void isr30();
-extern void isr31();
-extern void isr32();
-extern void isr33();
-extern void isr34();
-extern void isr35();
 
 void fill_idt_entry(idt_entry_t *entry, void *handler) {
     entry->selector = 8;
@@ -165,25 +184,6 @@ void idt_init() {
     idtr.limit = INT_NUM * sizeof(idt_entry_t) - 1;
     load_idtr(&idtr);
 }
-
-#define PIC1        0x20        /* IO base address for master PIC */
-#define PIC2        0xA0        /* IO base address for slave PIC */
-#define PIC1_CMD    PIC1
-#define PIC1_DAT    (PIC1+1)
-#define PIC2_CMD    PIC2
-#define PIC2_DAT    (PIC2+1)
-
-#define ICW1_ICW4   0x01        /* ICW4 (not) needed */
-#define ICW1_SINGLE 0x02        /* Single (cascade) mode */
-#define ICW1_INTERVAL4  0x04        /* Call address interval 4 (8) */
-#define ICW1_LEVEL  0x08        /* Level triggered (edge) mode */
-#define ICW1_INIT   0x10        /* Initialization - required! */
-
-#define ICW4_8086   0x01        /* 8086/88 (MCS-80/85) mode */
-#define ICW4_AUTO   0x02        /* Auto (normal) EOI */
-#define ICW4_BUF_SLAVE  0x08        /* Buffered mode/slave */
-#define ICW4_BUF_MASTER 0x0C        /* Buffered mode/master */
-#define ICW4_SFNM   0x10        /* Special fully nested (not) */
 
 void init_8259() {
     out_byte(PIC1_CMD, ICW1_INIT+ICW1_ICW4);  // starts the initialization sequence (in cascade mode)
