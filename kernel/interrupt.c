@@ -19,24 +19,24 @@ struct idt_ptr {
 } __attribute__((packed));
 typedef struct idt_ptr idt_ptr_t;
 
-struct context {
+struct int_frame {
     uint64_t r15;
     uint64_t r14;
     uint64_t r13;
     uint64_t r12;
     uint64_t r11;
     uint64_t r10;
-    uint64_t rbp;
-    uint64_t rbx;
-    uint64_t rax;
     uint64_t r9;
     uint64_t r8;
-    uint64_t rcx;
-    uint64_t rdx;
+    uint64_t rbp;
     uint64_t rsi;
     uint64_t rdi;
-    uint64_t gs;
-    uint64_t fs;
+    uint64_t rdx;
+    uint64_t rcx;
+    uint64_t rbx;
+    uint64_t rax;
+    //
+    uint64_t vec_no;
     uint64_t errcode;
     uint64_t rip;
     uint64_t cs;
@@ -44,58 +44,76 @@ struct context {
     uint64_t rsp;
     uint64_t ss;
 } __attribute__((packed));
-typedef struct context context_t;
+typedef struct int_frame int_frame_t;
 
-void int_handler(context_t *ctx) {
+void int_handler(int_frame_t *ctx) {
     char buf[128];
-    sprintf(buf, "INTERRUPT! err: %d, rip: %x, rflags: %x, rsp: %x, ret ss: %x", ctx->errcode, ctx->rip, ctx->rflags, ctx->rsp, ctx->ss);
-    raw_write(buf, 0x1e, 23*80);
-    while (1) {}
+    char *video = (char*) 0xb8000;
+    
+    if (ctx->vec_no >= 32) {
+        // if source is hardware interrupt, send EOI
+        if (ctx->vec_no >= 40) {
+            out_byte(PIC2_CMD, 0x20);   // slave chip
+        }
+        out_byte(PIC1_CMD, 0x20);   // master chip
+        
+        switch (ctx->vec_no) {
+        case 32:    // clock
+            ++video[0];
+            break;
+        case 33:    // keyboard
+            break;
+        default:
+            break;
+        }
+    } else {
+        sprintf(buf, "INTERRUPT %d! err: %d, rip: %x, rflags: %x, rsp: %x, ret ss: %x",
+        ctx->vec_no, ctx->errcode, ctx->rip, ctx->rflags, ctx->rsp, ctx->ss);
+        raw_write(buf, 0x1e, 23*80);
+        while (1) {}
+    }
 }
-
-void clock_handler() {
-    static char *video = (char*) 0xb8000;
-    ++video[0];
-}
-
-// void clock_handler(int vec_no, uint32_t errcode, uint64_t rip, uint64_t rflags, uint64_t rsp, uint64_t ss) {
-//     char buf[128];
-//     sprintf(buf, "CLOCK #%d! err: %d, rip: %x, rflags: %x, rsp: %x, ret ss: %x", vec_no, errcode, rip, rflags, rsp, ss);
-//     raw_write(buf, 0x1e, 22*80);
-//     char *video = (char*)0xb8000;
-//     ++video[0];
-// }
 
 idt_entry_t idt[INT_NUM];
 idt_ptr_t idtr;
 void* interrupt_handler_table[INT_NUM];
 
-extern void exception_entry0();
-extern void exception_entry1();
-extern void exception_entry2();
-extern void exception_entry3();
-extern void exception_entry4();
-extern void exception_entry5();
-extern void exception_entry6();
-extern void exception_entry7();
-extern void exception_entry8();
-extern void exception_entry9();
-extern void exception_entry10();
-extern void exception_entry11();
-extern void exception_entry12();
-extern void exception_entry13();
-extern void exception_entry14();
-extern void exception_entry15();
-extern void exception_entry16();
-extern void exception_entry17();
-extern void exception_entry18();
-extern void exception_entry19();
-extern void exception_entry30();
-
-extern void hw_int_entry0();
-extern void hw_int_entry1();
-extern void hw_int_entry2();
-extern void hw_int_entry3();
+extern void isr0();
+extern void isr1();
+extern void isr2();
+extern void isr3();
+extern void isr4();
+extern void isr5();
+extern void isr6();
+extern void isr7();
+extern void isr8();
+extern void isr9();
+extern void isr10();
+extern void isr11();
+extern void isr12();
+extern void isr13();
+extern void isr14();
+extern void isr15();
+extern void isr16();
+extern void isr17();
+extern void isr18();
+extern void isr19();
+extern void isr20();
+extern void isr21();
+extern void isr22();
+extern void isr23();
+extern void isr24();
+extern void isr25();
+extern void isr26();
+extern void isr27();
+extern void isr28();
+extern void isr29();
+extern void isr30();
+extern void isr31();
+extern void isr32();
+extern void isr33();
+extern void isr34();
+extern void isr35();
 
 void fill_idt_entry(idt_entry_t *entry, void *handler) {
     entry->selector = 8;
@@ -106,22 +124,6 @@ void fill_idt_entry(idt_entry_t *entry, void *handler) {
     entry->reserved = 0;
 }
 
-// void clock_handler(
-//     uint64_t no,
-//     uint64_t rip,
-//     uint16_t cs,
-//     uint64_t rflags,
-//     uint64_t rsp,
-//     uint16_t ss
-// ) {
-//     char buf[128];
-//     static char *video = (char*) 0xb8000;
-//     ++video[0];
-//     sprintf(buf, "CLOCK: %x!, cs:rip => %x:%x, ss:rsp => %x:%x, rflags: %x", no, cs, rip, ss, rsp, rflags);
-//     raw_write(buf, 0x0c, 24*80);
-//     while (1) {}
-// }
-
 void idt_init() {
     for (int i = 0; i < INT_NUM; ++i) {
         interrupt_handler_table[i] = (void*) int_handler;
@@ -130,33 +132,33 @@ void idt_init() {
     memset(idt, 0, sizeof(idt));
 
     // init entry 0~19
-    fill_idt_entry(&idt[0], exception_entry0);
-    fill_idt_entry(&idt[1], exception_entry1);
-    fill_idt_entry(&idt[2], exception_entry2);
-    fill_idt_entry(&idt[3], exception_entry3);
-    fill_idt_entry(&idt[4], exception_entry4);
-    fill_idt_entry(&idt[5], exception_entry5);
-    fill_idt_entry(&idt[6], exception_entry6);
-    fill_idt_entry(&idt[7], exception_entry7);
-    fill_idt_entry(&idt[8], exception_entry8);
-    fill_idt_entry(&idt[9], exception_entry9);
-    fill_idt_entry(&idt[10], exception_entry10);
-    fill_idt_entry(&idt[11], exception_entry11);
-    fill_idt_entry(&idt[12], exception_entry12);
-    fill_idt_entry(&idt[13], exception_entry13);
-    fill_idt_entry(&idt[14], exception_entry14);
-    fill_idt_entry(&idt[15], exception_entry15);
-    fill_idt_entry(&idt[16], exception_entry16);
-    fill_idt_entry(&idt[17], exception_entry17);
-    fill_idt_entry(&idt[18], exception_entry18);
-    fill_idt_entry(&idt[19], exception_entry19);
+    fill_idt_entry(&idt[0], isr0);
+    fill_idt_entry(&idt[1], isr1);
+    fill_idt_entry(&idt[2], isr2);
+    fill_idt_entry(&idt[3], isr3);
+    fill_idt_entry(&idt[4], isr4);
+    fill_idt_entry(&idt[5], isr5);
+    fill_idt_entry(&idt[6], isr6);
+    fill_idt_entry(&idt[7], isr7);
+    fill_idt_entry(&idt[8], isr8);
+    fill_idt_entry(&idt[9], isr9);
+    fill_idt_entry(&idt[10], isr10);
+    fill_idt_entry(&idt[11], isr11);
+    fill_idt_entry(&idt[12], isr12);
+    fill_idt_entry(&idt[13], isr13);
+    fill_idt_entry(&idt[14], isr14);
+    fill_idt_entry(&idt[15], isr15);
+    fill_idt_entry(&idt[16], isr16);
+    fill_idt_entry(&idt[17], isr17);
+    fill_idt_entry(&idt[18], isr18);
+    fill_idt_entry(&idt[19], isr19);
 
     // init entry 30
-    fill_idt_entry(&idt[30], exception_entry30);
+    fill_idt_entry(&idt[30], isr30);
 
     // external interrupts
-    fill_idt_entry(&idt[32], hw_int_entry0);  // clock
-    interrupt_handler_table[32] = clock_handler;
+    fill_idt_entry(&idt[32], isr32);  // clock
+    //interrupt_handler_table[32] = clock_handler;
     // fill_idt_entry(&idt[33], hw_int_entry1);  // keyboard
 
     idtr.base = (uint64_t) idt;
@@ -182,34 +184,6 @@ void idt_init() {
 #define ICW4_BUF_SLAVE  0x08        /* Buffered mode/slave */
 #define ICW4_BUF_MASTER 0x0C        /* Buffered mode/master */
 #define ICW4_SFNM   0x10        /* Special fully nested (not) */
-
-void remap_8259(int master_offset, int slave_offset) {
-    unsigned char a1, a2;
-
-    a1 = in_byte(PIC1_DAT);
-    a2 = in_byte(PIC2_DAT);
-
-    out_byte(PIC1_CMD, ICW1_INIT+ICW1_ICW4);  // starts the initialization sequence (in cascade mode)
-    io_wait();
-    out_byte(PIC2_CMD, ICW1_INIT+ICW1_ICW4);
-    io_wait();
-    out_byte(PIC1_DAT, master_offset);      // ICW2: Master PIC vector offset
-    io_wait();
-    out_byte(PIC2_DAT, slave_offset);       // ICW2: Slave PIC vector offset
-    io_wait();
-    out_byte(PIC1_DAT, 4);                  // ICW3: tell Master PIC that there is a slave PIC at IRQ2 (0000 0100)
-    io_wait();
-    out_byte(PIC2_DAT, 2);                  // ICW3: tell Slave PIC its cascade identity (0000 0010)
-    io_wait();
-
-    out_byte(PIC1_DAT, ICW4_8086);
-    io_wait();
-    out_byte(PIC2_DAT, ICW4_8086);
-    io_wait();
-
-    out_byte(PIC1_DAT, a1);   // restore saved masks.
-    out_byte(PIC2_DAT, a2);
-}
 
 void init_8259() {
     out_byte(PIC1_CMD, ICW1_INIT+ICW1_ICW4);  // starts the initialization sequence (in cascade mode)
