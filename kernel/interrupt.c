@@ -122,6 +122,10 @@ void int_handler(int_frame_t *ctx) {
             ++video[0];
             break;
         case 33:    // keyboard
+        {
+            uint8_t sc = in_byte(0x60);
+            ++video[1];
+        }
             break;
         default:
             break;
@@ -177,8 +181,7 @@ void idt_init() {
 
     // external interrupts
     fill_idt_entry(&idt[32], isr32);  // clock
-    //interrupt_handler_table[32] = clock_handler;
-    // fill_idt_entry(&idt[33], hw_int_entry1);  // keyboard
+    fill_idt_entry(&idt[33], isr33);  // keyboard
 
     idtr.base = (uint64_t) idt;
     idtr.limit = INT_NUM * sizeof(idt_entry_t) - 1;
@@ -204,7 +207,7 @@ void init_8259() {
     out_byte(PIC2_DAT, ICW4_8086);
     io_wait();
 
-    out_byte(PIC1_DAT, 0xfe);
+    out_byte(PIC1_DAT, 0xfc);
     out_byte(PIC2_DAT, 0xff);
 }
 
