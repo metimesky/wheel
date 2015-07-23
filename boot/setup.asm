@@ -68,22 +68,22 @@ enter_long_mode:
     mov     edi, cr3
 
     ; setup Page-Map Level-4 (PML4) Table, only 1 entry
-    mov     dword [edi], 0x1003     ; present, read/write
+    mov     dword [edi], 0x1007     ; present, read/write
     add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
 
     ; setup Page Directory Pointer (PDP) Table, only 1 entry
-    mov     dword [edi], 0x2003     ; present, read/write
+    mov     dword [edi], 0x2007     ; present, read/write
     add     dword [edi], pml4t      ; pointing to pml4t+8K (PD Table)
     add     edi, 0x1000
 
     ; setup Page Directory (PD) Table, only 1 entry
-    mov     dword [edi], 0x3003     ; present, read/write
+    mov     dword [edi], 0x3007     ; present, read/write
     add     dword [edi], pml4t      ; pointing to pml4t+12K (Page Table)
     add     edi, 0x1000
 
     ; setup Page Table, 512 entries
-    mov     ebx, 0x00000003         ; present, read/write
+    mov     ebx, 0x00000007         ; present, read/write
     mov     ecx, 512
 .set_entry:
     mov     dword [edi], ebx
@@ -171,6 +171,34 @@ get_cs:
     mov     ax, cs
     ret
 
+[BITS 64]
+global goto_ring3
+goto_ring3:
+    and     rsp, ~15
+    push    0x20+3          ; ss
+    push    ring3_stack_top ; rsp
+    push    2               ; rflags
+    push    0x18+3          ; cs
+    push    ring3_entry     ; rip
+    db      0x48, 0xcf
+    iretq
+
+global ring3_entry
+ring3_entry:
+    ;call    ring3_func
+    mov     ax, gdt.data3
+    mov     ds, ax
+    mov     es, ax
+    mov     fs, ax
+    mov     gs, ax
+
+    mov     al, '3'
+    mov     ah, 0x0c
+    mov     [0xb8000], ax
+
+    hlt
+    jmp     $
+
 [section .data]
 [BITS 32]
 global gdt
@@ -228,3 +256,6 @@ kernel_stack_top:
 ; reserve 16KB for page tables.
 ALIGN 0x1000
 pml4t:          resb 0x4000
+
+ring3_stack:    resb 0x1000
+ring3_stack_top:

@@ -74,6 +74,7 @@ typedef struct sys_desc sys_desc_t;
 
 extern uint64_t gdt[];
 extern uint16_t get_cs();
+extern void goto_ring3();
 
 void wheel_main(uint32_t eax, uint32_t ebx) {
     // first check if the bootloader is multiboot compliant
@@ -137,5 +138,7 @@ void wheel_main(uint32_t eax, uint32_t ebx) {
     // raw_write("after int!!!!!!!!", 0x1e, 240);
     // raw_write("after int!!!!!!!!!", 0x1e, 240);
     //
+
+    goto_ring3();
     while (1) {}
 }
