@@ -1,15 +1,18 @@
 # Makefile for Wheel Operating System
 
+# From `http://clang.llvm.org/docs/CrossCompilation.html`:
+# - Clang/LLVM is natively a cross-compiler
+
 # directories
-source_dir  :=  boot
-include_dir :=  include
+source_dir  :=  boot include
 build_dir   :=  build
 
 # files
 sources :=  $(foreach dir, $(source_dir), $(shell find $(dir) -name '*.asm' -o -name '*.c'))
-headers :=  $(foreach dir, $(include_dir), $(shell find $(dir) -name '*.h'))
+headers :=  $(foreach dir, $(source_dir), $(shell find $(dir) -name '*.h'))
 objects :=  $(foreach obj, $(patsubst %.asm, %.asm.o, $(patsubst %.c, %.c.o, $(sources))), $(build_dir)/$(obj))
 kernel  :=  $(build_dir)/kernel.bin
+mapfile :=  $(build_dir)/wheel.map
 floppy  :=  fd.img
 
 # toolchain
@@ -23,7 +26,7 @@ CF64    :=  c -std=c99 -I $(include_dir) \
 			-ffreestanding -fno-builtin -nostdlib -Wall -Wextra -fno-sanitize=address \
 			-mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-3dnow
 LD      :=  ld
-LF      :=  -T link.lds -z max-page-size=0x1000 -Map $(build_dir)/wheel.map
+LF      :=  -T link.lds -z max-page-size=0x1000
 
 # pseudo-targets
 .PHONY: all bin write run clean
@@ -47,7 +50,7 @@ clean:
 $(kernel):  $(objects) link.lds
 	@echo "\033[1;34mlinking kernel\033[0m"
 	@mkdir -p $(@D)
-	@$(LD) $(LF) -o $@ $^
+	@$(LD) $(LF) -Map $(mapfile) -o $@ $^
 
 $(build_dir)/%.asm.o: %.asm
 	@echo "\033[1;32massembling $< to $@\033[0m"
