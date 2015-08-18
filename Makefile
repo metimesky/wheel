@@ -8,7 +8,8 @@ source_dir  :=  boot include
 build_dir   :=  build
 
 # files
-sources :=  $(foreach dir, $(source_dir), $(shell find $(dir) -name '*.asm' -o -name '*.c'))
+assembs	:=	$(foreach dir, $(source_dir), $(shell find $(dir) -name '*.asm'))
+sources :=  $(foreach dir, $(source_dir), $(shell find $(dir) -name '*.c'))
 headers :=  $(foreach dir, $(source_dir), $(shell find $(dir) -name '*.h'))
 objects :=  $(foreach obj, $(patsubst %.asm, %.asm.o, $(patsubst %.c, %.c.o, $(sources))), $(build_dir)/$(obj))
 kernel  :=  $(build_dir)/kernel.bin
