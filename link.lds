@@ -10,9 +10,8 @@ SECTIONS {
     }
 
     . = 0x100000;
-    kernel_load_addr = .;
+    kernel_start = .;
 
-    text_start_addr = .;
     .text /* BLOCK(4K) */ : /* ALIGN(4K) */ {
         kernel_text_start = .;
         *(.boot)
@@ -26,7 +25,6 @@ SECTIONS {
         *(.data*)
         kernel_data_end = .;
     } = 0
-    data_end_addr = .;
 
     .bss /* BLOCK(4K) */ : /* ALIGN(4K) */ {
         kernel_bss_start = .;
@@ -34,7 +32,6 @@ SECTIONS {
         *(.bss)
         kernel_bss_end = .;
     } = 0
-    bss_end_addr = .;
 
     kernel_end = .;
 }

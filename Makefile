@@ -8,8 +8,8 @@
 ################################################################################
 
 # directories
-src_dir :=  init
 inc_dir :=  include
+src_dir :=  init lib $(inc_dir)
 dst_dir :=  build
 
 # files
@@ -26,7 +26,7 @@ fda :=  fd.img
 AS      :=  yasm
 ASFLAGS :=  -f elf64
 CC      :=  clang
-CFLAGS  :=  -c -std=c11 -I $(inc_dir) \
+CFLAGS  :=  -c -std=c11 -O2 -I $(inc_dir) \
             -ffreestanding -fno-builtin -nostdlib -Wall -Wextra -fno-sanitize=address \
             -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-3dnow
 LD      :=  ld
@@ -60,11 +60,6 @@ $(bin): $(objects) $(lds)
 	@echo "\033[1;34mlinking kernel\033[0m"
 	@mkdir -p $(@D)
 	@$(LD) $(LDFLAGS) -T $(lds) -Map $(map) -o $@ $^
-
-$(dst_dir)/setup.c.o: init/setup.c $(headers)
-	@echo "\033[1;32mcompiling $< to $@\033[0m"
-	@mkdir -p $(@D)
-	@$(CC) -m32 $(CFLAGS) -o $@ $<
 
 $(dst_dir)/%.asm.o: %.asm
 	@echo "\033[1;32massembling $< to $@\033[0m"

@@ -13,6 +13,10 @@ You can use the following command to install all the programs needed:
 sudo apt-get install build-essential yasm clang mtools qemu-kvm
 ~~~
 
-### Build system
+### Source structure
 
-OS is low-level software, so GNU-make is used to automate the building procedure of Wheel.
+`init` contains the entry point from grub and assembly code for enter long mode. Since we can't compile some C file as 32-bit and link them together, we can only do 32-bit initializing in assembly. But the 64-bit environment setted by assembly is just temporary. A new full-featured 64-bit environment will be setted up by C code, including a new GDT, new page tables.
+
+### Limitation
+
+Wheel only cares about AMD64 long-mode, so the code is not so portable.
