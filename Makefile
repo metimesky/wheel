@@ -1,70 +1,77 @@
 # Makefile for Wheel Operating System
 
-# From `http://clang.llvm.org/docs/CrossCompilation.html`:
-# - Clang/LLVM is natively a cross-compiler
+# Requirements:
+#   yasm, clang, binutils, mtools, qemu
+# TODO:
+# - generate floopy image rather than using a pre-built one
+
+################################################################################
 
 # directories
-source_dir  :=  boot include
-build_dir   :=  build
+src_dir :=  init
+inc_dir :=  include
+dst_dir :=  build
 
 # files
-assembs	:=	$(foreach dir, $(source_dir), $(shell find $(dir) -name '*.asm'))
-sources :=  $(foreach dir, $(source_dir), $(shell find $(dir) -name '*.c'))
-headers :=  $(foreach dir, $(source_dir), $(shell find $(dir) -name '*.h'))
-objects :=  $(foreach obj, $(patsubst %.asm, %.asm.o, $(patsubst %.c, %.c.o, $(sources))), $(build_dir)/$(obj))
-kernel  :=  $(build_dir)/kernel.bin
-mapfile :=  $(build_dir)/wheel.map
-floppy  :=  fd.img
+sources :=  $(foreach dir, $(src_dir), $(shell find $(dir) -name '*.asm' -o -name '*.c'))
+headers :=  $(foreach dir, $(src_dir), $(shell find $(dir) -name '*.h'))
+objects :=  $(foreach obj, $(patsubst %.asm, %.asm.o, $(patsubst %.c, %.c.o, $(sources))), $(dst_dir)/$(obj))
+
+bin :=  $(dst_dir)/kernel.bin
+map :=  $(dst_dir)/kernel.map
+lds :=  link.lds
+fda :=  fd.img
 
 # toolchain
 AS      :=  yasm
-AF      :=  -f elf64
+ASFLAGS :=  -f elf64
 CC      :=  clang
-CFLAGS  :=  -c -std=c11 -I $(include_dir) \
-			-ffreestanding -fno-builtin -nostdlib -Wall -Wextra
-CF32    :=  $(CFLAGS) -m32
-CF64    :=  c -std=c99 -I $(include_dir) \
-			-ffreestanding -fno-builtin -nostdlib -Wall -Wextra -fno-sanitize=address \
-			-mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-3dnow
+CFLAGS  :=  -c -std=c11 -I $(inc_dir) \
+            -ffreestanding -fno-builtin -nostdlib -Wall -Wextra -fno-sanitize=address \
+            -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-3dnow
 LD      :=  ld
-LF      :=  -T link.lds -z max-page-size=0x1000
+LDFLAGS :=  -nostdlib -z max-page-size=0x1000
+
+################################################################################
 
 # pseudo-targets
-.PHONY: all bin write run clean
+.PHONY: all kernel write run clean
 
-all: bin write run
+all: kernel write run
 
-bin: $(kernel)
+kernel: $(bin)
 
-write: $(kernel) $(floppy)
+write: $(bin) $(fda)
 	@echo "\033[1;34mwriting to floppy image\033[0m"
-	@mcopy -o $(kernel) -i $(floppy) ::/
+	@mcopy -o $(bin) -i $(fda) ::/
 
-run: $(floppy)
+run: $(fda)
 	@echo "\033[1;31mexecuting qemu\033[0m"
-	@qemu-system-x86_64 -m 32 -smp 2 -fda $(floppy)
+	@qemu-system-x86_64 -m 32 -smp 2 -fda $(fda)
 
 clean:
 	@echo "\033[1;34mcleaning objects\033[0m"
-	@rm $(objects) $(kernel)
+	@rm $(objects) $(bin)
 
-$(kernel):  $(objects) link.lds
+# NOTE: special rules first, generic rules later
+# make will use first rule matching the pattern
+
+$(bin): $(objects) $(lds)
 	@echo "\033[1;34mlinking kernel\033[0m"
 	@mkdir -p $(@D)
-	@$(LD) $(LF) -Map $(mapfile) -o $@ $^
+	@$(LD) $(LDFLAGS) -T $(lds) -Map $(map) -o $@ $^
 
-$(build_dir)/%.asm.o: %.asm
+$(dst_dir)/setup.c.o: init/setup.c $(headers)
+	@echo "\033[1;32mcompiling $< to $@\033[0m"
+	@mkdir -p $(@D)
+	@$(CC) -m32 $(CFLAGS) -o $@ $<
+
+$(dst_dir)/%.asm.o: %.asm
 	@echo "\033[1;32massembling $< to $@\033[0m"
 	@mkdir -p $(@D)
-	@$(AS) $(AF) -o $@ $<
+	@$(AS) $(ASFLAGS) -o $@ $<
 
-# pattern matching will match this rule first
-$(build_dir)/setup32.c.o: boot/setup.c $(headers)
+$(dst_dir)/%.c.o: %.c $(headers)
 	@echo "\033[1;32mcompiling $< to $@\033[0m"
 	@mkdir -p $(@D)
-	@$(CC) $(CF32) -o $@ $<
-
-$(build_dir)/%.c.o: %.c $(headers)
-	@echo "\033[1;32mcompiling $< to $@\033[0m"
-	@mkdir -p $(@D)
-	@$(CC) $(CF64) -o $@ $<
+	@$(CC) $(CFLAGS) -o $@ $<
