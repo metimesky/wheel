@@ -66,8 +66,10 @@ void init_gdt() {
     // load_gdtr((uint64_t) &gdtr);
 }
 
+typedef void (*handler)();
+
 void init_idt() {
-    ;
+    // to setup IDT, we need
 }
 
 void stage1(uint32_t eax, uint32_t ebx) {
