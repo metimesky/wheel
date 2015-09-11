@@ -4,13 +4,15 @@
 
 extern interrupt_handler_table
 
+[BITS 64]
+
 ; interrupt with no error code, pushes a 0 error code
 %macro define_isr 1
 global isr%1
 isr%1:
-    push    0xffffffffffffffff
+    push    0xffffffff
     push    %1
-    common_int_handler %1
+    int_backend %1
 %endmacro
 
 ; interrupt with an error code
@@ -18,7 +20,7 @@ isr%1:
 global isr%1
 isr%1:
     push    %1
-    common_int_handler %1
+    int_backend %1
 %endmacro
 
 ; save the context, after ss, rsp, rflags, cs, rip
@@ -61,7 +63,7 @@ isr%1:
 
 ; common part of interrupt handlers
 ; NOTICE this is a macro which looks like a function
-%macro common_int_handler 1
+%macro int_backend 1
     ; check if we are comming from user-mode
     ; testl   $3, 24(%rsp)
     ; jnz     common_user_isr_handler
@@ -104,6 +106,7 @@ isr%1:
 [section .text]
 [BITS 64]
 
+; exception
 define_isr 0
 define_isr 1
 define_isr 2
