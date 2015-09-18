@@ -9,7 +9,7 @@
 
 # directories
 inc_dir	:=	include
-src_dir :=  startup $(inc_dir)
+src_dir :=  kernel $(inc_dir)
 dst_dir :=  build
 
 # files
@@ -26,8 +26,8 @@ fda :=  fd.img
 AS      :=  yasm
 ASFLAGS :=  -f elf64
 CC      :=  clang
-CFLAGS  :=  -c -std=c11 -O2 -I $(inc_dir) \
-            -Wall -Wextra -ffreestanding -fno-builtin -nostdinc -nostdlib \
+CFLAGS  :=  -c -std=c11 -O2 -Wall -Wextra -I $(inc_dir) \
+            -ffreestanding -fno-builtin -nostdinc -nostdlib \
             -fno-stack-protector -fno-zero-initialized-in-bss -fno-sanitize=address \
             -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-3dnow
 LD      :=  ld

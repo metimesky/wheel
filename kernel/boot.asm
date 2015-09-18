@@ -5,7 +5,7 @@ extern  kernel_start
 extern  kernel_data_end
 extern  kernel_bss_end
 
-extern  kmain
+extern  kernel_main
 
 MB1_MAGIC   equ 0x1badb002              ; magic number
 MB1_FLAGS   equ 1<<0|1<<1|1<<16         ; aligned, mem info, address info valid
@@ -159,7 +159,7 @@ long_mode_entry:
 
     mov     edi, [mb_eax]
     mov     esi, [mb_ebx]
-    call    kmain
+    call    kernel_main
 
     ; halt on return
     hlt
