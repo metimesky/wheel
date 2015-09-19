@@ -73,25 +73,25 @@ enter_long_mode:
     and     eax, 0x7fffffff
     mov     cr0, eax
 
-    ; clear 16KB of memory for 4 page tables, which covers 2MB address space.
+    ; clear 12KB of memory for 3 page tables, which covers 1GB address space.
     mov     edi, pml4t
     mov     cr3, edi
     xor     eax, eax
-    mov     ecx, 4096
+    mov     ecx, 3072
     rep     stosd
     mov     edi, cr3
 
-    ; filling one Page-Map Level-4 Entry (PML4E)
+    ; creating 1 Page-Map Level-4 Entry (PML4)
     mov     dword [edi], 0x1003     ; present, read/write
     add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
 
-    ; setup Page Directory Pointer (PDPE) Table, only 1 entry
+    ; creating 1 Page Directory Pointer Entry (PDPE)
     mov     dword [edi], 0x2003     ; present, read/write
     add     dword [edi], pml4t      ; pointing to pml4t+8K (PD Table)
     add     edi, 0x1000
 
-    ; setup Page Directory (PDE) Table, 512 entry
+    ; creating 512 Page Directory Entry (PDE)
     mov     ebx, 0x00000083         ; present, read/write, 1G granularity
     mov     ecx, 512                ; 512 entries in total
 .set_pdp_entry:
@@ -200,9 +200,9 @@ mb_ebx: dd  0
 kernel_stack:   resb 0x1000
 kernel_stack_top:
 
-; reserve 16KB for page tables.
+; reserve 12KB for page tables.
 ALIGN 0x1000
-pml4t:          resb 0x4000
+pml4t:          resb 0x3000
 
 ring3_stack:    resb 0x1000
 ring3_stack_top:

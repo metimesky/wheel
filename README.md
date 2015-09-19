@@ -102,7 +102,7 @@ pml4t:          resb 0x4000
     mov     edi, pml4t
     mov     cr3, edi
     xor     eax, eax
-    mov     ecx, 0.72
+    mov     ecx, 3072
     rep     stosd
     mov     edi, cr3
 
