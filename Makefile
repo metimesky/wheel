@@ -8,19 +8,19 @@
 ################################################################################
 
 # directories
-inc_dir	:=	include
-src_dir :=  kernel $(inc_dir)
+inc_dir :=  include
+src_dir :=  kernel
 dst_dir :=  build
 
 # files
 sources :=  $(foreach dir, $(src_dir), $(shell find $(dir) -name '*.asm' -o -name '*.c'))
-headers :=  $(foreach dir, $(src_dir), $(shell find $(dir) -name '*.h'))
+headers :=  $(foreach dir, $(src_dir) $(inc_dir), $(shell find $(dir) -name '*.h'))
 objects :=  $(foreach obj, $(patsubst %.asm, %.asm.o, $(patsubst %.c, %.c.o, $(sources))), $(dst_dir)/$(obj))
 
-bin :=  $(dst_dir)/kernel.bin
-map :=  $(dst_dir)/kernel.map
-lds :=  link.lds
-fda :=  fd.img
+bin     :=  $(dst_dir)/kernel.bin
+map     :=  $(dst_dir)/kernel.map
+lds     :=  link.lds
+fda     :=  fd.img
 
 # toolchain
 AS      :=  yasm

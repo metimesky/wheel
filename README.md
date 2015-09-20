@@ -48,9 +48,7 @@ AMD64 requires PAE paging, which means the large page is 2MB rather than 4MB and
 
 According to the manual, page size in AMD64 can be 4K, 2M and 1G. However, if I use 1G pages, the testing Thinkpad will crash and auto-reboot.
 
-Different initial paging strategy is provided.
-
-512 entries of 4KB pages, identically mapping 2M memory:
+AMD64 requires PAE which can handle 2MB pages, indicating all 64-bit CPU can handle 2MB pages. But for 1GB pages, only on some CPU are valid. The support for 1GB page can be identified by looking at CPUID 0x80000001, EDX bit 26
 
 ``` asm
 [section .text]

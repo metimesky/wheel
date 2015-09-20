@@ -73,11 +73,12 @@ enter_long_mode:
     and     eax, 0x7fffffff
     mov     cr0, eax
 
-    ; clear 12KB of memory for 3 page tables, which covers 1GB address space.
+    ; clear 24KB of memory for 6 page tables, which covers 4GB address space.
+    ; we need to cover 4GB because mem mapped devices like APIC are in 3~4G.
     mov     edi, pml4t
     mov     cr3, edi
     xor     eax, eax
-    mov     ecx, 3072
+    mov     ecx, 6144
     rep     stosd
     mov     edi, cr3
 
@@ -86,14 +87,20 @@ enter_long_mode:
     add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
 
-    ; creating 1 Page Directory Pointer Entry (PDPE)
+    ; creating 3 Page Directory Pointer Entry (PDPE)
     mov     dword [edi], 0x2003     ; present, read/write
     add     dword [edi], pml4t      ; pointing to pml4t+8K (PD Table)
-    add     edi, 0x1000
+    add     edi, 8
+    mov     dword [edi], 0x3003     ; present, read/write
+    add     dword [edi], pml4t      ; pointing to pml4t+12K
+    add     edi, 8
+    mov     dword [edi], 0x4003     ; present, read/write
+    add     dword [edi], pml4t      ; pointing to pml4t+12K
+    add     edi, 0x1000 - 16
 
-    ; creating 512 Page Directory Entry (PDE)
+    ; creating 3*512 Page Directory Entry (PDE)
     mov     ebx, 0x00000083         ; present, read/write, 1G granularity
-    mov     ecx, 512                ; 512 entries in total
+    mov     ecx, 3*512              ; 3*512 entries in total
 .set_pdp_entry:
     mov     dword [edi], ebx
     add     ebx, 1 << 21
@@ -200,9 +207,9 @@ mb_ebx: dd  0
 kernel_stack:   resb 0x1000
 kernel_stack_top:
 
-; reserve 12KB for page tables.
+; reserve 24KB for page tables. (1 PML4T, 1 PDPT, 3 PDT)
 ALIGN 0x1000
-pml4t:          resb 0x3000
+pml4t:          resb 0x6000
 
 ring3_stack:    resb 0x1000
 ring3_stack_top:
