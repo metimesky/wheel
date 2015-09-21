@@ -64,10 +64,10 @@ uint64_t find_mp_pointer() {
 // return 0 on multi-processor, 1 on uni-processor
 int multiprocessor_init() {
     // informations that need to be gathered
-    uint64_t local_apic_addr = 0;
+    uint8_t *local_apic_addr = 0;
     uint64_t io_apic_num = 0;
     uint64_t io_apic_ids[32];   // up to 32 io apic are supported
-    uint64_t io_apic_addrs[32];
+    uint8_t *io_apic_addrs[32];
 
     // 1. find MP Floating Pointer Structure
     mp_pointer_t *pointer = (mp_pointer_t *) find_mp_pointer();
@@ -210,5 +210,12 @@ int multiprocessor_init() {
     }
 
     // 3. initialize local APIC of BSP
+    uint32_t spurious_int_vec_reg = 0;
+    spurious_int_vec_reg |= 1UL << 8;
+    *((uint32_t *) (local_apic_addr + 0x00f0)) = spurious_int_vec_reg;
+    // spurious_int_vec_reg = *((uint32_t *) (local_apic_addr + 0x00f0));
+    char buf[33];
+    print("spurious_int_vec_reg is ");
+    println(u32_to_str(local_apic_addr, buf, 16));
     return 0;
 }

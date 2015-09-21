@@ -96,11 +96,14 @@ enter_long_mode:
     add     edi, 8
     mov     dword [edi], 0x4003     ; present, read/write
     add     dword [edi], pml4t      ; pointing to pml4t+12K
-    add     edi, 0x1000 - 16
+    add     edi, 8
+    mov     dword [edi], 0x5003     ; present, read/write
+    add     dword [edi], pml4t      ; pointing to pml4t+12K
+    add     edi, 0x1000 - 24
 
-    ; creating 3*512 Page Directory Entry (PDE)
+    ; creating 4*512 Page Directory Entry (PDE)
     mov     ebx, 0x00000083         ; present, read/write, 1G granularity
-    mov     ecx, 3*512              ; 3*512 entries in total
+    mov     ecx, 4*512              ; 3*512 entries in total
 .set_pdp_entry:
     mov     dword [edi], ebx
     add     ebx, 1 << 21
