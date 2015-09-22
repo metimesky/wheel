@@ -1,6 +1,7 @@
 #include <type.h>
 #include "multiprocessor.h"
 #include "fake_console.h"
+#include <util.h>
 
 static int is_mp_pointer_valid(mp_pointer_t *pointer) {
     uint8_t sum = 0;
@@ -210,6 +211,16 @@ int multiprocessor_init() {
     }
 
     // 3. initialize local APIC of BSP
+    // 3.1 first we have to disable 8259A properly (by masking out all bits)
+    out_byte(0xa1, 0xff);
+    out_byte(0x21, 0xff);
+
+    // 3.2 set the physical address for local APIC registers
+    uint64_t msr_apic_base = (uint64_t) local_apic_addr & (~0xfffUL);
+    msr_apic_base |= 1UL << 8;  // this processor is BSP
+    write_msr(0x1b, msr_apic_base);
+
+    // 3.3 enable local apic
     uint32_t spurious_int_vec_reg = 0;
     spurious_int_vec_reg |= 1UL << 8;
     *((uint32_t *) (local_apic_addr + 0x00f0)) = spurious_int_vec_reg;
