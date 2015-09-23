@@ -28,5 +28,10 @@ void kernel_main() {
     if (d & (1UL << 9)) {
     	println("Yes, APIC support is on.");
     }
+
+    cpuid_vendor_string(0, buf);
+    buf[12] = '\0';
+    print("CPU Vendor: ");
+    println(buf);
     while (1) {}
 }
