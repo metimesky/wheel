@@ -28,12 +28,24 @@ void memset(void *dst, char c, int n) {
     }
 }
 
-int memcmp(void *x, void *y, int n) {
-    static int i, delta;
-    for (i = 0, delta = 0; delta == 0 && i < n; ++i) {
-        delta = ((char *) x)[i] - ((char *) y)[i];
+// int memcmp(void *x, void *y, int n) {
+//     static int i, delta;
+//     for (i = 0, delta = 0; delta == 0 && i < n; ++i) {
+//         delta = ((char *) x)[i] - ((char *) y)[i];
+//     }
+//     return delta;
+// }
+
+int memcmp(const void *s1, const void *s2, int n) {
+    unsigned char u1, u2;
+    for (; n--; s1++, s2++) {
+        u1 = * (unsigned char *) s1;
+        u2 = * (unsigned char *) s2;
+        if ( u1 != u2) {
+            return (u1-u2);
+        }
     }
-    return delta;
+    return 0;
 }
 
 char *u32_to_str(unsigned int value, char *str, int base) {
