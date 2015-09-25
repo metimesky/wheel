@@ -37,12 +37,11 @@ void memset(void *dst, char c, int n) {
 // }
 
 int memcmp(const void *s1, const void *s2, int n) {
-    unsigned char u1, u2;
-    for (; n--; s1++, s2++) {
-        u1 = * (unsigned char *) s1;
-        u2 = * (unsigned char *) s2;
-        if ( u1 != u2) {
-            return (u1-u2);
+    unsigned char *u1 = (const unsigned char *) s1;
+    unsigned char *u2 = (const unsigned char *) s2;
+    for (; n--; u1++, u2++) {
+        if (*u1 != *u2) {
+            return (*u1 - *u2);
         }
     }
     return 0;
