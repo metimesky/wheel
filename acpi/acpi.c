@@ -82,57 +82,51 @@ void process_madt(madt_t *madt) {
     }
     // return;
     uint8_t *p = madt->entries;
-    int i = 0;
+    // int i = 0;
+    print("header len is ");
+    println(u32_to_str(madt->header.length, buf, 10));
     while (p < (uint8_t *) madt + madt->header.length/* && i < 30*/) {
         switch (*p) {
         case 0: {   // processor local APIC
             madt_local_apic_entry_t *entry = (madt_local_apic_entry_t *) p;
-            // print("processor local APIC, length=");
-            // print(u32_to_str(entry->length, buf, 10));
-            // print(" and size=");
-            // print(u32_to_str(sizeof(madt_local_apic_entry_t), buf, 10));
-            // print(". processorId ");
-            // print(u32_to_str(entry->processor_id, buf, 10));
-            // print(" APICId ");
-            // print(u32_to_str(entry->local_apic_id, buf, 10));
-            // print(" flag ");
-            // println(u32_to_str(entry->flags, buf, 10));
+            print("processorId ");
+            print(u32_to_str(entry->processor_id, buf, 10));
+            print(" APICId ");
+            print(u32_to_str(entry->local_apic_id, buf, 10));
+            print(" flag ");
+            println(u32_to_str(entry->flags, buf, 10));
             p += entry->length;
         }
             break;
         case 1: {   // IO APIC
             madt_io_apic_entry_t *entry = (madt_io_apic_entry_t *) p;
-            // print("IO APIC, length=");
-            // print(u32_to_str(entry->length, buf, 10));
-            // print(" and size=");
-            // print(u32_to_str(sizeof(madt_io_apic_entry_t), buf, 10));
-            // print(". APIC id=");
-            // print(u32_to_str(entry->io_apic_id, buf, 10));
-            // print(" addr=0x");
-            // print(u32_to_str(entry->io_apic_addr, buf, 16));
-            // print(" int_base=0x");
-            // println(u32_to_str(entry->global_system_interrupt_base, buf, 16));
+            print("IO APICId=");
+            print(u32_to_str(entry->io_apic_id, buf, 10));
+            print(" addr=0x");
+            print(u32_to_str(entry->io_apic_addr, buf, 16));
+            print(" int_base=0x");
+            println(u32_to_str(entry->global_system_interrupt_base, buf, 16));
             p += entry->length;
         }
             break;
         case 2: {   // interrupt source override
             madt_interrupt_src_override_t *entry = (madt_interrupt_src_override_t *) p;
             // println("interrupt source override");
-            // print("int from bus ");
-            // print(u32_to_str(entry->bus_source, buf, 10));
-            // print(" irq ");
-            // print(u32_to_str(entry->irq_source, buf, 16));
-            // print(" g ");
-            // println(u32_to_str(entry->global_system_interrupt, buf, 16));
+            print("int from bus ");
+            print(u32_to_str(entry->bus_source, buf, 10));
+            print(" irq=0x");
+            print(u32_to_str(entry->irq_source, buf, 16));
+            print(" glocal=0x");
+            println(u32_to_str(entry->global_system_interrupt, buf, 16));
             p += entry->length;
         }
             break;
         default:
-            // println("unknown MADT entry type!");
-            ++p;
+            // although we don't know the structure of this entry
+            // but we're sure that the 2nd byte indicates its length
+            p += *(p+1);
             break;
         }
-        ++i;
     }
 }
 
@@ -170,6 +164,9 @@ void process_acpi_table(uint64_t addr) {
     } else if (memcmp((char *) addr, "HEST", 4) == 0) {
         // hardware error source table
         println("HEST");
+    } else if (memcmp((char *) addr, "HPET", 4) == 0) {
+        // High Precision Event Timer
+        println("HPET");
     } else if (memcmp((char *) addr, "MSCT", 4) == 0) {
         // maximum system characteristics table
         println("MSCT");
@@ -208,11 +205,7 @@ void process_acpi_table(uint64_t addr) {
         // XSDT, already processed
         println("XSDT");
     } else {
-        print("Others ");
-        char buf[5];
-        memcpy(buf, (char *) addr, 4);
-        buf[4] = '\0';
-        println(buf);
+        println("WTF!");
     }
 }
 

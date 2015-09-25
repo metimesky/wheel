@@ -86,7 +86,7 @@ struct madt_io_apic_entry {
 typedef struct madt_io_apic_entry madt_io_apic_entry_t;
 
 struct madt_interrupt_src_override {
-    uint8_t type;
+    uint8_t type;   // 2
     uint8_t length;
     uint8_t bus_source;
     uint8_t irq_source;
@@ -94,6 +94,42 @@ struct madt_interrupt_src_override {
     uint16_t flags;
 } __attribute__((packed));
 typedef struct madt_interrupt_src_override madt_interrupt_src_override_t;
+
+struct madt_nmi_source {
+    uint8_t type;   // 3
+    uint8_t length;
+} __attribute__((packed));
+typedef struct madt_nmi_source madt_nmi_source_t;
+
+struct madt_local_apic_nmi {
+    uint8_t type;   // 4
+    uint8_t length;
+} __attribute__((packed));
+typedef struct madt_local_apic_nmi madt_local_apic_nmi_t;
+
+struct madt_local_apic_addr_override {
+    uint8_t type;   // 5
+    uint8_t length;
+} __attribute__((packed));
+typedef struct madt_local_apic_addr_override madt_local_apic_addr_override_t;
+
+struct madt_io_sapic {
+    uint8_t type;   // 6
+    uint8_t length;
+} __attribute__((packed));
+typedef struct madt_io_sapic madt_io_sapic_t;
+
+struct madt_local_sapic {
+    uint8_t type;   // 7
+    uint8_t length;
+} __attribute__((packed));
+typedef struct madt_local_sapic madt_local_sapic_t;
+
+struct madt_platform_interrupt_source {
+    uint8_t type;   // 8
+    uint8_t length;
+} __attribute__((packed));
+typedef struct madt_platform_interrupt_source madt_platform_interrupt_source_t;
 
 /*******************************************************************************
  * FADT - Fixed ACPI Description Table
