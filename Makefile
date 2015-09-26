@@ -26,10 +26,10 @@ fda     :=  fd.img
 AS      :=  yasm
 ASFLAGS :=  -f elf64
 CC      :=  clang
-CFLAGS  :=  -c -std=c11 -O2 -Wall -Wextra -I $(inc_dir) \
-            -ffreestanding -fno-builtin -nostdinc -nostdlib \
+CFLAGS  :=  -c -std=c11 -O2 -Wall -Wextra -I $(inc_dir) -ffreestanding -fno-builtin \
             -fno-stack-protector -fno-zero-initialized-in-bss -fno-sanitize=address \
             -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-3dnow
+            # `-ffreestanding` implies `-fno-builtin`, and `-nostdlib` is used in linking
 LD      :=  ld
 LDFLAGS :=  -nostdlib -z max-page-size=0x1000
 

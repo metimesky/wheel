@@ -1,4 +1,4 @@
-#include <type.h>
+#include <stdhdr.h>
 #include "multiprocessor.h"
 #include "fake_console.h"
 #include <util.h>

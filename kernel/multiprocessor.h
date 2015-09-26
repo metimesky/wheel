@@ -1,7 +1,7 @@
 #ifndef __MULTIPROCESSOR_H__
 #define __MULTIPROCESSOR_H__ 1
 
-#include <type.h>
+#include <stdhdr.h>
 
 #define _MP_ (('_'<<0)|('M'<<8)|('P'<<16)|('_'<<24))
 

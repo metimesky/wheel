@@ -1,5 +1,5 @@
 #include "string.h"
-#include <type.h>
+#include <stdhdr.h>
 
 // TODO: very naive implementation, must be refactored later.
 

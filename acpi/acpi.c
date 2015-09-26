@@ -1,5 +1,5 @@
 #include "acpi.h"
-#include <type.h>
+#include <stdhdr.h>
 #include <util.h>
 #include "../kernel/fake_console.h"
 

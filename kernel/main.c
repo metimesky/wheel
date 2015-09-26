@@ -1,6 +1,6 @@
 /* We need to make it a better name, or a better place
  */
-#include <type.h>
+#include <stdhdr.h>
 #include <util.h>
 #include "fake_console.h"
 

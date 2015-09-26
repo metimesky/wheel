@@ -1,4 +1,4 @@
-#include <type.h>
+#include <stdhdr.h>
 #include "fake_console.h"
 
 char * const video = (char *) 0xb8000;

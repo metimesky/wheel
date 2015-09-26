@@ -3,7 +3,7 @@
 
 /* This file deals with Root System Description Table */
 
-#include <type.h>
+#include <stdhdr.h>
 
 /*******************************************************************************
  * Pointer and General Structures
