@@ -1,35 +1,37 @@
-/* We need to make it a better name, or a better place
+    /* We need to make it a better name, or a better place
  */
 #include <stdhdr.h>
 #include <util.h>
 #include "fake_console.h"
+#include "../acpi/madt.h"
+#include <multiboot.h>
 
 void acpi_init();
 
-void kernel_main() {
-    print("Welcome to Wheel Operating System. ");
-    uint32_t a, d;
+void parse_mb_info(multiboot_info_t *mbi) {
+    ;
+}
+
+void main(uint32_t eax, uint32_t ebx) {
     char buf[33];
-    cpuid(0x80000008, &a, &d);
-    print("phy_addr_sz: ");
-    print(u32_to_str(a & 0xff, buf, 10));
-    print(", lin_addr_sz: ");
-    println(u32_to_str((a >> 8) & 0xff, buf, 10));
-    // at this stage, identical paging is setup, GDT has only two segments for
-    // kernel code and data. Interrupt still not initialized.
 
+    if (0x2badb002 != eax) {
+        println("bootloader not multiboot compliant!");
+        return;
+    }
+    multiboot_info_t *mbi = (multiboot_info_t *) ebx;
+    // TODO: init physical memory management buddy using mbi.
+    // allocator_init(mbi);
+
+    // init ACPI
+    // TODO: currently we use custom code that only finds MADT. In the lone term
+    // we should switch to ACPICA and call its init function
     acpi_init();
-    // if (multiprocessor_init()) {
-    //     println("Seems your computer has only 1 CPU.");
-    // } else {
-    //     println("You have a multi-processor computer!");
-    // }
 
-    // check if the CPU has a built-in local APIC
-    // uint32_t a, d;
-    cpuid(1, &a, &d);
-    if (d & (1UL << 9)) {
-    	println("Yes, APIC support is on.");
+    // check if madt was found during ACPI init
+    if (!madt_present) {
+        // if not, try searching for MP tables
+        multiprocessor_init();
     }
 
     cpuid_vendor_string(0, buf);

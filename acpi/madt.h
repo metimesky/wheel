@@ -17,8 +17,8 @@ struct madt {   // signature = "APIC"
 typedef struct madt madt_t;
 
 struct madt_local_apic_entry {
-    uint8_t type;   // 0
-    uint8_t length;
+    uint8_t type;           // 0
+    uint8_t length;         // 8
     uint8_t processor_id;
     uint8_t local_apic_id;
     uint32_t flags;
@@ -26,8 +26,8 @@ struct madt_local_apic_entry {
 typedef struct madt_local_apic_entry madt_local_apic_entry_t;
 
 struct madt_io_apic_entry {
-    uint8_t type;   // 1
-    uint8_t length;
+    uint8_t type;           // 1
+    uint8_t length;         // 12
     uint8_t io_apic_id;
     uint8_t reserved;
     uint32_t io_apic_addr;
@@ -35,15 +35,15 @@ struct madt_io_apic_entry {
 } __attribute__((packed));
 typedef struct madt_io_apic_entry madt_io_apic_entry_t;
 
-struct madt_interrupt_src_override {
-    uint8_t type;   // 2
-    uint8_t length;
-    uint8_t bus_source;
-    uint8_t irq_source;
-    uint32_t global_system_interrupt;
+struct madt_interrupt_source_override {
+    uint8_t type;           // 2
+    uint8_t length;         // 10
+    uint8_t bus;            // 0 constant, meaning ISA
+    uint8_t source;         // bus-relative IRQ
+    uint32_t global_system_interrupt;   // the GIS that this interrupt will signal
     uint16_t flags;
 } __attribute__((packed));
-typedef struct madt_interrupt_src_override madt_interrupt_src_override_t;
+typedef struct madt_interrupt_source_override madt_interrupt_source_override_t;
 
 struct madt_nmi_source {
     uint8_t type;   // 3
@@ -58,14 +58,20 @@ struct madt_local_apic_nmi {
 typedef struct madt_local_apic_nmi madt_local_apic_nmi_t;
 
 struct madt_local_apic_addr_override {
-    uint8_t type;   // 5
-    uint8_t length;
+    uint8_t type;               // 5
+    uint8_t length;             // 12
+    uint16_t reserved;          // 0
+    uint64_t local_apic_addr;   // use this instead
 } __attribute__((packed));
 typedef struct madt_local_apic_addr_override madt_local_apic_addr_override_t;
 
 struct madt_io_sapic {
-    uint8_t type;   // 6
-    uint8_t length;
+    uint8_t type;           // 6
+    uint8_t length;         // 16
+    uint8_t io_sapic_id;    // if APIC with same ID exists, must use this struct
+    uint8_t reserved;       // 0
+    uint32_t global_system_interrupt_base;
+    uint64_t io_sapic_addr; // mem-mapped base addr
 } __attribute__((packed));
 typedef struct madt_io_sapic madt_io_sapic_t;
 
@@ -80,5 +86,13 @@ struct madt_platform_interrupt_source {
     uint8_t length;
 } __attribute__((packed));
 typedef struct madt_platform_interrupt_source madt_platform_interrupt_source_t;
+
+/*******************************************************************************
+ * MADT Variables & Functions
+ ******************************************************************************/
+
+extern bool madt_present;
+
+extern void process_madt(madt_t *madt);
 
 #endif // __MADT_H__

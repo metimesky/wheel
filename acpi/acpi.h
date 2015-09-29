@@ -54,4 +54,10 @@ struct xsdt {   // signature = "XSDT"
 } __attribute__((packed));
 typedef struct xsdt xsdt_t;
 
+/*******************************************************************************
+ * Variables & Functions
+ ******************************************************************************/
+
+extern bool is_sdt_valid(sdt_header_t *sdt);
+
 #endif // __ACPI_H__

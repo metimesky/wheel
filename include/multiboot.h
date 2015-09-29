@@ -93,7 +93,8 @@ struct multiboot_header {
     uint32_t width;
     uint32_t height;
     uint32_t depth;
-};
+} __attribute__((packed));
+typedef struct multiboot_header multiboot_header_t;
 
 /* The symbol table for a.out. */
 struct multiboot_aout_symbol_table {
@@ -101,7 +102,7 @@ struct multiboot_aout_symbol_table {
     uint32_t strsize;
     uint32_t addr;
     uint32_t reserved;
-};
+} __attribute__((packed));
 typedef struct multiboot_aout_symbol_table multiboot_aout_symbol_table_t;
 
 /* The section header table for ELF. */
@@ -110,7 +111,7 @@ struct multiboot_elf_section_header_table {
     uint32_t size;
     uint32_t addr;
     uint32_t shndx;
-};
+} __attribute__((packed));
 typedef struct multiboot_elf_section_header_table multiboot_elf_section_header_table_t;
 
 struct multiboot_info {

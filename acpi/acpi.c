@@ -4,23 +4,15 @@
 #include <util.h>
 #include "../kernel/fake_console.h"
 
-bool madt_present = false;
-
 extern void process_madt(madt_t *madt);
 
 uint64_t find_rsdp() {
-    uint64_t ebda_addr = *((uint16_t *) 0x40e) << 4;
+    uint64_t ebda_addr = * ((uint16_t *) 0x40e) << 4;
 
-    uint64_t sig = 0UL;
-    // sig |= ((uint64_t) 'R' <<  0) & 0x00000000000000ff;
-    // sig |= ((uint64_t) 'S' <<  8) & 0x000000000000ff00;
-    // sig |= ((uint64_t) 'D' << 16) & 0x0000000000ff0000;
-    // sig |= ((uint64_t) ' ' << 24) & 0x00000000ff000000;
-    // sig |= ((uint64_t) 'P' << 32) & 0x000000ff00000000;
-    // sig |= ((uint64_t) 'T' << 40) & 0x0000ff0000000000;
-    // sig |= ((uint64_t) 'R' << 48) & 0x00ff000000000000;
-    // sig |= ((uint64_t) ' ' << 56) & 0xff00000000000000;
-    memcpy(&sig, "RSD PTR ", 8);
+    char *sig_str = "RSD PTR ";     // notice there's a space at the end
+    uint64_t sig = * ((uint64_t *) sig_str);
+    // uint64_t sig = 0UL;
+    // memcpy(&sig, "RSD PTR ", 8);
 
     // 1. search for RSDP in first KB of EBDA
     uint64_t *addr = (uint64_t *) ebda_addr;
@@ -41,7 +33,7 @@ uint64_t find_rsdp() {
     return 0;
 }
 
-int is_rsdp_1_valid(rsdp_1_t *rsdp) {
+bool is_rsdp_1_valid(rsdp_1_t *rsdp) {
     uint8_t *p = rsdp;
     uint8_t sum = 0;
     for (int i = 0; i < sizeof(rsdp_1_t); ++i) {
@@ -50,7 +42,7 @@ int is_rsdp_1_valid(rsdp_1_t *rsdp) {
     return sum == 0;
 }
 
-int is_rsdp_2_valid(rsdp_2_t *rsdp) {
+bool is_rsdp_2_valid(rsdp_2_t *rsdp) {
     if (is_rsdp_1_valid(&(rsdp->rsdp_1))) {
         uint8_t *p = &(rsdp->length);
         uint8_t sum = 0;
@@ -59,11 +51,11 @@ int is_rsdp_2_valid(rsdp_2_t *rsdp) {
         }
         return sum == 0;
     }
-    return 0;
+    return false;
 }
 
 // check the validness of all kinds of SDT
-int is_sdt_valid(sdt_header_t *sdt) {
+bool is_sdt_valid(sdt_header_t *sdt) {
     uint8_t *p = (uint8_t *) sdt;
     uint8_t sum = 0;
     for (int i = 0; i < sdt->length; ++i) {
@@ -77,7 +69,6 @@ int is_sdt_valid(sdt_header_t *sdt) {
 void process_acpi_table(uint64_t addr) {
     if (memcmp((char *) addr, "APIC", 4) == 0) {
         // multiple APIC description table
-        madt_present = true;
         // println("APIC");
         process_madt((madt_t *) addr);
     } else if (memcmp((char *) addr, "BERT", 4) == 0) {
@@ -155,7 +146,7 @@ void process_acpi_table(uint64_t addr) {
 void acpi_init() {
     char buf[33];
     uint64_t addr = find_rsdp();
-    if (!addr) {
+    if (0 == addr) {
         println("This computer has no ACPI!");
         return;
     }
