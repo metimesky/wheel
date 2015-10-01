@@ -22,6 +22,7 @@ void main(uint32_t eax, uint32_t ebx) {
     multiboot_info_t *mbi = (multiboot_info_t *) ebx;
     // TODO: init physical memory management buddy using mbi.
     // allocator_init(mbi);
+    page_alloc_init(mbi->mmap_addr, mbi->mmap_length);
 
     // init ACPI
     // TODO: currently we use custom code that only finds MADT. In the lone term

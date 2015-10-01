@@ -4,5 +4,6 @@
 #include "../library/io.h"
 #include "../library/cpu.h"
 #include "../library/string.h"
+#include "../library/bitmap.h"
 
 #endif // __UTIL_H__

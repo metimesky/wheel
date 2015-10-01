@@ -9,7 +9,7 @@
 
 # directories
 inc_dir :=  include
-src_dir :=  kernel acpi library
+src_dir :=  kernel acpi memory library
 dst_dir :=  build
 
 # files
