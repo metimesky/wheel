@@ -97,6 +97,9 @@ static uint64_t count_trailing_zeros(uint64_t data) {
     return count;
 }
 
+// PC memory have zones.
+// DMA device may use physical memory below 16MB, for normal memory allocation
+
 // 寻找一个 `order` 阶的内存块，返回这个块在位图中的下标，而非地址
 // 如果找不到符合条件的内存块，则返回零。
 // 该函数仅寻找合适的内存块，并不去分配，也不会破坏更大块的可用性。

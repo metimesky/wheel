@@ -59,5 +59,6 @@ typedef struct xsdt xsdt_t;
  ******************************************************************************/
 
 extern bool is_sdt_valid(sdt_header_t *sdt);
+extern void acpi_init();
 
 #endif // __ACPI_H__

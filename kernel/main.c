@@ -3,14 +3,11 @@
 #include <stdhdr.h>
 #include <util.h>
 #include "fake_console.h"
+#include "../memory/page_alloc.h"
+#include "../memory/virt_alloc.h"
+#include "../acpi/acpi.h"
 #include "../acpi/madt.h"
 #include <multiboot.h>
-
-void acpi_init();
-
-void parse_mb_info(multiboot_info_t *mbi) {
-    ;
-}
 
 void main(uint32_t eax, uint32_t ebx) {
     char buf[33];
@@ -34,6 +31,8 @@ void main(uint32_t eax, uint32_t ebx) {
         // if not, try searching for MP tables
         multiprocessor_init();
     }
+
+    // init local APIC.
 
     cpuid_vendor_string(0, buf);
     buf[12] = '\0';

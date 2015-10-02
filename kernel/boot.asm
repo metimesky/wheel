@@ -210,7 +210,7 @@ mb_ebx: dd  0
 kernel_stack:   resb 0x1000
 kernel_stack_top:
 
-; reserve 24KB for page tables. (1 PML4T, 1 PDPT, 3 PDT)
+; reserve 24KB for page tables. (1 PML4T, 1 PDPT, 4 PDT)
 ALIGN 0x1000
 global pml4t
 pml4t:          resb 0x6000
