@@ -17,4 +17,10 @@ struct pml4e {
 } __attribute__((packed));
 typedef struct pml4e pml4e_t;
 
+struct block_tag {
+    uint64_t prev_block;
+    uint64_t block_size;
+} __attribute__((packed));
+typedef struct block_tag block_tag_t;
+
 #endif // __VIRT_ALLOC_H__
