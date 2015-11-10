@@ -17,8 +17,8 @@ void main(uint32_t eax, uint32_t ebx) {
         return;
     }
     multiboot_info_t *mbi = (multiboot_info_t *) ebx;
-    // TODO: init physical memory management buddy using mbi.
-    // allocator_init(mbi);
+    // TODO: in future i want to do as:
+    //     memory_init(mbi);
     page_alloc_init(mbi->mmap_addr, mbi->mmap_length);
 
     // init ACPI
@@ -31,6 +31,9 @@ void main(uint32_t eax, uint32_t ebx) {
         // if not, try searching for MP tables
         multiprocessor_init();
     }
+
+    // TODO: initialize interrupt (stuffs like IDT, ISR, etc)
+    // we have to find APIC table from ACPI (WTF!)
 
     // init local APIC.
 
