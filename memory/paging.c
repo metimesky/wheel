@@ -21,6 +21,12 @@ extern char kernel_bss_end;
 // defined in boot.asm
 extern uint64_t pml4t[512];
 
+// struct page {
+//     bool used   :1;
+//     uint64_t padding:2;
+// } __attribute__((packed));
+// typedef struct page page_t;
+
 // 0~7阶位图，覆盖4K到512K的粒度
 uint64_t *buddy_map[8];
 

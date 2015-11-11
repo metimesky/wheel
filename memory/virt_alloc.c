@@ -20,6 +20,8 @@ void virt_alloc_init() {
  * also 16-byte aligned.
  */
 
+char buf[33];
+
 block_tag_t *first_block;
 
 void test_mm() {

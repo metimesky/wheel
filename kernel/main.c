@@ -3,11 +3,12 @@
 #include <stdhdr.h>
 #include <util.h>
 #include "fake_console.h"
-#include "../memory/page_alloc.h"
+#include "../memory/paging.h"
 #include "../memory/virt_alloc.h"
 #include "../acpi/acpi.h"
 #include "../acpi/madt.h"
 #include <multiboot.h>
+#include "interrupt.h"
 
 void main(uint32_t eax, uint32_t ebx) {
     char buf[33];
@@ -34,12 +35,14 @@ void main(uint32_t eax, uint32_t ebx) {
 
     // TODO: initialize interrupt (stuffs like IDT, ISR, etc)
     // we have to find APIC table from ACPI (WTF!)
-
-    // init local APIC.
+    interrupt_init();
 
     cpuid_vendor_string(0, buf);
     buf[12] = '\0';
-    print("CPU Vendor: ");
-    println(buf);
+    printf("CPU Vendor: %s\n", buf);
+
+    // test interruption
+    __asm__ __volatile__ ("sti");
+    __asm__ __volatile__ ("ud2");
     while (1) {}
 }

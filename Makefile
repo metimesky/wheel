@@ -43,31 +43,31 @@ all: kernel write run
 kernel: $(bin)
 
 write: $(bin) $(fda)
-	@echo "\033[1;34mwriting to floppy image\033[0m"
+	@printf "\033[1;34mwriting to floppy image\033[0m\n"
 	@mcopy -o $(bin) -i $(fda) ::/
 
 run: $(fda)
-	@echo "\033[1;31mexecuting qemu\033[0m"
+	@printf "\033[1;31mexecuting qemu\033[0m\n"
 	@qemu-system-x86_64 -m 32 -smp 2 -fda $(fda)
 
 clean:
-	@echo "\033[1;34mcleaning objects\033[0m"
+	@printf "\033[1;34mcleaning objects\033[0m\n"
 	@rm $(objects) $(bin)
 
 # NOTE: special rules first, generic rules later
 # make will use first rule matching the pattern
 
 $(bin): $(objects) $(lds)
-	@echo "\033[1;34mlinking kernel\033[0m"
+	@printf "\033[1;34mlinking kernel\033[0m\n"
 	@mkdir -p $(@D)
 	@$(LD) $(LDFLAGS) -T $(lds) -Map $(map) -o $@ $^
 
 $(dst_dir)/%.asm.o: %.asm
-	@echo "\033[1;32massembling $< to $@\033[0m"
+	@printf "\033[1;32massembling $< to $@\033[0m\n"
 	@mkdir -p $(@D)
 	@$(AS) $(ASFLAGS) -o $@ $<
 
 $(dst_dir)/%.c.o: %.c $(headers)
-	@echo "\033[1;32mcompiling $< to $@\033[0m"
+	@printf "\033[1;32mcompiling $< to $@\033[0m\n"
 	@mkdir -p $(@D)
 	@$(CC) $(CFLAGS) -o $@ $<

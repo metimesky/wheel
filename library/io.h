@@ -1,6 +1,6 @@
 #ifndef __IO_H__
 #define __IO_H__ 1
-
+/*
 static inline unsigned char in_byte(unsigned short port) {
     unsigned char ret;
     __asm__ __volatile__("inb %1, %0" : "=a"(ret) : "Nd"(port));
@@ -34,5 +34,5 @@ static inline void out_dword(unsigned short port, unsigned int val) {
 static inline void io_wait() {
     __asm__ __volatile__("outb %%al, $0x80" :: "a"(0));
 }
-
+*/
 #endif // __IO_H__
