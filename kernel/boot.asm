@@ -1,5 +1,8 @@
 ; This is the entry point of kernel, the control is handed over from GRUB.
-; In this file, 
+; In this file, we first setup 64-bit mode, including GDT and PAE paging,
+; then jump into C code.
+; Besides all the setting up stuffs, this file also include the definition
+; of kernel stack, GDT and initial page table.
 
 extern  kernel_start
 extern  kernel_data_end
@@ -163,10 +166,10 @@ long_mode_entry:
     mov     gs, ax
 
     ; clear the screen
-    mov     edi, 0xb8000
-    mov     rax, 0x0f200f200f200f20
-    mov     ecx, 500
-    rep     stosq
+;    mov     edi, 0xb8000
+;    mov     rax, 0x0f200f200f200f20
+;    mov     ecx, 500
+;    rep     stosq
 
     mov     edi, [mb_eax]
     mov     esi, [mb_ebx]
@@ -214,6 +217,3 @@ kernel_stack_top:
 ALIGN 0x1000
 global pml4t
 pml4t:          resb 0x6000
-
-ring3_stack:    resb 0x1000
-ring3_stack_top:

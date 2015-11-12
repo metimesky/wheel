@@ -7,11 +7,14 @@
 #include "../memory/virt_alloc.h"
 #include "../acpi/acpi.h"
 #include "../acpi/madt.h"
+#include "../dev/console/console.h"
 #include <multiboot.h>
 #include "interrupt.h"
 
 void main(uint32_t eax, uint32_t ebx) {
     char buf[33];
+
+    // console_init();
 
     if (0x2badb002 != eax) {
         println("bootloader not multiboot compliant!");

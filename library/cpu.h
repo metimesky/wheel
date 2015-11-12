@@ -84,4 +84,8 @@ void io_wait();
 
 void load_idtr(void* idtr);
 
+static inline void real_load_idtr(void* idtr) {
+    __asm__ __volatile__("lidt (%0)" :: "a"(idtr));
+}
+
 #endif // __CPU_H__

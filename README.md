@@ -3,6 +3,12 @@ Wheel
 
 Wheel is an operating system written from scratch. Currently Wheel is only compatible with AMD64 CPU.
 
+This OS aim to be new, without any backward compatibility, and use the lastest hardware standard, with one exception -- UEFI.
+
+Wheel does not UEFI, instead, it use old BIOS. Structures like EBDA, SMBIOS and ACPI table are searched rather than queried from UEFI. Main reason is I didn't find any document on UEFI and GRUB, and I don't want to write the whole bootloader just for use UEFI.
+
+Besides UEFI, all component is the latest possible. Wheel uses ACPI to acquire multiprocessor and APIC info, uses APIC to handle hardware interrupt and timing.
+
 ### Code Structure
 
 OS is complex with its component link to each other, so it's hard to organize the source code cleanly.
