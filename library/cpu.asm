@@ -2,15 +2,15 @@
 ; second argument is passed using rsi
 
 
-global in_byte
-global in_word
-global in_dword
+;global in_byte
+;global in_word
+;global in_dword
 
-global out_byte
-global out_word
-global out_dword
+;global out_byte
+;global out_word
+;global out_dword
 
-global io_wait
+;global io_wait
 global load_idtr
 
 [section .text]

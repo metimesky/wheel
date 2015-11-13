@@ -11,10 +11,24 @@
 #include <multiboot.h>
 #include "interrupt.h"
 
+void print_junk(char x) {
+    console_put_char(x);
+    console_put_string("hello, world! 1\n");
+    console_put_string("hello, world! 2\n");
+    console_put_string("hello, world! 3\n");
+    console_put_string("hello, world! 4\n");
+    console_put_string("hello, world! 5\n");
+    console_put_string("hello, world! 6\n");
+    console_put_string("hello, world! 7\n");
+    console_put_string("hello, world! 8\n");
+    console_put_string("hello, world! 9\n");
+    console_put_string("hello, world! 0\n");
+}
+
 void main(uint32_t eax, uint32_t ebx) {
     char buf[33];
 
-    // console_init();
+    console_init();
 
     if (0x2badb002 != eax) {
         println("bootloader not multiboot compliant!");
@@ -44,8 +58,18 @@ void main(uint32_t eax, uint32_t ebx) {
     buf[12] = '\0';
     printf("CPU Vendor: %s\n", buf);
 
+    // console_scroll(5);
+    console_set_cursor(0, 7);
+
     // test interruption
-    __asm__ __volatile__ ("sti");
-    __asm__ __volatile__ ("ud2");
+    // __asm__ __volatile__ ("sti");
+    // __asm__ __volatile__ ("ud2");
+
+    console_init();
+
+    for (int i = 0; i < 20; ++i) {
+        print_junk('a'+i);
+        for (int j = 0; j < 1000; ++j) { for (int k = 0; k < 100; ++k) { for (int o = 0; o < 100; ++o) { for (int p = 0; p < 100; ++p) {} } } }
+    }
     while (1) {}
 }

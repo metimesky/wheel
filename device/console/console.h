@@ -14,4 +14,7 @@ int console_get_width();
 int console_get_height();
 void console_set_cursor(int x, int y);
 
+void console_put_char(char c);
+void console_put_string(const char *str);
+
 #endif // __CONSOLE_H__

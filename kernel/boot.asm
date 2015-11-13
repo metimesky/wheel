@@ -105,8 +105,8 @@ enter_long_mode:
     add     edi, 0x1000 - 24
 
     ; creating 4*512 Page Directory Entry (PDE)
-    mov     ebx, 0x00000083         ; present, read/write, 1G granularity
-    mov     ecx, 4*512              ; 3*512 entries in total
+    mov     ebx, 0x00000083         ; present, read/write, 2MB granularity
+    mov     ecx, 4*512              ; 4*512 entries in total
 .set_pdp_entry:
     mov     dword [edi], ebx
     add     ebx, 1 << 21

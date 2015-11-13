@@ -39,7 +39,6 @@ static inline unsigned long long rdtsc() {
     return ret;
 }
 
-/*
 static inline unsigned char in_byte(unsigned short port) {
     unsigned char ret;
     __asm__ __volatile__("inb %1, %0" : "=a"(ret) : "Nd"(port));
@@ -73,14 +72,15 @@ static inline void out_dword(unsigned short port, unsigned int val) {
 static inline void io_wait() {
     __asm__ __volatile__("outb %%al, $0x80" :: "a"(0));
 }
-*/
-unsigned char in_byte(unsigned short port);
-unsigned short in_word(unsigned short port);
-unsigned int in_dword(unsigned short port);
-void out_byte(unsigned short port, unsigned char val);
-void out_word(unsigned short port, unsigned short val);
-void out_dword(unsigned short port, unsigned int val);
-void io_wait();
+
+
+// unsigned char in_byte(unsigned short port);
+// unsigned short in_word(unsigned short port);
+// unsigned int in_dword(unsigned short port);
+// void out_byte(unsigned short port, unsigned char val);
+// void out_word(unsigned short port, unsigned short val);
+// void out_dword(unsigned short port, unsigned int val);
+// void io_wait();
 
 void load_idtr(void* idtr);
 

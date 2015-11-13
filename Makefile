@@ -9,7 +9,7 @@
 
 # directories
 inc_dir :=  include
-src_dir :=  kernel acpi memory library dev
+src_dir :=  kernel acpi memory library device
 dst_dir :=  build
 
 # files
@@ -36,7 +36,7 @@ LDFLAGS :=  -nostdlib -z max-page-size=0x1000
 ################################################################################
 
 # pseudo-targets
-.PHONY: all kernel write run clean
+.PHONY: all kernel write run doc clean
 
 all: kernel write run
 
@@ -49,6 +49,9 @@ write: $(bin) $(fda)
 run: $(fda)
 	@printf "\033[1;31mexecuting qemu\033[0m\n"
 	@qemu-system-x86_64 -m 32 -smp 2 -fda $(fda)
+
+doc:
+	cd doc && $(MAKE) singlehtml
 
 clean:
 	@printf "\033[1;34mcleaning objects\033[0m\n"
