@@ -51,7 +51,7 @@ run: $(fda)
 	@qemu-system-x86_64 -m 32 -smp 2 -fda $(fda)
 
 doc:
-	cd doc && $(MAKE) singlehtml
+	cd doc && mkdocs build
 
 clean:
 	@printf "\033[1;34mcleaning objects\033[0m\n"

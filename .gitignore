@@ -33,7 +33,7 @@
 build
 
 # Document output directory
-doc/_build
+doc/site
 
 # Editor / IDE
 *~
