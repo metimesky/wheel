@@ -28,13 +28,23 @@ void print_junk(char x) {
 void main(uint32_t eax, uint32_t ebx) {
     char buf[33];
 
+    // initialize early console to print verbose information.
+    // currently only 80x25 text mode is supported, graphics mode may be
+    // turned on later.
     console_init();
 
+    // check if magic number is compliant
     if (0x2badb002 != eax) {
         println("bootloader not multiboot compliant!");
         return;
     }
+
+    // retrieve multiboot info structure
     multiboot_info_t *mbi = (multiboot_info_t *) ebx;
+
+    // initialize memory management module
+    memory_init(mbi);
+
     // TODO: in future i want to do as:
     //     memory_init(mbi);
     page_alloc_init(mbi->mmap_addr, mbi->mmap_length);
