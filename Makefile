@@ -8,13 +8,12 @@
 ################################################################################
 
 # directories
-inc_dir :=  include
-src_dir :=  kernel acpi memory library device
+src_dir :=  kernel
 dst_dir :=  build
 
 # files
 sources :=  $(foreach dir, $(src_dir), $(shell find $(dir) -name '*.asm' -o -name '*.c'))
-headers :=  $(foreach dir, $(src_dir) $(inc_dir), $(shell find $(dir) -name '*.h'))
+headers :=  $(foreach dir, $(src_dir), $(shell find $(dir) -name '*.h'))
 objects :=  $(foreach obj, $(patsubst %.asm, %.asm.o, $(patsubst %.c, %.c.o, $(sources))), $(dst_dir)/$(obj))
 
 bin     :=  $(dst_dir)/kernel.bin
@@ -26,7 +25,7 @@ fda     :=  fd.img
 AS      :=  yasm
 ASFLAGS :=  -f elf64
 CC      :=  clang
-CFLAGS  :=  -c -std=c11 -O2 -Wall -Wextra -I $(inc_dir) -ffreestanding -fno-builtin \
+CFLAGS  :=  -c -std=c11 -O2 -Wall -Wextra -I $(src_dir) -ffreestanding -fno-builtin \
             -fno-stack-protector -fno-zero-initialized-in-bss -fno-sanitize=address \
             -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-3dnow
             # `-ffreestanding` implies `-fno-builtin`, and `-nostdlib` is used in linking
@@ -36,7 +35,7 @@ LDFLAGS :=  -nostdlib -z max-page-size=0x1000
 ################################################################################
 
 # pseudo-targets
-.PHONY: all kernel write run doc clean
+.PHONY: all kernel write run clean
 
 all: kernel write run
 
@@ -49,9 +48,6 @@ write: $(bin) $(fda)
 run: $(fda)
 	@printf "\033[1;31mexecuting qemu\033[0m\n"
 	@qemu-system-x86_64 -m 32 -smp 2 -fda $(fda)
-
-doc:
-	cd doc && mkdocs build
 
 clean:
 	@printf "\033[1;34mcleaning objects\033[0m\n"

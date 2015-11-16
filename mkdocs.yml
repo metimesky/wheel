@@ -1,0 +1,10 @@
+site_name: Wheel Dev Note
+site_author: Song Ziming
+site_dir: build/site
+theme: readthedocs
+pages:
+- 'Home': index.md
+- 'Coding Style': coding_style.md
+- 'File Structure': file_structure.md
+- 'Memory Management': memory_management.md
+- 'Paging': initial_paging.md

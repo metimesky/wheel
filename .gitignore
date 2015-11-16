@@ -32,9 +32,6 @@
 # Output directory
 build
 
-# Document output directory
-doc/site
-
 # Editor / IDE
 *~
 .idea
