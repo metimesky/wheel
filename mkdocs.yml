@@ -8,3 +8,4 @@ pages:
 - 'File Structure': file_structure.md
 - 'Memory Management': memory_management.md
 - 'Paging': initial_paging.md
+- 'ACPI': acpi.md

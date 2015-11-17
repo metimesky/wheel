@@ -1,6 +1,12 @@
 #ifndef __MULTIPROCESSOR_H__
 #define __MULTIPROCESSOR_H__ 1
 
+/**
+    Multi-processor information can be found using two methods:
+    1. using old MP table, as shown in this file
+    2. using new ACPI structure, which is prefered
+ */
+
 #include <common/stdhdr.h>
 
 #define _MP_ (('_'<<0)|('M'<<8)|('P'<<16)|('_'<<24))

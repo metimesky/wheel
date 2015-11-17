@@ -22,6 +22,9 @@
 #define ICW4_BUF_MASTER 0x0C        /* Buffered mode/master */
 #define ICW4_SFNM       0x10        /* Special fully nested (not) */
 
+/**
+    fully and properly disable 8259A to switch to APIC mode
+ */
 void disable_8259() {
     out_byte(PIC1_CMD, ICW1_INIT+ICW1_ICW4);  // starts the initialization sequence (in cascade mode)
     io_wait();
@@ -65,11 +68,17 @@ idt_entry_t idt[INT_NUM];
 idt_ptr_t idtr;
 void* interrupt_handler_table[INT_NUM];
 
+/**
+    Default interrupt handler that should be replaced
+ */
 void default_interrupt_handler() {
     log("interrupt");
     while (true) {}
 }
 
+/**
+    fill IDT entry with given handler address
+ */
 void fill_idt_entry(idt_entry_t *entry, void *handler) {
     entry->selector = 8;
     entry->offset_low = ((uint64_t) handler) & 0xffff;
@@ -79,6 +88,9 @@ void fill_idt_entry(idt_entry_t *entry, void *handler) {
     entry->reserved = 0;
 }
 
+/**
+    fill IDT entries and load IDTR
+ */
 void idt_init() {
     // initially, fill all interrupt handler as the default one
     for (int i = 0; i < INT_NUM; ++i) {
@@ -134,4 +146,7 @@ void interrupt_init() {
     uint32_t val = *((uint32_t *) 0xfee000f0);
     val |= 1 << 8;
     *((uint32_t *) 0xfee000f0) = val;
+
+    // enable system-wide interrupt
+    __asm__("sti");
 }
