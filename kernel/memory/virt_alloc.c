@@ -2,11 +2,6 @@
 #include <common/stdhdr.h>
 #include <common/util.h>
 
-void virt_alloc_init() {
-    uint32_t a, d;
-    // cpuid()
-}
-
 /* In kernel, it is a common task to create and delete kernel objects, and
  * this operation is very frequent. we can make an object pool, except we only
  * distinguish object by its size.
@@ -18,6 +13,55 @@ void virt_alloc_init() {
  * payload. Block-tag is 16-byte long, and block is 16-byte aligned, payload
  * also 16-byte aligned.
  */
+
+// each binlist is a double linked list of pages
+// where each page contains several objects of
+// size 8*i, where i is the index of binlist.
+static uint64_t binlist[512];
+
+void virt_alloc_init() {
+    uint32_t a, d;
+    // cpuid()
+}
+
+void mem_alloc(int size) {
+    // round up to 8 bytes
+    int idx = (size + 7) >> 3;
+}
+
+void mem_free(uint64_t addr, int size) {
+    // calculate the index
+    int idx = (size + 7) >> 3;
+}
+
+void check_cache_size() {
+    // first acquire the cache level and size to align objects in slab
+    // so that we could performing cache coloring.
+    uint32_t a, b, c, d;
+    for (int i = 0; 1; ++i) {
+        a = 4;
+        c = 0;
+        __asm__ __volatile__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(a), "b"(b), "c"(c), "d"(d));
+        switch (a & 0x1f) {
+        case 0:
+            // null, no more caches
+            break;
+        case 1:
+            // data cache
+            break;
+        case 2:
+            // instruction cache
+            break;
+        case 3:
+            // unified cache
+            break;
+        default:
+            // reserved
+            break;
+        }
+        int level = (a >> 5) & 0x07;
+    }
+}
 
 char buf[33];
 

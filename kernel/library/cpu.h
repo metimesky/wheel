@@ -3,8 +3,12 @@
 
 #include <common/stdhdr.h>
 
-static inline void cpuid(uint32_t code, uint32_t* a, uint32_t* d) {
-    __asm__ __volatile__("cpuid" : "=a"(*a), "=d"(*d) : "a"(code) : "ebx", "ecx");
+// static inline void cpuid(uint32_t code, uint32_t* a, uint32_t* d) {
+//     __asm__ __volatile__("cpuid" : "=a"(*a), "=d"(*d) : "a"(code) : "ebx", "ecx");
+// }
+
+static inline void cpuid(uint32_t code, uint32_t* a, uint32_t *b, uint32_t *c, uint32_t* d) {
+    __asm__ __volatile__("cpuid" : "=a"(*a), "=b"(*b), "=c"(*c), "=d"(*d) : "a"(code), "b"(*b), "c"(*c), "d"(*d));
 }
 
 static inline char* cpuid_vendor_string(uint32_t code, char* out) {
