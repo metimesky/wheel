@@ -89,3 +89,23 @@ void test_mm() {
     // unmap(g8);
     // unmap(pointee);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// Bitmap-based Kernel Heap
+////////////////////////////////////////////////////////////////////////////////
+
+// reference: http://wiki.osdev.org/User:Pancakes/SimpleHeapImplementation
+
+// for safety, we map kernel heap right after 4GB, grow upward
+uint64_t heap_addr = 0x100000000UL;
+uint64_t heap_size;
+
+void kernel_heap_init() {
+    // allocate the first page
+    uint64_t phy = alloc_pages(0);
+    if (phy == 0) {
+        log("Cannot init kernel heap, no more memory!");
+        return;
+    }
+    map(phy, heap_addr);
+}
