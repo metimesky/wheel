@@ -2,22 +2,36 @@
 #include <common/stdhdr.h>
 #include <common/util.h>
 
-/* In kernel, it is a common task to create and delete kernel objects, and
- * this operation is very frequent. we can make an object pool, except we only
- * distinguish object by its size.
- * The idea is alloc memory for a lot of object at one time, and keep track of
- * how many we've used, instead of allocate one whenever we need a new one.
+/* Virtual memory allocator is implemented modeling SLUB allocator.
+ * allocator consists of a binlist, each bin contains many slabs, each slab
+ * contains many objects
  */
 
-/* Memory is dynamically allocated in block. Each block contains block tag and
- * payload. Block-tag is 16-byte long, and block is 16-byte aligned, payload
- * also 16-byte aligned.
- */
+struct bin {
+    uint64_t first_slab;
+    uint64_t first_free;
+} __attribute__((packed));
+typedef struct bin bin_t;
+
+struct slab {
+    // slab address is page-aligned, so the
+    // lowest 12 bits are free object count
+    uint32_t free_num   :12;
+    uint64_t next       :52;
+} __attribute__((packed));
+typedef struct slab slab_t;
+
+// static uint64_t next_slab(uint64_t next_and_free_num) {
+//     return next_and_free_num & 0xfffffffffffff000UL;
+// }
 
 // each binlist is a double linked list of pages
 // where each page contains several objects of
 // size 8*i, where i is the index of binlist.
+// except the first bin, which is bin for slab-object.
+
 static uint64_t binlist[512];
+
 
 void virt_alloc_init() {
     uint32_t a, d;
