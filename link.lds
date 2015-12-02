@@ -10,7 +10,7 @@ SECTIONS {
         *(.eh_frame)
     }
 
-    . = 0x100000;
+    . = 16M;
     kernel_start = .;
 
     .text /* BLOCK(4K) */ : /* ALIGN(4K) */ {

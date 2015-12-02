@@ -16,4 +16,7 @@ struct mem_chunk {
 } __attribute__((packed));
 typedef struct mem_chunk mem_chunk_t;
 
+// allocate 2^order physical pages and map them continuously to vertual address addr
+bool virt_alloc_pages(uint64_t addr, int order);
+
 #endif // __VIRT_ALLOC_H__

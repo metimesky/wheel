@@ -2,7 +2,7 @@
 ; In this file, we first setup 64-bit mode, including GDT and PAE paging,
 ; then jump into C code.
 ; Besides all the setting up stuffs, this file also include the definition
-; of kernel stack, GDT and initial page table.
+; of initial kernel stack, GDT and initial page tables.
 
 extern  kernel_start
 extern  kernel_data_end
@@ -90,7 +90,7 @@ enter_long_mode:
     add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
 
-    ; creating 3 Page Directory Pointer Entry (PDPE)
+    ; creating 4 Page Directory Pointer Entry (PDPE)
     mov     dword [edi], 0x2003     ; present, read/write
     add     dword [edi], pml4t      ; pointing to pml4t+8K (PD Table)
     add     edi, 8

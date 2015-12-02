@@ -1,10 +1,25 @@
 #include "virt_alloc.h"
 #include <common/stdhdr.h>
 #include <common/util.h>
+#include "page_alloc.h"
 
 /* Virtual memory allocator is implemented modeling SLUB allocator.
- * allocator consists of a binlist, each bin contains many slabs, each slab
- * contains many objects
+ * allocator consists of a binlist, each bin contains a list of slabs, each
+ * slab contains many packed objects
+ */
+
+#define SLAB_SIZE   1       // how many pages in a slab
+#define PAGE_SIZE   4096    // how many bytes in a page
+
+/* The kernel virtual memory space map is illustrated as:
+ * +-----+--------------+--------------+------------------+----------------
+ * | 1MB | Kernel Image | Rest for 4GB | Kernel Heap Meta | Kernel Heap ->
+ * +-----+--------------+--------------+------------------+----------------
+ * The Wheel kernel set up 4GB identity mapping, so kernel heap are mapped
+ * after 4GB.
+ * Right after 4GB barrier, there is kernel heap's meta data area, which
+ * contains an array of `struct slab`, each `struct slab` correspond to a
+ * slab in the kernel heap area located after kernel heap meta area
  */
 
 struct bin {
@@ -32,6 +47,31 @@ typedef struct slab slab_t;
 
 static uint64_t binlist[512];
 
+
+// allocate 2^order pages and map them to addr, no need to be physically continuous
+bool virt_alloc_pages(uint64_t addr, int order) {
+    // guarentee that we can allocate such memory.
+    if ((free_page_count >> order) == 0) {
+        // in this case, we are out of memory.
+        return false;
+    }
+    
+    // try allocate all pages once
+    uint64_t frame = alloc_pages(order);
+    if (frame) {
+        // if success, just map them
+        int n = 1<<order;   // the number of pages in total
+        for (int i = 0; i < n; ++i) {
+            map(frame+4096*i, addr+4096*i);
+        }
+        return true;
+    } else {
+        // if we can't, split them up and alloc pages recursively
+        order -= 1;
+        return virt_alloc_pages(addr, order) &&
+               virt_alloc_pages(addr+(4096<<order), order);
+    }
+}
 
 void virt_alloc_init() {
     uint32_t a, d;

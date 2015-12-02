@@ -15,6 +15,10 @@
  * 释放某个块，就计算出这个块在位图中的下标，并在位图中置该位为0。
  */
 
+// TODO: reserve area for DMA, only allocate pages after 16MB for normal requests.
+//       which means we have to build a buddy for normal memory, and a separate
+//       bitmap for DMA. (DMA is only 16MB, a complete buddy is a bit wasteful)
+
 // 定义在linker.lds中，它们的地址是内核的开始/结束位置（不包含buddy_map）
 extern char kernel_load_addr;
 extern char kernel_bss_end;
@@ -22,17 +26,16 @@ extern char kernel_bss_end;
 // kernel PML4, defined in boot.asm
 extern uint64_t pml4t[512];
 
-// struct page {
-//     bool used   :1;
-//     uint64_t padding:2;
-// } __attribute__((packed));
-// typedef struct page page_t;
+#define BUDDY_LEVEL 8
 
 // 0~7阶位图，覆盖4K到512K的粒度
-uint64_t *buddy_map[8];
+uint64_t *buddy_map[BUDDY_LEVEL];
 
 // 表示各阶buddy_map的长度，存储的是有效二进制位的个数，而非数组中uint64_t的个数
-uint64_t buddy_num[8];
+uint64_t buddy_num[BUDDY_LEVEL];
+
+// how many unallocated pages are there
+uint64_t free_page_count;
 
 // 初始化页分配器，根据内存布局建立buddy位图
 void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
@@ -40,9 +43,7 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
     buddy_map[0] = (uint64_t *) (((uint64_t) &kernel_bss_end + sizeof(uint64_t) - 1) & ~(sizeof(uint64_t) - 1));
     buddy_num[0] = 0;
 
-    // char buf[33];
-    // print("creating buddy at 0x");
-    // println(u32_to_str(buddy_map[0], buf, 16));
+    free_page_count = 0;
 
     // 循环遍历内存段描述符，该信息由引导器GRUB提供
     multiboot_memory_map_t *mmap = (multiboot_memory_map_t *) mmap_addr;
@@ -64,6 +65,9 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
 
             // 记当前段的末下标为位图的总大小
             buddy_num[0] = end;
+
+            // add page count of this zone into total
+            free_page_count += end - start + 1;
         }
         mmap = (multiboot_memory_map_t *) ((uint32_t) mmap + mmap->size + sizeof(uint32_t));
     }
@@ -72,17 +76,20 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
     buddy_map[0][buddy_num[0] / BITS_PER_UINT64] &= BITMAP_LAST_UINT64_MASK(buddy_num[0]);
 
     // 计算各阶位图的位置和长度
-    for (int i = 1; i < 8; ++i) {
+    for (int i = 1; i < BUDDY_LEVEL; ++i) {
         buddy_map[i] = buddy_map[i-1] + BITS_TO_UINT64(buddy_num[i-1]);
         buddy_num[i] = (buddy_num[i-1] + 1) >> 1;
     }
     
     // 在第一阶位图内标记内核使用的内存区域
-    uint64_t kernel_size = (uint64_t) (buddy_map[7] + BITS_TO_UINT64(buddy_num[7]));
-    bitmap_clear(buddy_map[0], 0, (kernel_size + 4096 - 1) >> 12);
+    uint64_t pages_used = (uint64_t) (buddy_map[7] + BITS_TO_UINT64(buddy_num[7]));
+    pages_used += 4096 - 1;
+    pages_used >>= 12;
+    bitmap_clear(buddy_map[0], 0, pages_used);
+    free_page_count -= pages_used;
     
     // 循环填充各阶位图
-    for (int i = 1; i < 8; ++i) {
+    for (int i = 1; i < BUDDY_LEVEL; ++i) {
         bitmap_zero(buddy_map[i], buddy_num[i]);
         for (int bit = 0; bit < buddy_num[i]; ++bit) {
             // TODO: 现在的做法十分低效，能否通过位运算提速？
@@ -107,16 +114,13 @@ static uint64_t count_trailing_zeros(uint64_t data) {
     return count;
 }
 
-// PC memory have zones.
-// DMA device may use physical memory below 16MB, for normal memory allocation
-
 // 寻找一个 `order` 阶的内存块，返回这个块在位图中的下标，而非地址
 // 如果找不到符合条件的内存块，则返回零。
 // 该函数仅寻找合适的内存块，并不去分配，也不会破坏更大块的可用性。
 // 如果该函数返回零，不表示内存不足，仅表示没有最合适的空闲内存块，但程序可以申请更大的块，
 // 并将其分裂为若干小的可用块，然后使用其中一个。
-uint64_t find_free_pages(int order) {
-    if (order < 8) {
+static uint64_t find_free_pages(int order) {
+    if (order < BUDDY_LEVEL) {
         // 在对应位图中寻找非全零的单元
         int len = BITS_TO_UINT64(buddy_num[order]);
         for (int i = 0; i < len; ++i) {
@@ -125,10 +129,14 @@ uint64_t find_free_pages(int order) {
             }
         }
         return 0;
+    } else {
+        // TODO: searching for pages larger than highest buddy level.
+        return 0;
     }
 }
 
-// 分配一个 `order` 阶的块，返回起始物理地址，若找不到则返回0
+// 分配一个`order`阶的块，返回起始物理地址，若找不到则返回0
+// only allocate pages aligned at 2^order pages.
 uint64_t alloc_pages(int order) {
     // 首先寻找最合适大小的空闲内存块
     uint64_t idx = find_free_pages(order);
@@ -138,7 +146,7 @@ uint64_t alloc_pages(int order) {
     }
 
     // 如果没有找到，就寻找更大的内存块
-    for (int new_order = order+1; new_order < 8; ++new_order) {
+    for (int new_order = order+1; new_order < BUDDY_LEVEL; ++new_order) {
         idx = find_free_pages(new_order);
         if (idx) {
             // 如果找到了空闲块，不断将其二分，直到划分到预期粒度为止
@@ -158,6 +166,7 @@ uint64_t alloc_pages(int order) {
 }
 
 // 回收一个order阶的块
+// NOTICE: addr must be 2^order-page aligned!
 void free_pages(uint64_t addr, int order) {
     addr >>= 12;
     addr >>= order;
@@ -181,8 +190,6 @@ static inline bool is_page_entry_valid(uint64_t entry) {
 static inline uint64_t get_address(uint64_t entry) {
     return entry & 0x000ffffffffffe00UL;
 }
-
-char buf[33];
 
 // map the physical address `frame` to virtual address `page`.
 // TODO: we need to support mapping for processes, that is, specify
@@ -240,13 +247,6 @@ bool map(uint64_t frame, uint64_t page) {
         pdt[pde_index] = ((uint64_t) pt & 0x000ffffffffffe00UL) | 3;    // P, RW
     }
 
-    // fill page table entry
-    // if (is_page_entry_valid(pt[pte_index])) {
-    //     // we are mapping this page, and this entry should not be valid
-    //     print("page ");
-    //     print(u32_to_str(page, buf, 16));
-    //     println(" should not valid!");
-    // }
     pt[pte_index] = (frame & 0x000ffffffffffe00UL) | 3; // P, RW
     invlpg(page);
 
