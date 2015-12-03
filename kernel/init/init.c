@@ -8,6 +8,8 @@
 #include <memory/memory.h>
 #include <interrupt/interrupt.h>
 
+#include <memory/page_alloc.h>
+
 /**
     This is the main function of the kernel, because kernel has no main loop.
     When fully started, all kernel do is handling events and syscall.
@@ -38,6 +40,7 @@ void init(uint32_t eax, uint32_t ebx) {
     log("Now testing %s.", "formatted string");
     log("magic is 0x%x.", eax);
     log("this %s test %checks %d features.", "one", 'c', 3);
+    log("free page count = %d.", free_page_count);
 
     interrupt_init();
 

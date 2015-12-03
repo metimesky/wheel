@@ -11,10 +11,12 @@
 #define SLAB_SIZE   1       // how many pages in a slab
 #define PAGE_SIZE   4096    // how many bytes in a page
 
+typedef uint8_t[4096] page_t;
+
 /* The kernel virtual memory space map is illustrated as:
- * +-----+--------------+--------------+------------------+----------------
- * | 1MB | Kernel Image | Rest for 4GB | Kernel Heap Meta | Kernel Heap ->
- * +-----+--------------+--------------+------------------+----------------
+ * +-----+--------------+-----------------+------------------+----------------
+ * | 1MB | Kernel Image | padding for 4GB | Kernel Heap Meta | Kernel Heap ->
+ * +-----+--------------+-----------------+------------------+----------------
  * The Wheel kernel set up 4GB identity mapping, so kernel heap are mapped
  * after 4GB.
  * Right after 4GB barrier, there is kernel heap's meta data area, which
@@ -22,144 +24,122 @@
  * slab in the kernel heap area located after kernel heap meta area
  */
 
-struct bin {
-    uint64_t first_slab;
-    uint64_t first_free;
-} __attribute__((packed));
-typedef struct bin bin_t;
+uint64_t kernel_heap_start; // the starting address of kernel heap, page aligned
+uint64_t kernel_heap_size;  // how many pages are there in kernel heap (i.e. num of slab)
+
+/* With above two variable, we can calculate the number of pages in kernel heap:
+ * NumPages = (kernel_end - kernel_start) >> 12;
+ */
 
 struct slab {
-    // slab address is page-aligned, so the
-    // lowest 12 bits are free object count
-    uint32_t free_num   :12;
-    uint64_t next       :52;
+    uint64_t next;          // the address of next slab page, not address of struct
+    void *free_list;        // the address of first free object within THIS slab
 } __attribute__((packed));
 typedef struct slab slab_t;
 
-// static uint64_t next_slab(uint64_t next_and_free_num) {
-//     return next_and_free_num & 0xfffffffffffff000UL;
-// }
+slab_t *kernel_heap_meta;   // the address of kernel heap meta, an array of `slab_t`
+// uint64_t kernel_heap_meta_size; // how many PAGES are there in kernel heap meta
 
-// each binlist is a double linked list of pages
-// where each page contains several objects of
-// size 8*i, where i is the index of binlist.
-// except the first bin, which is bin for slab-object.
+slab_t *bins[512];          // 512 bins for each size of slabs, item is pointer to
+                            // actual slab_t object in kernel_heap_meta
 
-static uint64_t binlist[512];
+void slab_alloc_init() {
+    // kernel heap meta area starts right at 4GB mark
+    kernel_heap_meta = (slab_t *) 0x100000000UL;
 
+    // calculate kheap meta size using total free page count (rounding up)
+    kernel_heap_start = free_page_count * sizeof(slab_t *);
+    kernel_heap_start += 4096 - 1;
+    kernel_heap_start &= ~(4096UL - 1);
 
-// allocate 2^order pages and map them to addr, no need to be physically continuous
-bool virt_alloc_pages(uint64_t addr, int order) {
-    // guarentee that we can allocate such memory.
-    if ((free_page_count >> order) == 0) {
-        // in this case, we are out of memory.
-        return false;
+    // at first, kernel heap is empty
+    kernel_heap_size = 0;
+
+    // at first, every bin is empty
+    for (int i = 0; i < 512; ++i) {
+        bins[i] = NULL;
     }
-    
-    // try allocate all pages once
-    uint64_t frame = alloc_pages(order);
-    if (frame) {
-        // if success, just map them
-        int n = 1<<order;   // the number of pages in total
-        for (int i = 0; i < n; ++i) {
-            map(frame+4096*i, addr+4096*i);
+}
+
+// get the corresponding meta index of a page in kernel heap
+static int index_of_page(uint64_t addr) {
+    return (addr - kernel_heap_start) >> 12;
+}
+
+// create a new slab with given size, return the virtual address
+static uint64_t create_slab(int index) {
+    // allocate a new page for the slab
+    uint64_t slab_phy = alloc_pages(0);
+
+    // the virtual address of the new slab (end of current kernel heap)
+    uint64_t slab_vir = kernel_heap_start + kernel_heap_size * 4096;
+
+    // setup page entry and increase kernel heap size
+    map(kernel_heap_start + kernel_heap_size * 4096, slab_phy);
+    ++kernel_heap_size;
+
+    // create free list.
+    int obj_num = 4096 / (8 * index);   // total number of objects in a slab
+    uint64_t *pos = (uint64_t *) slab_vir;
+    for (int i = 0; i < obj_num; ++i) {
+        // * (uint64_t *) (slab_vir + (8 * index * i)) = (slab_vir + (8 * index * i) + 8);
+        pos[index * i] = (uint64_t) &pos[index * (i + 1)];
+    }
+    // last one is special, since it's the last element of the list
+    pos[index * (obj_num - 1)] = 0;
+
+    return slab_vir;
+}
+
+// create a bin at `index`, the corresponding object size is 8*index
+static void create_bin(int index) {
+    // calculate the kheap meta size in bytes
+    uint64_t kheap_meta_size = kernel_heap_size * sizeof(slab_t *);
+
+    // check if the kheap meta is about to grow a new page.
+    if (kheap_meta_size % 4096 == 0) {
+        // allocate new physical page for kheap meta
+        uint64_t phy = alloc_pages(0);
+
+        // calculate the virtual address of the new page
+        uint64_t vir = (uint64_t) kernel_heap_meta + (kheap_meta_size & ~(4096UL - 1));
+
+        map(vir, phy);
+    }
+
+    // create new slab and calculate its index in meta
+    uint64_t slab_vir = create_slab(index);
+    int slab_index = index_of_page(slab_vir);
+
+    // fill slab struct in meta area
+    kernel_heap_meta[slab_index].next = 0;
+    kernel_heap_meta[slab_index].free_list = slab_vir;
+
+    // point the bin to the slab struct
+    bins[index] = &kernel_heap_meta[slab_index];
+}
+
+// allocate an object with given size, return the virtual address
+uint64_t slab_alloc(int size) {
+    // round up to 8 bytes and calculate the bin index
+    int idx = (size + 7) >> 3;
+
+    if (bins[idx] == NULL) {
+        // if this bin is empty, create it first
+        create_bin(index);
+    }
+
+    slab_t *s = bins[index];
+    while (s->free_list == NULL) {
+        // loop while current slab is full
+        if (s->next == 0) {
+            // if current slab is last, then create new one
         }
-        return true;
-    } else {
-        // if we can't, split them up and alloc pages recursively
-        order -= 1;
-        return virt_alloc_pages(addr, order) &&
-               virt_alloc_pages(addr+(4096<<order), order);
     }
 }
 
-void virt_alloc_init() {
-    uint32_t a, d;
-    // cpuid()
-}
-
-void mem_alloc(int size) {
-    // round up to 8 bytes
+void slab_free(uint64_t addr, int size) {
+    // calculate the bin index
     int idx = (size + 7) >> 3;
 }
 
-void mem_free(uint64_t addr, int size) {
-    // calculate the index
-    int idx = (size + 7) >> 3;
-}
-
-void check_cache_size() {
-    // first acquire the cache level and size to align objects in slab
-    // so that we could performing cache coloring.
-    uint32_t a, b, c, d;
-    for (int i = 0; 1; ++i) {
-        a = 4;
-        c = 0;
-        __asm__ __volatile__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(a), "b"(b), "c"(c), "d"(d));
-        switch (a & 0x1f) {
-        case 0:
-            // null, no more caches
-            break;
-        case 1:
-            // data cache
-            break;
-        case 2:
-            // instruction cache
-            break;
-        case 3:
-            // unified cache
-            break;
-        default:
-            // reserved
-            break;
-        }
-        int level = (a >> 5) & 0x07;
-    }
-}
-
-char buf[33];
-
-block_tag_t *first_block;
-
-void test_mm() {
-    // print("asking for order 0 -> 0x");
-    // uint64_t addr1 = alloc_pages(0);
-    // println(u64_to_str(addr1, buf, 16));
-
-    // map(addr1, 0x100000000UL);
-    // char *pointee = (char *) 0x100000000UL;
-    // char *msg = "This is the string that is written to the newly allocated memory.";
-
-    // for (int i = 0; msg[i]; ++i) {
-    //     pointee[i] = msg[i];
-    // }
-
-    // println(pointee);
-
-    // map(addr1, 0x200000000UL);
-    // char *g8 = (char *) 0x200000000UL;
-    // println(g8);
-
-    // unmap(g8);
-    // unmap(pointee);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// Bitmap-based Kernel Heap
-////////////////////////////////////////////////////////////////////////////////
-
-// reference: http://wiki.osdev.org/User:Pancakes/SimpleHeapImplementation
-
-// for safety, we map kernel heap right after 4GB, grow upward
-uint64_t heap_addr = 0x100000000UL;
-uint64_t heap_size;
-
-void kernel_heap_init() {
-    // allocate the first page
-    uint64_t phy = alloc_pages(0);
-    if (phy == 0) {
-        log("Cannot init kernel heap, no more memory!");
-        return;
-    }
-    map(phy, heap_addr);
-}

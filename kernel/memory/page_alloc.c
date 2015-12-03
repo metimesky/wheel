@@ -174,12 +174,11 @@ void free_pages(uint64_t addr, int order) {
     for (; order < 7 && BIT_TEST(buddy_map[order], addr^1); ++order) {
         // if two neighbouring block can be merged, then merge them
         BIT_CLEAR(buddy_map[order], addr);
-        BIT_CLEAR(buddy_map[order], addr^1);
+        BIT_CLEAR(buddy_map[order], addr^1U);
         addr >>= 1;
         BIT_SET(buddy_map[order+1], addr);
     }
 }
-
 
 // check if the page entry is present
 static inline bool is_page_entry_valid(uint64_t entry) {
@@ -191,10 +190,10 @@ static inline uint64_t get_address(uint64_t entry) {
     return entry & 0x000ffffffffffe00UL;
 }
 
-// map the physical address `frame` to virtual address `page`.
+// map the virtual address `page` to physical address `frame`.
 // TODO: we need to support mapping for processes, that is, specify
 // PML4 table.
-bool map(uint64_t frame, uint64_t page) {
+bool map(uint64_t page, uint64_t frame) {
     // first calculate all page entry indexes
     size_t pml4e_index = (page >> 39) & 0x01ffUL;   // page-map level-4 entry index
     size_t pdpe_index  = (page >> 30) & 0x01ffUL;   // page-directory-pointer entry index
@@ -255,6 +254,7 @@ bool map(uint64_t frame, uint64_t page) {
 
 // for unmap, we only clear the page entry,
 // don't care about other thing.
+// mostly this function is not needed
 void unmap(uint64_t page) {
     // first calculate all page entry indexes, just like `map`
     size_t pml4e_index = (page >> 39) & 0x01ffUL;   // page-map level-4 entry index
@@ -267,4 +267,52 @@ void unmap(uint64_t page) {
     uint64_t *pt   = (uint64_t *) get_address(pdt[pde_index]);
     pt[pte_index] = 0UL;
     invlpg(page);
+}
+
+// convert virtual address to physical address
+uint64_t phy_to_virt(uint64_t addr) {
+    size_t pml4e_index = (page >> 39) & 0x01ffUL;   // page-map level-4 entry index
+    size_t pdpe_index  = (page >> 30) & 0x01ffUL;   // page-directory-pointer entry index
+    size_t pde_index   = (page >> 21) & 0x01ffUL;   // page-directory entry index
+    size_t pte_index   = (page >> 12) & 0x01ffUL;   // page-table entry index
+
+    uint64_t *pdpt = (uint64_t *) get_address(pml4t[pml4e_index]);
+    uint64_t *pdt  = (uint64_t *) get_address(pdpt[pdpe_index]);
+    uint64_t *pt   = (uint64_t *) get_address(pdt[pde_index]);
+    return get_address(pt[pte_index]);
+}
+
+// allocate 2^order pages and map them to addr, no need to be physically continuous
+bool virt_alloc_pages(uint64_t addr, int order) {
+    // guarentee that we can allocate such memory.
+    if ((free_page_count >> order) == 0) {
+        // in this case, we are out of memory.
+        return false;
+    }
+    
+    // try allocate all pages once
+    uint64_t frame = alloc_pages(order);
+    if (frame) {
+        // if success, just map them
+        int n = 1UL << order;   // the number of pages in total
+        for (int i = 0; i < n; ++i) {
+            map(frame+4096*i, addr+4096*i);
+        }
+        return true;
+    } else {
+        // if we can't, split them up and alloc pages recursively
+        order -= 1;
+        return virt_alloc_pages(addr, order) &&
+               virt_alloc_pages(addr+(4096<<order), order);
+    }
+}
+
+// free virtually continuous pages, but not unmap them
+// for kernel, we just set page entry, never clear them
+void virt_free_pages(uint64_t addr, int order) {
+    int n = 1UL << order;   // how many pages
+    for (int i = 0; i < n; ++i) {
+        free_pages(phy_to_virt(addr), 0);
+        addr += 4096;
+    }
 }
