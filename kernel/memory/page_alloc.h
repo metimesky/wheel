@@ -3,7 +3,7 @@
 
 /* This is the physical memory manager of Wheel OS
  * allocate and deallocate pages, implemented using buddy algorithm
- * =============================================================================
+ *******************************************************************************
  * An important property of this page allocator is that, you can ask for many
  * pages at once and free them individually, allocation and free do not need to
  * be symmetric.
@@ -40,7 +40,7 @@ bool map(uint64_t page, uint64_t frame);
 void unmap(uint64_t page);
 
 // get the physical address mapped by virtual address
-uint64_t phy_to_virt(uint64_t addr);
+uint64_t virt_to_phy(uint64_t addr);
 
 /*******************************************************************************
  * the following two functions do not need to be called in pairs

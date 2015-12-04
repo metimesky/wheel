@@ -8,7 +8,7 @@
 #include <memory/memory.h>
 #include <interrupt/interrupt.h>
 
-#include <memory/page_alloc.h>
+#include <memory/memory.h>
 
 /**
     This is the main function of the kernel, because kernel has no main loop.
@@ -43,6 +43,23 @@ void init(uint32_t eax, uint32_t ebx) {
     log("free page count = %d.", free_page_count);
 
     interrupt_init();
+
+    uint64_t *p0 = slab_alloc(sizeof(uint64_t));
+    log("allocated at %p.", p0);
+    uint64_t *p1 = slab_alloc(sizeof(uint64_t));
+    log("allocated at %p.", p1);
+    uint64_t *p2 = slab_alloc(sizeof(uint64_t));
+    log("allocated at %p.", p2);
+
+    slab_free(p0);
+    log("freeing %p.", p0);
+    p0 = slab_alloc(sizeof(uint64_t));
+    log("allocated at %p.", p0);
+
+    slab_free(p2);
+    log("freeing %p.", p2);
+    p2 = slab_alloc(sizeof(uint64_t));
+    log("allocated at %p.", p2);
 
 /*
     // init ACPI

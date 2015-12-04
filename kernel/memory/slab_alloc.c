@@ -1,4 +1,4 @@
-#include "virt_alloc.h"
+#include "slab_alloc.h"
 #include <common/stdhdr.h>
 #include <common/util.h>
 #include "page_alloc.h"
@@ -10,8 +10,6 @@
 
 #define SLAB_SIZE   1       // how many pages in a slab
 #define PAGE_SIZE   4096    // how many bytes in a page
-
-typedef uint8_t[4096] page_t;
 
 /* The kernel virtual memory space map is illustrated as:
  * +-----+--------------+-----------------+------------------+----------------
@@ -40,15 +38,16 @@ typedef struct slab slab_t;
 slab_t *kernel_heap_meta;   // the address of kernel heap meta, an array of `slab_t`
 // uint64_t kernel_heap_meta_size; // how many PAGES are there in kernel heap meta
 
-slab_t *bins[512];          // 512 bins for each size of slabs, item is pointer to
-                            // actual slab_t object in kernel_heap_meta
+uint64_t bins[512];         // 512 bins for each size of slabs, item is the virtual
+                            // address of actual page in hernel heap area
 
 void slab_alloc_init() {
     // kernel heap meta area starts right at 4GB mark
     kernel_heap_meta = (slab_t *) 0x100000000UL;
 
     // calculate kheap meta size using total free page count (rounding up)
-    kernel_heap_start = free_page_count * sizeof(slab_t *);
+    kernel_heap_start = kernel_heap_meta;
+    kernel_heap_start += free_page_count * sizeof(slab_t *);
     kernel_heap_start += 4096 - 1;
     kernel_heap_start &= ~(4096UL - 1);
 
@@ -67,6 +66,7 @@ static int index_of_page(uint64_t addr) {
 }
 
 // create a new slab with given size, return the virtual address
+// only create slab page, nothing to do with heap meta
 static uint64_t create_slab(int index) {
     // allocate a new page for the slab
     uint64_t slab_phy = alloc_pages(0);
@@ -82,7 +82,6 @@ static uint64_t create_slab(int index) {
     int obj_num = 4096 / (8 * index);   // total number of objects in a slab
     uint64_t *pos = (uint64_t *) slab_vir;
     for (int i = 0; i < obj_num; ++i) {
-        // * (uint64_t *) (slab_vir + (8 * index * i)) = (slab_vir + (8 * index * i) + 8);
         pos[index * i] = (uint64_t) &pos[index * (i + 1)];
     }
     // last one is special, since it's the last element of the list
@@ -115,31 +114,58 @@ static void create_bin(int index) {
     kernel_heap_meta[slab_index].next = 0;
     kernel_heap_meta[slab_index].free_list = slab_vir;
 
-    // point the bin to the slab struct
-    bins[index] = &kernel_heap_meta[slab_index];
+    // point the bin to the page address
+    bins[index] = slab_vir;
 }
 
 // allocate an object with given size, return the virtual address
-uint64_t slab_alloc(int size) {
+void* slab_alloc(int size) {
     // round up to 8 bytes and calculate the bin index
-    int idx = (size + 7) >> 3;
+    int index = (size + 7) >> 3;
 
-    if (bins[idx] == NULL) {
+    if (bins[index] == NULL) {
         // if this bin is empty, create it first
         create_bin(index);
     }
 
-    slab_t *s = bins[index];
-    while (s->free_list == NULL) {
+    // TODO: for slabs that are full, should we forget them?
+    // only remember them when objects within them are freed
+
+    // get first page address from bin, convert to meta index
+    uint64_t pg = bins[index];
+    while (kernel_heap_meta[index_of_page(pg)].free_list == NULL) {
         // loop while current slab is full
-        if (s->next == 0) {
+        if (kernel_heap_meta[index_of_page(pg)].next == 0) {
             // if current slab is last, then create new one
+            uint64_t slab_vir = create_slab(index);
+
+            // and add the newly created slab to the list head
+            kernel_heap_meta[index_of_page(slab_vir)].free_list = slab_vir;
+            kernel_heap_meta[index_of_page(slab_vir)].next = bins[index];
+            bins[index] = slab_vir;
+
+            // point pg to the virtual address of newly created slab
+            pg = slab_vir;
+            break;
         }
+        pg = kernel_heap_meta[index_of_page(pg)].next;
     }
+
+    // now we found a slab with free object.
+    uint64_t *p = (uint64_t *) kernel_heap_meta[index_of_page(pg)].free_list;
+    kernel_heap_meta[index_of_page(pg)].free_list = *p;
+
+    return p;
 }
 
-void slab_free(uint64_t addr, int size) {
-    // calculate the bin index
-    int idx = (size + 7) >> 3;
+// we don't need to know the size of the object
+void slab_free(void *addr) {
+    // calculate which page the object in
+    uint64_t pg = (uint64_t) addr & ~(4096UL - 1);
+
+    // add the newly freed object to the head of the freelist
+    uint64_t *p = (uint64_t *) addr;
+    *p = kernel_heap_meta[index_of_page(pg)].free_list;
+    kernel_heap_meta[index_of_page(pg)].free_list = p;
 }
 

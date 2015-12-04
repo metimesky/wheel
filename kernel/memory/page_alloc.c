@@ -270,11 +270,11 @@ void unmap(uint64_t page) {
 }
 
 // convert virtual address to physical address
-uint64_t phy_to_virt(uint64_t addr) {
-    size_t pml4e_index = (page >> 39) & 0x01ffUL;   // page-map level-4 entry index
-    size_t pdpe_index  = (page >> 30) & 0x01ffUL;   // page-directory-pointer entry index
-    size_t pde_index   = (page >> 21) & 0x01ffUL;   // page-directory entry index
-    size_t pte_index   = (page >> 12) & 0x01ffUL;   // page-table entry index
+uint64_t virt_to_phy(uint64_t addr) {
+    size_t pml4e_index = (addr >> 39) & 0x01ffUL;   // page-map level-4 entry index
+    size_t pdpe_index  = (addr >> 30) & 0x01ffUL;   // page-directory-pointer entry index
+    size_t pde_index   = (addr >> 21) & 0x01ffUL;   // page-directory entry index
+    size_t pte_index   = (addr >> 12) & 0x01ffUL;   // page-table entry index
 
     uint64_t *pdpt = (uint64_t *) get_address(pml4t[pml4e_index]);
     uint64_t *pdt  = (uint64_t *) get_address(pdpt[pdpe_index]);
@@ -312,7 +312,7 @@ bool virt_alloc_pages(uint64_t addr, int order) {
 void virt_free_pages(uint64_t addr, int order) {
     int n = 1UL << order;   // how many pages
     for (int i = 0; i < n; ++i) {
-        free_pages(phy_to_virt(addr), 0);
+        free_pages(virt_to_phy(addr), 0);
         addr += 4096;
     }
 }
