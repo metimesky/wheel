@@ -3,10 +3,10 @@ site_author: Song Ziming
 site_dir: build/site
 theme: readthedocs
 pages:
-- 'Home': index.md
-- 'Coding Style': coding_style.md
-- 'File Structure': file_structure.md
-- 'Memory Management': memory_management.md
-- 'Virtual Memory Management': virt_mem.md
-- 'Paging': initial_paging.md
+- '首页': index.md
+- '代码风格': coding_style.md
+- '内存管理':
+    - '综述': memory/generic.md
+    - '物理内存管理': memory/page.md
+    - '虚拟内存管理': memory/slab.md
 - 'ACPI': acpi.md

@@ -1,14 +1,20 @@
-## Initial Paging
+# 内存管理
 
-GRUB 将控制权交给内核之后，内核首先进行 64 位模式的切换。由于 64 位模式需要启用分页，因此内核需要具有一定初始分页。
+Wheel 的内存管理分为两个层次，底层是物理内存管理，上层是虚拟内存管理。
 
-初始分页直接在 `boot.asm` 中，使用 2MB 大小的页，因为这种大小的页所有 64 位 CPU 都支持，而且最节省页表空间。
+物理内存管理实现物理页的分配和释放，分页的操作也由物理内存管理部分实现，包括地址映射的建立和清除。虚拟地址管理使用物理内存管理器提供的功能，实现对象级别的内存管理，也就是提供 `malloc` 和 `free` 的功能。
 
-AMD64 requires PAE paging, which means the large page is 2MB rather than 4MB and page entry size is doubled.
+## 初始分页
 
-According to the manual, page size in AMD64 can be 4K, 2M and 1G. However, if I use 1G pages, the testing Thinkpad will crash and auto-reboot.
+内存管理的硬件支持是分页机制。在 64 位模式下，分页是强制的，而且是 PAE 分页，PAE 分页意味着支持 2MB 大小的页。在 Wheel 操作系统启动过程中，切换 64 位模式是最先执行的动作。因此在内存管理模块未启动的时候就需要建立分页。
 
-AMD64 requires PAE which can handle 2MB pages, indicating all 64-bit CPU can handle 2MB pages. But for 1GB pages, only on some CPU are valid. The support for 1GB page can be identified by looking at CPUID 0x80000001, EDX bit 26
+初始分页就是在切换 64 位模式的时候制定的分页映射。虽然当内存管理模块初始化之后可以改变页表，但是 Wheel 创建的初始分页是不变的。
+
+首先需要明确内核的虚拟地址空间结构。64 位 CPU 使用的虚拟地址称作 Canonical Address Form，将完整的 52 位空间分成高低两个部分，更高位是符号扩展。
+
+内核首先建立 0~4GB 的对等映射，也就是内核虚拟地址空间中，0~4GB 映射到 0~4GB 的物理内存。因为许多内存映射设备都处在物理地址 3~4GB 处，而且 52 位的线性地址空间足够使用，并且对等映射非常方便。这部分的映射在切换 64 位方式的时候设置，作为内核的初始分页。
+
+下面是三种建立映射的汇编代码，分别是用了 4KB 页、2MB 页，和 1GB 页。其中 1GB 页在某些 CPU 上不支持，2MB 页在所有 64 位 CPU 上都支持，因此 Wheel 默认使用 2MB 的页实现 0~4GB 的映射。
 
 ``` asm
 [section .text]
