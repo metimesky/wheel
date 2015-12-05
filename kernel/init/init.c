@@ -10,6 +10,20 @@
 
 #include <memory/memory.h>
 
+void goto_ring3(void *addr, void *rsp);
+
+char st[4096*3];
+
+void ps() {
+    char *video = (char *) 0xb8000;
+    for (int i = 0; i < 1000; ++i) {
+        video[2*i] = 'P';
+        for (int a = 0; a < 1000; ++a) {
+            for (int b = 0; b < 1000; ++b) {}
+        }
+    }
+}
+
 /**
     This is the main function of the kernel, because kernel has no main loop.
     When fully started, all kernel do is handling events and syscall.
@@ -84,7 +98,16 @@ void init(uint32_t eax, uint32_t ebx) {
 
     // test interruption
     // __asm__ __volatile__ ("sti");
-    // __asm__ __volatile__ ("ud2");
+    //__asm__ __volatile__ ("ud2");
+
+    // uint64_t phy = alloc_pages(0);
+    // map(0xffffffff00000000UL, phy);
+    // goto_ring3(ps, 0xffffffff00000000UL);
+
+    uint64_t rsp = (uint64_t) &st;
+    rsp += 4096 - 1;
+    rsp &= ~(4096 - 1);
+    goto_ring3(ps, rsp);
 
     while (1) {}
 }

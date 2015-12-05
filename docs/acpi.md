@@ -2,7 +2,7 @@
 
 ACPI 是现代 PC 上用于管理电源的部分，程控关机/重启就是通过 ACPI 实现的。但是 ACPI 的功能不仅仅是管理供电，还能通过 ACPI 获取许多关键信息，例如多核规范中的 MADT，就可以通过 ACPI 得到。
 
-### ACPICA
+## ACPICA
 
 如果自己编写 ACPI 驱动，简单的功能还可以，一些复杂的功能就不那么方便了。因为 ACPI 的复杂性，已经出现了专门的平台无关实现——ACPICA，Linux 和很多商业 OS 都采用了它，因此说明 ACPICA 的质量很高。
 
@@ -10,11 +10,24 @@ ACPI 是现代 PC 上用于管理电源的部分，程控关机/重启就是通�
 
 ACPICA 的 Git 项目是开放的，但是获取开发版不推荐，因此在下载页面获取其 Unix 版本。将 ACPICA 包含到自己 OS 的最好做法就是直接复制源代码。但是需要 OS 提供一些函数，作为 OSL（OS Service Layer）。
 
-I didn't find any good description of integrating the ACPICA source code into an operating system, and the released package is basically just a bundle of C files with little organization. This is what I ended up having to do:
+下面的文字是从 OSDev 上摘下来的：
 
-I copied the C files from dispatcher/, events/, executer/, hardware/, parser/, namespace/, utilities/, tables/, and resources/ into a single acpi folder.
-I copied the header files from include/
-I created my own header file based on aclinux.h where I ripped out all of the userspace stuff, then I changed around the rest to be appropriate to my OS's definitions.
-I edited the include/platform/acenv.h file to remove the inclusion of aclinux.h and included my header file instead.
-I copied over acenv.h, acgcc.h, and my header file over to my include/platform/ folder.
-This is in addition to writing an AcpiOs interface layer, and it is not well indicated by the reference manual that you have to actually edit header files. Many of the macros defined in the headers are documented, though.
+> I didn't find any good description of integrating the ACPICA source code into an operating system, and the released package is basically just a bundle of C files with little organization. This is what I ended up having to do:
+
+> - I copied the C files from dispatcher/, events/, executer/, hardware/, parser/, namespace/, utilities/, tables/, and resources/ into a single acpi folder.
+> - I copied the header files from include/
+> - I created my own header file based on aclinux.h where I ripped out all of the userspace stuff, then I changed around the rest to be appropriate to my OS's definitions.
+> - I edited the include/platform/acenv.h file to remove the inclusion of aclinux.h and included my header file instead.
+> - I copied over acenv.h, acgcc.h, and my header file over to my include/platform/ folder.
+> - This is in addition to writing an AcpiOs interface layer, and it is not well indicated by the reference manual that you have to actually edit header files. Many of the macros defined in the headers are documented, though.
+
+## ACPICA 的架构
+
+ACPICA 可以分为两个模块——ACPICA 子系统和 OSL（OS Service Layer），后者相当于 ACPICA 子系统和内核之间的桥梁，因此下面将 ACPICA 子系统简称为 ACPICA。
+
+ACPICA 是与 OS 的实现独立的，OSL 是和特定 OS 相关的。内核使用 ACPI 功能时，直接调用 ACPICA 公开的函数。ACPICA 需要使用 OS 的服务时，会通过 OSL 进行调用。
+
+ACPICA 分为许多子模块，例如 AML 解释器、ACPI 表管理器、命名空间管理、资源管理等，其中 AML 解释器是其他所有模块的基础。
+
+- ACPI 表管理器。ACPI 规范定义了很多数据结构，称作 ACPI 表，例如 XSDT、FADT、MADT 等。由于 OS 可能在还没有完全启动的时候就需要相关表结构，因此这个模块可以独立于其他模块使用。
+- AML 解释器。ACPI 的很多信息是以 AML 字节码的形式提供的，AML 解释器是其他模块能正常工作的前提。

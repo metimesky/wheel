@@ -68,11 +68,39 @@ idt_entry_t idt[INT_NUM];
 idt_ptr_t idtr;
 void* interrupt_handler_table[INT_NUM];
 
+// Interrupt context, registers saved on stack
+// this structure must be compliant with those push instructions in entries.asm
+struct int_context {
+    uint64_t r15;
+    uint64_t r14;
+    uint64_t r13;
+    uint64_t r12;
+    uint64_t r11;
+    uint64_t r10;
+    uint64_t r9;
+    uint64_t r8;
+    uint64_t rbp;
+    uint64_t rsi;
+    uint64_t rdi;
+    uint64_t rdx;
+    uint64_t rcx;
+    uint64_t rbx;
+    uint64_t rax;
+    uint64_t vec;
+    uint64_t err_code;
+    uint64_t rip;
+    uint64_t cs;
+    uint64_t rflags;
+    uint64_t rsp;
+    uint64_t ss;
+} __attribute__((packed));
+typedef struct int_context int_context_t;
+
 /**
     Default interrupt handler that should be replaced
  */
-void default_interrupt_handler() {
-    log("interrupt");
+void default_interrupt_handler(int_context_t *ctx) {
+    log("#%d cs:rip=%x:%x, ss:rsp=%x:%x, rflags=%x, code %x", ctx->vec, ctx->cs, ctx->rip, ctx->ss, ctx->rsp, ctx->rflags, ctx->err_code);
     while (true) {}
 }
 
@@ -134,7 +162,71 @@ void idt_init() {
     load_idtr(&idtr);   // defined in library/cpu.asm
 }
 
+// structure of long mode TSS
+struct tss {
+    uint32_t reserved_1;
+    uint32_t rsp0_l;
+    uint32_t rsp0_h;
+    uint32_t rsp1_l;
+    uint32_t rsp1_h;
+    uint32_t rsp2_l;
+    uint32_t rsp2_h;
+    uint32_t reserved_2;
+    uint32_t reserved_3;
+    uint32_t ist1_l;
+    uint32_t ist1_h;
+    uint32_t ist2_l;
+    uint32_t ist2_h;
+    uint32_t ist3_l;
+    uint32_t ist3_h;
+    uint32_t ist4_l;
+    uint32_t ist4_h;
+    uint32_t ist5_l;
+    uint32_t ist5_h;
+    uint32_t ist6_l;
+    uint32_t ist6_h;
+    uint32_t ist7_l;
+    uint32_t ist7_h;
+    uint32_t reserved_4;
+    uint32_t reserved_5;
+    uint16_t reserved_6;
+    uint16_t io_map_base;
+} __attribute__((packed));
+typedef struct tss tss_t;
+
+tss_t tss;
+
+// the top address of default kernel stack, defined in boot.asm
+extern char kernel_stack_top;
+extern uint64_t gdt[];
+
+void tss_init() {
+    uint64_t rsp0 = (uint64_t) &kernel_stack_top;
+    tss.rsp0_l = rsp0 & 0xffffffff;
+    tss.rsp0_h = (rsp0 >> 32) & 0xffffffff;
+
+    uint64_t base_addr = (uint64_t) &tss;
+    uint64_t seg_limit = sizeof(tss);
+
+    // lower half of tss descriptor
+    gdt[5] = 0UL;
+    gdt[5] |= seg_limit & 0xffffUL;                     // seg limit [15:0]
+    gdt[5] |= (base_addr << 16) & 0x000000ffffff0000UL; // base addr [23:0]
+    gdt[5] |= 0x0000890000000000UL;                     // present, 64bit tss
+    gdt[5] |= ((seg_limit << 32) & 0x000f000000000000UL);   // limit [19:16]
+    gdt[5] |= ((base_addr << 32) & 0xff00000000000000UL);   // base [31:24] 
+
+    // higher half of tss descriptor
+    gdt[6] = 0UL;
+    gdt[6] |= (base_addr >> 32) & 0xffffffff;
+
+    __asm__ __volatile__("ltr %%ax" :: "a"(0x28));
+}
+
 void interrupt_init() {
+    // setup tss first
+    tss_init();
+
     // create and activate IDT
     idt_init();
 

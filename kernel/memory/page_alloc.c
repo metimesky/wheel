@@ -215,7 +215,7 @@ bool map(uint64_t page, uint64_t frame) {
         memset(pdpt, 0UL, 4096);            // making all entries invalid
 
         // create pml4 entry for pdp
-        pml4t[pml4e_index] = ((uint64_t) pdpt & 0x000ffffffffffe00UL) | 3;   // P, RW
+        pml4t[pml4e_index] = ((uint64_t) pdpt & 0x000ffffffffffe00UL) | 7;   // P, RW, US
     }
 
     // find page-directory table
@@ -230,7 +230,7 @@ bool map(uint64_t page, uint64_t frame) {
         memset(pdt, 0UL, 4096);
 
         // create pdp entry for pd
-        pdpt[pdpe_index] = ((uint64_t) pdt & 0x000ffffffffffe00UL) | 3;     // P, RW
+        pdpt[pdpe_index] = ((uint64_t) pdt & 0x000ffffffffffe00UL) | 7;     // P, RW, US
     }
 
     // find page table
@@ -243,10 +243,10 @@ bool map(uint64_t page, uint64_t frame) {
             return false;
         }
         memset(pt, 0UL, 4096);
-        pdt[pde_index] = ((uint64_t) pt & 0x000ffffffffffe00UL) | 3;    // P, RW
+        pdt[pde_index] = ((uint64_t) pt & 0x000ffffffffffe00UL) | 7;    // P, RW, US
     }
 
-    pt[pte_index] = (frame & 0x000ffffffffffe00UL) | 3; // P, RW
+    pt[pte_index] = (frame & 0x000ffffffffffe00UL) | 7; // P, RW, US
     invlpg(page);
 
     return true;

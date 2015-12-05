@@ -4,6 +4,10 @@
 ; Besides all the setting up stuffs, this file also include the definition
 ; of initial kernel stack, GDT and initial page tables.
 
+global gdt
+global kernel_stack_top
+global pml4t
+
 extern  kernel_start
 extern  kernel_data_end
 extern  kernel_bss_end
@@ -86,26 +90,26 @@ enter_long_mode:
     mov     edi, cr3
 
     ; creating 1 Page-Map Level-4 Entry (PML4)
-    mov     dword [edi], 0x1003     ; present, read/write
+    mov     dword [edi], 0x1007     ; present, read/write, user
     add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
 
     ; creating 4 Page Directory Pointer Entry (PDPE)
-    mov     dword [edi], 0x2003     ; present, read/write
+    mov     dword [edi], 0x2007     ; present, read/write, user
     add     dword [edi], pml4t      ; pointing to pml4t+8K (PD Table)
     add     edi, 8
-    mov     dword [edi], 0x3003     ; present, read/write
+    mov     dword [edi], 0x3007     ; present, read/write, user
     add     dword [edi], pml4t      ; pointing to pml4t+12K
     add     edi, 8
-    mov     dword [edi], 0x4003     ; present, read/write
+    mov     dword [edi], 0x4007     ; present, read/write, user
     add     dword [edi], pml4t      ; pointing to pml4t+12K
     add     edi, 8
-    mov     dword [edi], 0x5003     ; present, read/write
+    mov     dword [edi], 0x5007     ; present, read/write, user
     add     dword [edi], pml4t      ; pointing to pml4t+12K
     add     edi, 0x1000 - 24
 
     ; creating 4*512 Page Directory Entry (PDE)
-    mov     ebx, 0x00000083         ; present, read/write, 2MB granularity
+    mov     ebx, 0x00000087         ; present, read/write, 2MB granularity
     mov     ecx, 4*512              ; 4*512 entries in total
 .set_pdp_entry:
     mov     dword [edi], ebx
@@ -130,10 +134,10 @@ enter_long_mode:
     mov     cr0, eax
 
     ; enter 64-bit submode
-    lgdt    [tmp_gdt_ptr]
+    lgdt    [gdt_ptr]
 
     ; jump to real 64-bit code
-    jmp     tmp_gdt.code:long_mode_entry
+    jmp     gdt.code0:long_mode_entry
 
     ; should never return here
     hlt
@@ -159,7 +163,7 @@ no_long_mode:
 
 [BITS 64]
 long_mode_entry:
-    mov     ax, tmp_gdt.data
+    mov     ax, gdt.data0
     mov     ds, ax
     mov     es, ax
     mov     fs, ax
@@ -176,27 +180,44 @@ long_mode_entry:
 [section .data]
 [BITS 32]
 ; temporary GDT (64-bit).
-tmp_gdt:
-.null   equ $ - tmp_gdt
+gdt:
+.null   equ $ - gdt
     dq      0
-.code   equ $ - tmp_gdt
+.code0  equ $ - gdt
     dw      0               ; limit [0:15]
     dw      0               ; base [0:15]
     db      0               ; base [16:23]
     db      10011000b       ; Present, DPL=0, non-conforming
     db      10100000b       ; 64-bit, and limit[16:19]
     db      0               ; base [24:31]
-.data   equ $ - tmp_gdt
+.data0  equ $ - gdt
     dw      0               ; limit [0:15]
     dw      0               ; base [0:15]
     db      0               ; base [16:23]
     db      10010010b       ; Present, DPL=0, writable
     db      11000000b       ; limit [16:19] and attr
     db      0               ; base [24:31]
+.code3  equ $ - gdt
+    dw      0               ; limit [0:15]
+    dw      0               ; base [0:15]
+    db      0               ; base [16:23]
+    db      11111000b       ; Present, DPL=0, non-conforming
+    db      10100000b       ; 64-bit, and limit[16:19]
+    db      0               ; base [24:31]
+.data3  equ $ - gdt
+    dw      0               ; limit [0:15]
+    dw      0               ; base [0:15]
+    db      0               ; base [16:23]
+    db      11110010b       ; Present, DPL=0, writable
+    db      11000000b       ; limit [16:19] and attr
+    db      0               ; base [24:31]
+.tss    equ $ - gdt         ; system-segment descriptor is 16 bytes long
+    dq      0
+    dq      0
 
-tmp_gdt_ptr:
-    dw      $ - tmp_gdt - 1     ; limit
-    dq      tmp_gdt             ; base
+gdt_ptr:
+    dw      $ - gdt - 1     ; limit
+    dq      gdt             ; base
 
 ; temporary store the multiboot info
 mb_eax: dd  0
@@ -209,5 +230,4 @@ kernel_stack_top:
 
 ; reserve 24KB for page tables. (1 PML4T, 1 PDPT, 4 PDT)
 ALIGN 0x1000
-global pml4t
 pml4t:          resb 0x6000

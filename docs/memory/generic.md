@@ -16,6 +16,8 @@ Wheel 的内存管理分为两个层次，底层是物理内存管理，上层�
 
 下面是三种建立映射的汇编代码，分别是用了 4KB 页、2MB 页，和 1GB 页。其中 1GB 页在某些 CPU 上不支持，2MB 页在所有 64 位 CPU 上都支持，因此 Wheel 默认使用 2MB 的页实现 0~4GB 的映射。
 
+512 entries of 4KB pages, identically mapping 2MB memory:
+
 ``` asm
 [section .text]
 [BITS 32]

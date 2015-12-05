@@ -11,7 +11,7 @@ extern interrupt_handler_table
 
 [BITS 64]
 
-; interrupt with no error code, pushes a 0 error code
+; interrupt with no error code, pushes a dummy error code
 %macro define_isr 1
 global isr%1
 isr%1:
@@ -32,8 +32,8 @@ isr%1:
 ; NOTICE this is a macro which looks like a function
 %macro common_int_handler 1
     ; check if we are comming from user-mode
-    ; testl   $3, 24(%rsp)
-    ; jnz     common_user_isr_handler
+    test    word [rsp+24], 3    ; by checking SS selector's RPL
+;    jnz     come_from_userspace
 
     ; push the rest of the interrupt frame to the stack
     save_regs
@@ -64,7 +64,7 @@ isr%1:
     ; restore the saved registers.
     restore_regs
 
-    ; skip error code and vector number
+    ; skip error code
     add     rsp, 16
 
     iretq
