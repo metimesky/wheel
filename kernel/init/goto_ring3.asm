@@ -1,4 +1,5 @@
 global goto_ring3
+global delay
 
 ; void goto_ring3(void *addr, void *rsp);
 
@@ -14,9 +15,19 @@ goto_ring3:
     mov     rax, 0x23
     push    rax         ; ss = user data segment
     push    rsi         ; rsp
-    mov     rax, 0x0100
-    push    rax         ; rflags, IF=1
+    pushf               ; rflags, IF=1
     mov     rax, 0x1b
     push    rax         ; cs = user code segment
     push    rdi         ; rip
     iretq
+
+delay:
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    ret

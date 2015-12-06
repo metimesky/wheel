@@ -10,24 +10,33 @@
 
 #include <memory/memory.h>
 
-void goto_ring3(void *addr, void *rsp);
+extern void goto_ring3(void *addr, void *rsp);
+extern void delay();
 
 char st[4096*3];
 
+// this is the initial user-space application
 void ps() {
     char *video = (char *) 0xb8000;
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0;; ++i) {
         video[2*i] = 'P';
+        video[2*i+1] = 0x1e;
         for (int a = 0; a < 1000; ++a) {
-            for (int b = 0; b < 1000; ++b) {}
+            for (int b = 0; b < 2000; ++b) {
+                delay();    // since we enabled optimization, we have to
+                            // call a function to delay, or compiler would
+                            // generate nothing.
+            }
         }
     }
+    // this function has a flaw, it will overrun the video buffer and cause
+    // serious consequencies. But for now, it is simple enough for testing.
 }
 
-/**
-    This is the main function of the kernel, because kernel has no main loop.
-    When fully started, all kernel do is handling events and syscall.
-    This function is executed during system initialization.
+/*******************************************************************************
+ * This is the main function of the kernel, because kernel has no main loop.
+ * When fully started, all kernel do is handling events and syscall.
+ * This function is executed during system initialization.
  */
 void init(uint32_t eax, uint32_t ebx) {
     // initialize early console to print verbose information.
