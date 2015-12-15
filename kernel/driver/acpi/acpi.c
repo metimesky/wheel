@@ -1,8 +1,8 @@
 #include <common/stdhdr.h>
+#include <common/util.h>
 #include "acpi.h"
 #include "madt.h"
-#include <common/util.h>
-// #include "../kernel/fake_console.h"
+#include <driver/timer/hpet.h>
 
 extern void process_madt(madt_t *madt);
 
@@ -33,6 +33,7 @@ uint64_t find_rsdp() {
     return 0;
 }
 
+// check if RSDP version 1 is valid
 bool is_rsdp_1_valid(rsdp_1_t *rsdp) {
     uint8_t *p = rsdp;
     uint8_t sum = 0;
@@ -42,6 +43,7 @@ bool is_rsdp_1_valid(rsdp_1_t *rsdp) {
     return sum == 0;
 }
 
+// check if RSDP version 2 is valid
 bool is_rsdp_2_valid(rsdp_2_t *rsdp) {
     if (is_rsdp_1_valid(&(rsdp->rsdp_1))) {
         uint8_t *p = &(rsdp->length);
@@ -73,73 +75,74 @@ void process_acpi_table(uint64_t addr) {
         process_madt((madt_t *) addr);
     } else if (memcmp((char *) addr, "BERT", 4) == 0) {
         // boot error record table
-        log("BERT");
+        // log("BERT");
     } else if (memcmp((char *) addr, "CPEP", 4) == 0) {
         // corrected platform error polling table
-        log("CPEP");
+        // log("CPEP");
     } else if (memcmp((char *) addr, "DSDT", 4) == 0) {
         // differentiated system description table
-        log("DSDT");
+        // log("DSDT");
     } else if (memcmp((char *) addr, "ECDT", 4) == 0) {
         // embedded controller boot resources table
-        log("ECDT");
+        // log("ECDT");
     } else if (memcmp((char *) addr, "EINJ", 4) == 0) {
         // error injection table
-        log("EINJ");
+        // log("EINJ");
     } else if (memcmp((char *) addr, "ERST", 4) == 0) {
         // error record serialization table
-        log("ERST");
+        // log("ERST");
     } else if (memcmp((char *) addr, "FACP", 4) == 0) {
         // fixed ACPI description table
-        log("FACP");
+        // log("FACP");
     } else if (memcmp((char *) addr, "FACS", 4) == 0) {
         // firmware ACPPI control structure
-        log("FACS");
+        // log("FACS");
     } else if (memcmp((char *) addr, "HEST", 4) == 0) {
         // hardware error source table
-        log("HEST");
+        // log("HEST");
     } else if (memcmp((char *) addr, "HPET", 4) == 0) {
         // High Precision Event Timer
-        log("HPET");
+        // log("HPET");
+        process_hpet((hpet_t *) addr);
     } else if (memcmp((char *) addr, "MSCT", 4) == 0) {
         // maximum system characteristics table
-        log("MSCT");
+        // log("MSCT");
     } else if (memcmp((char *) addr, "MPST", 4) == 0) {
         // memory power state table
-        log("MPST");
+        // log("MPST");
     } else if (memcmp((char *) addr, "OEM", 3) == 0) {
         // OEM specific information tables
         // there is not one table, but many tables!
-        log("OEM");
+        // log("OEM");
     } else if (memcmp((char *) addr, "PMTT", 4) == 0) {
         // platform memory topology table
-        log("PMTT");
+        // log("PMTT");
     } else if (memcmp((char *) addr, "PSDT", 4) == 0) {
         // persistent system description table
-        log("PSDT");
+        // log("PSDT");
     } else if (memcmp((char *) addr, "RASF", 4) == 0) {
         // ACPI RAS feature table
-        log("RASF");
+        // log("RASF");
     } else if (memcmp((char *) addr, "RSDT", 4) == 0) {
         // RSDT, already processed
-        log("RSDT");
+        // log("RSDT");
     } else if (memcmp((char *) addr, "SBST", 4) == 0) {
         // smart battery specification table
-        log("SBST");
+        // log("SBST");
     } else if (memcmp((char *) addr, "SLIT", 4) == 0) {
         // System Locality System Information Table
-        log("SLIT");
+        // log("SLIT");
     } else if (memcmp((char *) addr, "SRAT", 4) == 0) {
         // System Resource Affinity Table
-        log("SRAT");
+        // log("SRAT");
     } else if (memcmp((char *) addr, "SSDT", 4) == 0) {
         // Secondary System Description Table
-        log("SSDT");
+        // log("SSDT");
     } else if (memcmp((char *) addr, "XSDT", 4) == 0) {
         // XSDT, already processed
-        log("XSDT");
+        // log("XSDT");
     } else {
-        log("WTF!");
+        // log("WTF!");
     }
 }
 
@@ -171,7 +174,7 @@ void acpi_init() {
         for (int i = 0; i < sdt_num; ++i) {
             process_acpi_table(rsdt->sdt_entries[i]);
         }
-        log("done %d", sdt_num);
+        //log("done %d", sdt_num);
     } else {
         // newer than 1.0, treat them as 2.0
         rsdp_2_t *rsdp = (rsdp_2_t *) addr;
@@ -190,6 +193,6 @@ void acpi_init() {
         for (int i = 0; i < sdt_num; ++i) {
             process_acpi_table(xsdt->sdt_entries[i]);
         }
-        log("done");
+        //log("done");
     }
 }

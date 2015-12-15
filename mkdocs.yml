@@ -10,3 +10,4 @@ pages:
     - '物理内存管理': memory/page.md
     - '虚拟内存管理': memory/slab.md
 - 'ACPI': acpi.md
+- '多核': mp.md

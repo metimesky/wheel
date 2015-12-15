@@ -2,6 +2,7 @@
 #include "entries.h"
 #include <common/stdhdr.h>
 #include <common/util.h>
+#include <driver/acpi/acpi.h>
 
 #define PIC1            0x20        /* IO base address for master PIC */
 #define PIC2            0xA0        /* IO base address for slave PIC */
@@ -44,7 +45,7 @@ void disable_8259() {
     out_byte(PIC2_DAT, ICW4_8086);
     io_wait();
 
-    out_byte(PIC1_DAT, 0xff);   // mask all interrupts on master chip
+    out_byte(PIC1_DAT, 0xfe);   // mask all interrupts on master chip, except clock
     out_byte(PIC2_DAT, 0xff);   // mask all interrupts on slave chip
 }
 
@@ -223,6 +224,16 @@ void tss_init() {
     __asm__ __volatile__("ltr %%ax" :: "a"(0x28));
 }
 
+// special handler for clock interrupt
+void clock(int_context_t *ctx) {
+    static char *video = (char *) 0xb8000;
+    ++video[0];
+
+    // EOI
+    out_byte(0x20, 0x20);
+    io_wait();
+}
+
 void interrupt_init() {
     // setup tss first
     tss_init();
@@ -233,11 +244,17 @@ void interrupt_init() {
     // disable 8258A by masking all interrupts
     disable_8259();
 
+    // rewrite default clock handler
+    interrupt_handler_table[32] = clock;
+
     // enabling local APIC by setting bit 8 of spurious interrupt vector reg
     // TODO: the location of local APIC should be queried from MADT
-    uint32_t val = *((uint32_t *) 0xfee000f0);
-    val |= 1 << 8;
-    *((uint32_t *) 0xfee000f0) = val;
+    acpi_init();
+    if (madt_present) {
+        uint32_t val = *((uint32_t *) 0xfee000f0);
+        val |= 1 << 8;
+        *((uint32_t *) 0xfee000f0) = val;
+    }
 
     // enable system-wide interrupt
     __asm__("sti");

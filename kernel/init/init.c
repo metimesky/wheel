@@ -7,8 +7,10 @@
 #include <driver/acpi/acpi.h>
 #include <memory/memory.h>
 #include <interrupt/interrupt.h>
+#include <driver/acpi/acpi.h>
 
-#include <memory/memory.h>
+#include <driver/timer/timer.h>
+#include <driver/timer/pit.h>
 
 extern void goto_ring3(void *addr, void *rsp);
 extern void delay();
@@ -21,16 +23,40 @@ void ps() {
     for (int i = 0;; ++i) {
         video[2*i] = 'P';
         video[2*i+1] = 0x1e;
-        for (int a = 0; a < 1000; ++a) {
-            for (int b = 0; b < 2000; ++b) {
-                delay();    // since we enabled optimization, we have to
-                            // call a function to delay, or compiler would
-                            // generate nothing.
-            }
-        }
+        busy_wait(1000);
+    //     for (int a = 0; a < 1000; ++a) {
+    //         for (int b = 0; b < 2000; ++b) {
+    //             delay();    // since we enabled optimization, we have to
+    //                         // call a function to delay, or compiler would
+    //                         // generate nothing.
+    //         }
+    //     }
     }
     // this function has a flaw, it will overrun the video buffer and cause
     // serious consequencies. But for now, it is simple enough for testing.
+}
+
+/* Initialize multi-processor
+ */
+void mp_init() {
+    if (!madt_present) {
+        log("Unlucy, no madt exist!");
+        return;
+    }
+
+    // ensure no ipi pending
+    while (* ((uint32_t *) (local_apic_base + 0x30)) & (1 << 12)) {}
+
+    // send INIT IPI -- higher 32-bit half
+    * ((uint32_t *) (local_apic_base + 0x310)) = (uint32_t) local_apic_ids[1] << 24;
+
+    // send INIT IPI -- lower 32-bit half
+    uint32_t control = (5UL << 8);
+    * ((uint32_t *) (local_apic_base + 0x300)) = control;
+
+    // wait 10ms (we have to implement PIT or HPET)
+
+    // send SIPI (vector means the page index AP begin to execute code on)
 }
 
 /*******************************************************************************
@@ -66,6 +92,8 @@ void init(uint32_t eax, uint32_t ebx) {
     log("free page count = %d.", free_page_count);
 
     interrupt_init();
+
+    pit_init();
 
     uint64_t *p0 = slab_alloc(sizeof(uint64_t));
     log("allocated at %p.", p0);

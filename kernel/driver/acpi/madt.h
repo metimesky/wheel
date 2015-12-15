@@ -10,7 +10,7 @@
 
 struct madt {   // signature = "APIC"
     sdt_header_t header;
-    uint32_t local_controller_addr;
+    uint32_t local_controller_addr;     // content of APIC_BASE MSR (page-aligned)
     uint32_t flags;
     uint8_t entries[0];
 } __attribute__((packed));
@@ -92,6 +92,14 @@ typedef struct madt_platform_interrupt_source madt_platform_interrupt_source_t;
  ******************************************************************************/
 
 extern bool madt_present;
+
+extern int io_apic_num;
+extern uint32_t io_apic_base[12];
+extern uint32_t local_apic_base;
+
+extern int processor_num;
+extern uint8_t processor_ids[128];
+extern uint8_t local_apic_ids[128];
 
 extern void process_madt(madt_t *madt);
 
