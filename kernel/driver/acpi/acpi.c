@@ -2,7 +2,7 @@
 #include <common/util.h>
 #include "acpi.h"
 #include "madt.h"
-#include <driver/timer/hpet.h>
+#include <driver/hpet/hpet.h>
 
 extern void process_madt(madt_t *madt);
 
@@ -146,12 +146,11 @@ void process_acpi_table(uint64_t addr) {
     }
 }
 
-void acpi_init() {
-    // char buf[33];
+bool acpi_init() {
     uint64_t addr = find_rsdp();
+
     if (0 == addr) {
-        log("This computer has no ACPI!");
-        return;
+        return false;
     }
 
     // get version ACPI version
@@ -161,38 +160,38 @@ void acpi_init() {
         // log(rsdp->signature);
         if (!is_rsdp_1_valid(rsdp)) {
             log("RSDP 1.0 is not valid.");
-            return;
+            return false;
         }
         // get RSDT from RSDP
         rsdt_t *rsdt = (rsdt_t *) (rsdp->rsdt_addr);
         // validate RSDT
         if (memcmp(rsdt->header.signature, "RSDT", 4) != 0 || !is_sdt_valid(&(rsdt->header))) {
             log("ACPI::RSDT not valid.");
-            return;
+            return false;
         }
         int sdt_num = (rsdt->header.length - sizeof(rsdt->header)) / sizeof(uint32_t);
         for (int i = 0; i < sdt_num; ++i) {
             process_acpi_table(rsdt->sdt_entries[i]);
         }
-        //log("done %d", sdt_num);
     } else {
         // newer than 1.0, treat them as 2.0
         rsdp_2_t *rsdp = (rsdp_2_t *) addr;
         if (!is_rsdp_2_valid(rsdp)) {
             log("RSDP 2.0 is not valid.");
-            return;
+            return false;
         }
         // get XSDT from RSDP
         xsdt_t *xsdt = (xsdt_t *) (rsdp->xsdt_addr);
         // validate XSDT
         if (memcmp(xsdt->header.signature, "XSDT", 4) != 0 || !is_sdt_valid(&(xsdt->header))) {
             log("ACPI::XSDT not valid.");
-            return;
+            return false;
         }
         int sdt_num = (xsdt->header.length - sizeof(xsdt->header)) / sizeof(uint64_t);
         for (int i = 0; i < sdt_num; ++i) {
             process_acpi_table(xsdt->sdt_entries[i]);
         }
-        //log("done");
     }
+
+    return true;
 }

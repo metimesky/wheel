@@ -59,7 +59,7 @@ typedef struct xsdt xsdt_t;
  ******************************************************************************/
 
 extern bool is_sdt_valid(sdt_header_t *sdt);
-extern void acpi_init();
+extern bool acpi_init();
 
 #include "madt.h"
 

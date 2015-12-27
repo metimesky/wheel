@@ -31,3 +31,27 @@ ACPICA 分为许多子模块，例如 AML 解释器、ACPI 表管理器、命名
 
 - ACPI 表管理器。ACPI 规范定义了很多数据结构，称作 ACPI 表，例如 XSDT、FADT、MADT 等。由于 OS 可能在还没有完全启动的时候就需要相关表结构，因此这个模块可以独立于其他模块使用。
 - AML 解释器。ACPI 的很多信息是以 AML 字节码的形式提供的，AML 解释器是其他模块能正常工作的前提。
+
+### 使用
+
+事实证明，下载 Unix 版本的 ACPICA，而不是 Github 上的源代码，能够避免很多不必要的麻烦。
+
+使用的方法就是将源代码复制过来，但是 ACPICA 的目录结构已经固定，引用头文件的时候并没有使用相对路径，因此需要对源文件逐一进行修改。可以使用下面的命令批量处理：
+
+``` bash
+for f in components/*/*.h
+do
+perl -pi -e 's/^#include "/#include "\.\.\/\.\.\/include\//g' $f
+done
+```
+
+或者写成函数的形式：
+
+``` bash
+function magic {
+    for f in $1/*.c
+    do
+        perl -pi -e 's/^#include "/#include "\.\.\/\.\.\/include\//g' $f
+    done
+}
+```
