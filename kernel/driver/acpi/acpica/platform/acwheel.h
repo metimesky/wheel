@@ -44,25 +44,13 @@
 #ifndef __ACWHEEL_H__
 #define __ACWHEEL_H__
 
-/* Common (in-kernel/user-space) ACPICA configuration */
+#include <common/stdhdr.h>
+// #include <common/util.h>
 
-#define ACPI_USE_SYSTEM_CLIBRARY
-#define ACPI_USE_DO_WHILE_0
+#undef ACPI_USE_SYSTEM_CLIBRARY
+#undef ACPI_USE_STANDARD_HEADERS
 
 #define ACPI_USE_SYSTEM_INTTYPES
-
-/* Kernel specific ACPICA configuration */
-
-#ifdef CONFIG_ACPI_REDUCED_HARDWARE_ONLY
-#define ACPI_REDUCED_HARDWARE 1
-#endif
-
-#ifdef CONFIG_ACPI_DEBUGGER
-#define ACPI_DEBUGGER
-#endif
-
-#include <common/stdhdr.h>
-#include <common/util.h>
 
 typedef int BOOLEAN;
 
@@ -76,92 +64,85 @@ typedef int16_t INT16;
 typedef int32_t INT32;
 typedef int64_t INT64;
 
-/* External globals for __KERNEL__, stubs is needed */
+/* Kernel specific ACPICA configuration */
 
-// global variable declaration
+// #define ACPI_REDUCED_HARDWARE 1
+
+#undef DEFINE_ACPI_GLOBALS
 #define ACPI_GLOBAL(t,a) t a
 #define ACPI_INIT_GLOBAL(t,a,b) t a = (b)
 
-/* Generating stubs for configurable ACPICA macros */
-
-// #define ACPI_NO_MEM_ALLOCATIONS
-
-/* Generating stubs for configurable ACPICA functions */
-
-#define ACPI_NO_ERROR_MESSAGES
-#undef ACPI_DEBUG_OUTPUT
-
-/* External interface for __KERNEL__, stub is needed */
-
-// #define ACPI_EXTERNAL_RETURN_STATUS(Prototype) \
-//     static ACPI_INLINE Prototype {return(AE_NOT_CONFIGURED);}
-// #define ACPI_EXTERNAL_RETURN_OK(Prototype) \
-//     static ACPI_INLINE Prototype {return(AE_OK);}
-// #define ACPI_EXTERNAL_RETURN_VOID(Prototype) \
-//     static ACPI_INLINE Prototype {return;}
-// #define ACPI_EXTERNAL_RETURN_UINT32(Prototype) \
-//     static ACPI_INLINE Prototype {return(0);}
-// #define ACPI_EXTERNAL_RETURN_PTR(Prototype) \
-//     static ACPI_INLINE Prototype {return(NULL);}
-
-#define ACPI_EXTERNAL_RETURN_STATUS(Prototype) \
-    extern Prototype;
-#define ACPI_EXTERNAL_RETURN_OK(Prototype) \
-    extern Prototype;
-#define ACPI_EXTERNAL_RETURN_VOID(Prototype) \
-    extern Prototype;
-#define ACPI_EXTERNAL_RETURN_UINT32(Prototype) \
-    extern Prototype;
-#define ACPI_EXTERNAL_RETURN_PTR(Prototype) \
-    extern Prototype;
-
-/* Host-dependent types and defines for in-kernel ACPICA */
+#undef ACPI_DISASSEMBLER
+#undef ACPI_DEBUGGER
+#undef ACPI_DEBUG_OUTPUT    // !!
 
 #define ACPI_MACHINE_WIDTH          64
-// #define ACPI_EXPORT_SYMBOL(symbol)  EXPORT_SYMBOL(symbol);
-#define ACPI_EXPORT_SYMBOL(symbol)
-#define strtoul                     simple_strtoul
 
-#define ACPI_CACHE_T                int
-#define ACPI_SPINLOCK               int *
-#define ACPI_CPU_FLAGS              unsigned long
-
-/* Use native linux version of AcpiOsAllocateZeroed */
-
-#define USE_NATIVE_ALLOCATE_ZEROED
-
-/*
- * Overrides for in-kernel ACPICA
- */
+// OSL functions
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsInitialize
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsTerminate
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetRootPointer
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsPredefinedOverride
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsTableOverride
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsPhysicalTableOverride
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsCreateLock
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsDeleteLock
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsAcquireLock
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsReleaseLock
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsCreateSemaphore
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsDeleteSemaphore
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsWaitSemaphore
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsSignalSemaphore
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsCreateMutex
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsDeleteMutex
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsAcquireMutex
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsReleaseMutex
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsAllocate
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsAllocateZeroed
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsFree
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsMapMemory
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsUnmapMemory
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetPhysicalAddress
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsCreateCache
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsDeleteCache
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsPurgeCache
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsAcquireObject
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsReleaseObject
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsInstallInterruptHandler
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsRemoveInterruptHandler
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetThreadId
-#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsCreateLock
-
-/*
- * OSL interfaces used by debugger/disassembler
- */
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsExecute
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsWaitEventsComplete
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsSleep
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsStall
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsReadPort
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsWritePort
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsReadMemory
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsWriteMemory
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsReadPciConfiguration
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsWritePciConfiguration
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsReadable
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsWritable
-
-/*
- * OSL interfaces used by utilities
- */
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetTimer
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsSignal
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsPrintf
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsVprintf
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsRedirectOutput
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetLine
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetTableByName
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetTableByIndex
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetTableByAddress
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsOpenDirectory
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetNextFilename
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsCloseDirectory
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsOpenFile
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsCloseFile
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsReadFile
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsWriteFile
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetFileOffset
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsSetFileOffset
+#define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsTracePoint
 
 #include "acgcc.h"
-
-#define ACPI_ALLOCATE_BUFFER 1
-#define ACPI_ALLOCATE_LOCAL_BUFFER 2
 
 #endif /* __ACWHEEL_H__ */

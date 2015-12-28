@@ -3,11 +3,13 @@
 #include <common/stdhdr.h>
 #include "acpi.h"
 #include "acpica/acpi.h"
+#include "acpica/acpiosxf.h"
 
 // #define ACPI_STATUS int
 // #define ACPI_PHYSICAL_ADDRESS int
 // #define ACPI_PREDEFINED_NAMES char*
 // #define ACPI_STRING char*
+typedef char ACPI_TABLE_HEADER;
 
 ACPI_STATUS AcpiOsInitialize(void) {
 	return 0;

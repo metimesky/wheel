@@ -55,3 +55,24 @@ function magic {
     done
 }
 ```
+
+### 配置文件
+
+`include` 目录下都是头文件，其中有几个属于配置文件，其中定义的宏会影响到其他组件的编译行为：
+- 全局头文件 `include/acconfig.h`，包含一些通用的常量和选项
+- 与特定目标平台相关的头文件，如 `include/platform/aclinux.h`
+- 与使用的编译器相关的头文件，如 `include/platform/acgcc.h`
+
+#### Component Selection
+
+``` c
+#undef ACPI_DISASSEMBLER
+#undef ACPI_DEBUGGER
+#define ACPI_REDUCED_HARDWARE FALSE
+
+typedef ACPI_SPINLOCK (void*);
+#define ACPI_SEMAPHORE (void*)
+#define ACPI_MUTEX (void*)
+
+#undef ACPI_USE_LOCAL_CACHE // since Wheel has SLAB
+```

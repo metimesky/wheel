@@ -42,13 +42,30 @@ int memcmp(const void *s1, const void *s2, int n) {
 // copy string from src to dst at most n bytes (excluding trailing zero)
 // and return the actual number of bytes copied (excluding trailing zero)
 // the return value should be same as strlen(dst)
-int strncpy(char *dst, const char *src, int n) {
+char *strncpy(char *dst, const char *src, int n) {
     int i;
     for (i = 0; i < n && src[i]; ++i) {
         dst[i] = src[i];
     }
     dst[i] = '\0';
-    return i;
+    return dst;
+}
+
+char *strcpy (char *DstString, const char *SrcString) {
+    char *String = DstString;
+
+    /* Move bytes brute force */
+
+    while (*SrcString) {
+        *String = *SrcString;
+
+        String++;
+        SrcString++;
+    }
+
+    /* Null terminate */
+    *String = 0;
+    return (DstString);
 }
 
 // calculate the length of the string, excluding trailing zero.
@@ -56,6 +73,284 @@ int strlen(const char *str) {
     int len = 0;
     while (str[len]) { ++len; }
     return len;
+}
+
+int strcmp(const char *String1, const char *String2) {
+    for (; (*String1 == *String2); String2++)  {
+        if (!*String1++) {
+            return (0);
+        }
+    }
+    return ((unsigned char) *String1 - (unsigned char) *String2);
+}
+
+int strncmp(const char *String1, const char *String2, int Count) {
+    for (; Count-- && (*String1 == *String2); String2++) {
+        if (!*String1++) {
+            return (0);
+        }
+    }
+    return ((Count == ACPI_SIZE_MAX) ? 0 : ((unsigned char) *String1 -
+        (unsigned char) *String2));
+}
+
+char *strchr(const char *String, int ch) {
+    for (; (*String); String++) {
+        if ((*String) == (char) ch) {
+            return ((char *) String);
+        }
+    }
+    return (NULL);
+}
+
+char *strcat(char *DstString, const char *SrcString) {
+    char *String;
+
+    /* Find end of the destination string */
+    for (String = DstString; *String++; ) { ; }
+
+    /* Concatenate the string */
+    for (--String; (*String++ = *SrcString++); ) { ; }
+
+    return (DstString);
+}
+
+char *strncat (char                    *DstString, const char              *SrcString,
+    int               Count)
+{
+    char                    *String;
+
+
+    if (Count)
+    {
+        /* Find end of the destination string */
+
+        for (String = DstString; *String++; )
+        { ; }
+
+        /* Concatenate the string */
+
+        for (--String; (*String++ = *SrcString++) && --Count; )
+        { ; }
+
+        /* Null terminate if necessary */
+
+        if (!Count)
+        {
+            *String = 0;
+        }
+    }
+
+    return (DstString);
+}
+
+char *
+strstr (
+    char                    *String1,
+    char                    *String2)
+{
+    uint32_t                  Length;
+
+
+    Length = strlen (String2);
+    if (!Length)
+    {
+        return (String1);
+    }
+
+    while (strlen (String1) >= Length)
+    {
+        if (memcmp (String1, String2, Length) == 0)
+        {
+            return (String1);
+        }
+        String1++;
+    }
+
+    return (NULL);
+}
+
+uint32_t
+strtoul (
+    const char              *String,
+    char                    **Terminator,
+    uint32_t                  Base)
+{
+    uint32_t                  converted = 0;
+    uint32_t                  index;
+    uint32_t                  sign;
+    const char              *StringStart;
+    uint32_t                  ReturnValue = 0;
+    ACPI_STATUS             Status = AE_OK;
+
+
+    /*
+     * Save the value of the pointer to the buffer's first
+     * character, save the current errno value, and then
+     * skip over any white space in the buffer:
+     */
+    StringStart = String;
+    while (isspace (*String) || *String == '\t')
+    {
+        ++String;
+    }
+
+    /*
+     * The buffer may contain an optional plus or minus sign.
+     * If it does, then skip over it but remember what is was:
+     */
+    if (*String == '-')
+    {
+        sign = ACPI_SIGN_NEGATIVE;
+        ++String;
+    }
+    else if (*String == '+')
+    {
+        ++String;
+        sign = ACPI_SIGN_POSITIVE;
+    }
+    else
+    {
+        sign = ACPI_SIGN_POSITIVE;
+    }
+
+    /*
+     * If the input parameter Base is zero, then we need to
+     * determine if it is octal, decimal, or hexadecimal:
+     */
+    if (Base == 0)
+    {
+        if (*String == '0')
+        {
+            if (tolower (*(++String)) == 'x')
+            {
+                Base = 16;
+                ++String;
+            }
+            else
+            {
+                Base = 8;
+            }
+        }
+        else
+        {
+            Base = 10;
+        }
+    }
+    else if (Base < 2 || Base > 36)
+    {
+        /*
+         * The specified Base parameter is not in the domain of
+         * this function:
+         */
+        goto done;
+    }
+
+    /*
+     * For octal and hexadecimal bases, skip over the leading
+     * 0 or 0x, if they are present.
+     */
+    if (Base == 8 && *String == '0')
+    {
+        String++;
+    }
+
+    if (Base == 16 &&
+        *String == '0' &&
+        tolower (*(++String)) == 'x')
+    {
+        String++;
+    }
+
+    /*
+     * Main loop: convert the string to an unsigned long:
+     */
+    while (*String)
+    {
+        if (isdigit (*String))
+        {
+            index = (uint32_t) ((UINT8) *String - '0');
+        }
+        else
+        {
+            index = (uint32_t) toupper (*String);
+            if (isupper (index))
+            {
+                index = index - 'A' + 10;
+            }
+            else
+            {
+                goto done;
+            }
+        }
+
+        if (index >= Base)
+        {
+            goto done;
+        }
+
+        /*
+         * Check to see if value is out of range:
+         */
+
+        if (ReturnValue > ((ACPI_uint32_t_MAX - (uint32_t) index) /
+                            (uint32_t) Base))
+        {
+            Status = AE_ERROR;
+            ReturnValue = 0;           /* reset */
+        }
+        else
+        {
+            ReturnValue *= Base;
+            ReturnValue += index;
+            converted = 1;
+        }
+
+        ++String;
+    }
+
+done:
+    /*
+     * If appropriate, update the caller's pointer to the next
+     * unconverted character in the buffer.
+     */
+    if (Terminator)
+    {
+        if (converted == 0 && ReturnValue == 0 && String != NULL)
+        {
+            *Terminator = (char *) StringStart;
+        }
+        else
+        {
+            *Terminator = (char *) String;
+        }
+    }
+
+    if (Status == AE_ERROR)
+    {
+        ReturnValue = ACPI_uint32_t_MAX;
+    }
+
+    /*
+     * If a minus sign was present, then "the conversion is negated":
+     */
+    if (sign == ACPI_SIGN_NEGATIVE)
+    {
+        ReturnValue = (ACPI_uint32_t_MAX - ReturnValue) + 1;
+    }
+
+    return (ReturnValue);
+}
+
+#define islower(x) ('a' <= (x) && (x) <= 'z')
+#define isupper(x) ('A' <= (x) && (x) <= 'Z')
+
+int toupper (int c) {
+    return (islower(c) ? ((c)-0x20) : (c));
+}
+
+int tolower (int c) {
+    return (isupper(c) ? ((c)+0x20) : (c));
 }
 
 char *u32_to_str(unsigned int value, char *str, int base) {
@@ -272,7 +567,7 @@ int snprintf(char *buf, int n, const char *fmt, ...) {
 static void print_dec(unsigned int value, unsigned int width, char * buf, int * ptr ) {
     unsigned int n_width = 1;
     unsigned int i = 9;
-    while (value > i && i < UINT32_MAX) {
+    while (value > i && i < uint32_t_MAX) {
         n_width += 1;
         i *= 10;
         i += 9;
@@ -306,7 +601,7 @@ static void print_hex(unsigned int value, unsigned int width, char * buf, int * 
 
     unsigned int n_width = 1;
     unsigned int j = 0x0F;
-    while (value > j && j < UINT32_MAX) {
+    while (value > j && j < 0xffffffff) {
         n_width += 1;
         j *= 0x10;
         j += 0x0F;
