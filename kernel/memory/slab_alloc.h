@@ -1,7 +1,7 @@
 #ifndef __VIRT_ALLOC_H__
 #define __VIRT_ALLOC_H__ 1
 
-#include <common/stdhdr.h>
+#include <utilities/clib.h>
 
 // initialize slab allocator
 void slab_alloc_init();

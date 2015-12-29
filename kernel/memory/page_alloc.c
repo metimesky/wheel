@@ -1,7 +1,8 @@
 #include "page_alloc.h"
-#include <common/stdhdr.h>
-#include <common/multiboot.h>
-#include <common/util.h>
+#include <init/multiboot.h>
+#include <utilities/clib.h>
+#include <utilities/cpu.h>
+#include <utilities/bitmap.h>
 
 // #include "../kernel/fake_console.h"
 

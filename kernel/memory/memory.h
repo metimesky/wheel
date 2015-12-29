@@ -9,8 +9,8 @@
     third layer is object cache allocator (slab_alloc.c)
  */
 
-#include <common/stdhdr.h>
-#include <common/multiboot.h>
+#include <utilities/clib.h>
+#include <init/multiboot.h>
 
 #include "page_alloc.h"
 #include "slab_alloc.h"

@@ -1,6 +1,5 @@
 #include "slab_alloc.h"
-#include <common/stdhdr.h>
-#include <common/util.h>
+#include <utilities/clib.h>
 #include "page_alloc.h"
 
 /* Virtual memory allocator is implemented modeling SLUB allocator.
