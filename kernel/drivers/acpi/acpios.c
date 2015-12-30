@@ -1,5 +1,5 @@
 // this file defines functions that are required by ACPICA
-// AcpiOs*
+// ACPICA OS Layer
 
 #include <utilities/clib.h>
 #include "acpi.h"
@@ -8,7 +8,7 @@
 #include "acpica/actbl.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// environmental and ACPI tables
+/// Environmental and ACPI tables
 ////////////////////////////////////////////////////////////////////////////////
 
 // called during initialization of the ACPICA subsystem
@@ -36,9 +36,7 @@ ACPI_STATUS AcpiOsPredefinedOverride(const ACPI_PREDEFINED_NAMES *PredefinedObje
 
 ACPI_STATUS AcpiOsTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_TABLE_HEADER **NewTable) {}
 
-ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *ExistingTable,
-ACPI_PHYSICAL_ADDRESS *NewAddress,
-UINT32 *NewTableLength) {}
+ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *ExistingTable, ACPI_PHYSICAL_ADDRESS *NewAddress, UINT32 *NewTableLength) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// memory

@@ -18,9 +18,9 @@ fda     :=  fd.img
 AS      :=  yasm
 ASFLAGS :=  -f elf64
 CC		:=	$(if $(shell which clang), clang, gcc)
-CFLAGS  :=  -c -std=c11 -O2 -Wall -Wextra -I $(src_dir) -ffreestanding -fno-builtin \
+CFLAGS  :=  -c -std=c11 -O2 -I $(src_dir) -ffreestanding \
+			-Wall -Wextra -Werror-implcit-function-declaration \
             -fno-stack-protector -fno-zero-initialized-in-bss -fno-sanitize=address \
-            -Werror-implcit-function-declaration \
             -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-3dnow
             # `-ffreestanding` implies `-fno-builtin`, and `-nostdlib` is used in linking
 LD      :=  ld
