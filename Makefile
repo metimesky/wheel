@@ -19,7 +19,7 @@ AS      :=  yasm
 ASFLAGS :=  -f elf64
 CC		:=	$(if $(shell which clang), clang, gcc)
 CFLAGS  :=  -c -std=c11 -O2 -I $(src_dir) -ffreestanding \
-			-Wall -Wextra -Werror-implcit-function-declaration \
+			-Wall -Wextra -Werror-implicit-function-declaration \
             -fno-stack-protector -fno-zero-initialized-in-bss -fno-sanitize=address \
             -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-3dnow
             # `-ffreestanding` implies `-fno-builtin`, and `-nostdlib` is used in linking

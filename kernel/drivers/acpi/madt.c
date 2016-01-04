@@ -1,4 +1,5 @@
 #include <utilities/clib.h>
+#include <utilities/logging.h>
 #include "madt.h"
 
 bool madt_present = false;

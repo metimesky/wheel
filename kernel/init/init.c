@@ -1,9 +1,12 @@
 #include "multiboot.h"
 
 #include <utilities/clib.h>
+#include <utilities/logging.h>
+
 #include <drivers/console/console.h>
 #include <interrupt/interrupt.h>
 #include <drivers/acpi/acpi.h>
+#include <drivers/apic/apic.h>
 #include <memory/memory.h>
 
 #include <timming/timming.h>
@@ -54,6 +57,9 @@ void mp_init() {
  * When fully started, all kernel do is handling events and syscall.
  * This function is executed during system initialization.
  */
+
+extern void early_test();
+
 void init(uint32_t eax, uint32_t ebx) {
     // initialize early console to print verbose information.
     // currently only 80x25 text mode is supported, graphics mode may be
@@ -75,7 +81,15 @@ void init(uint32_t eax, uint32_t ebx) {
     // at this stage, only support internal exception and 8259 irq
     // other vectors are registered later
     interrupt_init();
-    
+
+////////////////////////////////////////////////////////////////////////////////
+    log("testing ACPICA table management component.");
+    //uint32_t dat = DATA_U32(0x1038000);
+    early_test();
+    // halt earlt
+    while (1) {}
+////////////////////////////////////////////////////////////////////////////////
+
     // initialize acpi driver
     if (!acpi_init()) {
         log("ACPI not present!");

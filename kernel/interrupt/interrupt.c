@@ -1,6 +1,9 @@
 #include "interrupt.h"
 #include "entries.h"
+#include <utilities/env.h>
+#include <utilities/cpu.h>
 #include <utilities/clib.h>
+#include <utilities/logging.h>
 #include <drivers/acpi/acpi.h>
 
 struct idt_entry {
@@ -55,6 +58,11 @@ typedef struct int_context int_context_t;
  */
 void default_interrupt_handler(int vec, int_context_t *ctx) {
     log("#%d cs:rip=%x:%x, ss:rsp=%x:%x, rflags=%x, code %x", vec, ctx->cs, ctx->rip, ctx->ss, ctx->rsp, ctx->rflags, ctx->err_code);
+    if (vec == 14) {    // page fault
+        uint64_t addr;
+        __asm__ __volatile__("mov %%cr2, %0" : "=r"(addr));
+        log("page fault while accessing %x", addr);
+    }
     while (true) {}
 }
 

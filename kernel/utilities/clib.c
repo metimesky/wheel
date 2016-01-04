@@ -33,6 +33,7 @@ void *memcpy(void *dst, const void *src, size_t n) {
     for (; n; --n, ++vdst, ++vsrc) {
         *vdst = *vsrc;
     }
+    return dst;
 }
 
 void *memmove(void *dst, const void *src, size_t n) {
@@ -79,8 +80,11 @@ void *memchr(const void *ptr, int value, size_t n) {
 void *memset(void *ptr, int value, size_t n) {
     unsigned char* vptr = (unsigned char *) ptr;
     unsigned char ch = (unsigned char) value & 0xff;
-    for (; n; --n, ++vptr) {
-        *vptr = ch;
+    // for (; n; --n, ++vptr) {
+    //     *vptr = ch;
+    // }
+    for (int i = 0; i < n; ++i) {
+        vptr[i] = ch;
     }
     return ptr;
 }
@@ -289,7 +293,7 @@ unsigned long long strtoull(const char *str, char **end, int base) {
 ////////////////////////////////////////////////////////////////////////////////
 /// stdio functions
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 static int snprintf(char* buf, size_t n, const char* fmt, ...) {
         va_list args;
         va_start(args, fmt);
@@ -540,7 +544,7 @@ int vsnprintf(char *buf, size_t n, const char *fmt, va_list args) {
     *buf = '\0';
     return 1;
 }
-
+*/
 /*
 void *memcpy_o(void *dst, const void *src, size_t n) {
     uint8_t *bdst = (uint8_t *) dst;

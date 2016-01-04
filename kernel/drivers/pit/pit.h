@@ -7,4 +7,6 @@
 #define CTRL_PORT 0x43
 #define DATA_PORT 0x40
 
+extern void pit_init();
+
 #endif // __PIT_H__

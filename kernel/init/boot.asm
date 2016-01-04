@@ -94,7 +94,7 @@ enter_long_mode:
     add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
 
-    ; creating 4 Page Directory Pointer Entry (PDPE)
+    ; creating 4 Page Directory Pointer Entries (PDPE)
     mov     dword [edi], 0x2007     ; present, read/write, user
     add     dword [edi], pml4t      ; pointing to pml4t+8K (PD Table)
     add     edi, 8
@@ -108,7 +108,7 @@ enter_long_mode:
     add     dword [edi], pml4t      ; pointing to pml4t+12K
     add     edi, 0x1000 - 24
 
-    ; creating 4*512 Page Directory Entry (PDE)
+    ; creating 4*512 Page Directory Entries (PDE)
     mov     ebx, 0x00000087         ; present, read/write, 2MB granularity
     mov     ecx, 4*512              ; 4*512 entries in total
 .set_pdp_entry:

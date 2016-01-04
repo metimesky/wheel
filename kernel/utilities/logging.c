@@ -104,7 +104,7 @@ void log(const char *fmt, ...) {
                 // unlucky
                 break;
             case 'c':
-                buf[i] = va_arg(args, char);
+                buf[i] = (char) va_arg(args, int);  // auto promoted to int by default
                 break;
             case '%':
                 buf[i] = '%';

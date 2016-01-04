@@ -72,8 +72,16 @@ typedef int64_t INT64;
 #undef ACPI_DEBUG_OUTPUT    // !!
 #undef ACPI_DBG_TRACK_ALLOCATIONS
 
-// Wheel has SLAB implementation, so local caching is not needed
-#undef ACPI_USE_LOCAL_CACHE
+#undef ACPI_MUTEX_DEBUG
+
+#undef ACPI_USE_DO_WHILE_0
+
+#define ACPI_NO_ERROR_MESSAGES  // get rid of error messages
+// #define ACPI_NO_MEM_ALLOCATIONS
+
+// we have SLAB, but use ACPICA's internal cache anyway
+#define ACPI_CACHE_T                ACPI_MEMORY_LIST
+#define ACPI_USE_LOCAL_CACHE        1
 
 // #define ACPI_REDUCED_HARDWARE 1
 
@@ -84,6 +92,7 @@ typedef int64_t INT64;
 #define ACPI_MACHINE_WIDTH          64
 
 // OSL functions
+/*
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsInitialize
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsTerminate
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetRootPointer
@@ -147,7 +156,7 @@ typedef int64_t INT64;
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsGetFileOffset
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsSetFileOffset
 #define ACPI_USE_ALTERNATE_PROTOTYPE_AcpiOsTracePoint
-
+*/
 #include "acgcc.h"
 
 #endif /* __ACWHEEL_H__ */

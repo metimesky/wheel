@@ -1,6 +1,7 @@
 #include "multiprocessor.h"
 #include <utilities/clib.h>
 #include <utilities/cpu.h>
+#include <utilities/logging.h>
 
 static int is_mp_pointer_valid(mp_pointer_t *pointer) {
     uint8_t sum = 0;

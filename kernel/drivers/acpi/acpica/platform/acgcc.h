@@ -62,7 +62,7 @@
  * to tell the compiler warning in a per-variable manner that a variable
  * is unused.
  */
-#define ACPI_UNUSED_VAR __attribute__ ((unused))
+#define ACPI_UNUSED_VAR __attribute__((unused))
 
 /*
  * Some versions of gcc implement strchr() with a buggy macro. So,

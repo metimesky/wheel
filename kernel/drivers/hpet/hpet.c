@@ -1,4 +1,5 @@
 #include "hpet.h"
+#include <utilities/logging.h>
 
 uint64_t hpet_addr = 0;
 
