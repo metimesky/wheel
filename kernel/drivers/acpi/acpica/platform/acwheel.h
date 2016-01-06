@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Name: aclinux.h - OS specific defines, etc. for Linux
+ * Name: acwheel.h - OS specific defines, etc. for Wheel
  *
  *****************************************************************************/
 
@@ -44,8 +44,21 @@
 #ifndef __ACWHEEL_H__
 #define __ACWHEEL_H__
 
+// component selection
+
+#undef ACPI_DISASSEMBLER
+#undef ACPI_DEBUGGER
+#undef ACPI_REDUCED_HARDWARE
+
+// data types
+
+// typedef uint32_t* ACPI_SPINLOCK;
+// typedef uint32_t* ACPI_MUTEX;
+
 #include <utilities/env.h>
 #include <utilities/clib.h>
+
+typedef uint32_t ACPI_SEMAPHORE;
 
 // use C library functions provided by Wheel
 #define ACPI_USE_SYSTEM_CLIBRARY
@@ -84,10 +97,6 @@ typedef int64_t INT64;
 #define ACPI_USE_LOCAL_CACHE        1
 
 // #define ACPI_REDUCED_HARDWARE 1
-
-//#undef DEFINE_ACPI_GLOBALS
-// #define ACPI_GLOBAL(t,a) t a
-// #define ACPI_INIT_GLOBAL(t,a,b) t a = (b)
 
 #define ACPI_MACHINE_WIDTH          64
 

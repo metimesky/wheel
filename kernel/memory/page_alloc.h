@@ -9,7 +9,7 @@
  * be symmetric.
  */
 
-#include <utilities/clib.h>
+#include <utilities/env.h>
 
 // initialize page allocator, passing mmap from multiboot_info as argument
 void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length);

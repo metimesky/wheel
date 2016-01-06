@@ -118,7 +118,7 @@ static void create_bin(int index) {
 }
 
 // allocate an object with given size, return the virtual address
-void* slab_alloc(int size) {
+void* slab_alloc(size_t size) {
     // round up to 8 bytes and calculate the bin index
     int index = (size + 7) >> 3;
 

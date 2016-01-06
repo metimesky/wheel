@@ -59,6 +59,11 @@ void mp_init() {
  */
 
 extern void early_test();
+extern void unwind();
+
+void unwind_a() { unwind(); }
+void unwind_b() { unwind_a(); }
+void unwind_c() { unwind_b(); }
 
 void init(uint32_t eax, uint32_t ebx) {
     // initialize early console to print verbose information.
@@ -86,6 +91,7 @@ void init(uint32_t eax, uint32_t ebx) {
     log("testing ACPICA table management component.");
     //uint32_t dat = DATA_U32(0x1038000);
     early_test();
+    // unwind_c();
     // halt earlt
     while (1) {}
 ////////////////////////////////////////////////////////////////////////////////

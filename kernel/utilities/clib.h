@@ -18,20 +18,10 @@
 #define isprint(c) (isgraph(c) || isspace(c))
 
 // these two need to be implemented as function, as ACPICA calls them
-// #define tolower(c) (isupper(c) ? (c)+0x20 : (c))
-// #define toupper(c) (islower(c) ? (c)-0x20 : (c))
 extern char tolower(char c);
 extern char toupper(char c);
-
-// data accessing helpers
-#define DATA_U8(x)  (* ((uint8_t *)  (x)))
-#define DATA_U16(x) (* ((uint16_t *) (x)))
-#define DATA_U32(x) (* ((uint32_t *) (x)))
-#define DATA_U64(x) (* ((uint64_t *) (x)))
-#define DATA_I8(x)  (* ((int8_t *)  (x)))
-#define DATA_I16(x) (* ((int16_t *) (x)))
-#define DATA_I32(x) (* ((int32_t *) (x)))
-#define DATA_I64(x) (* ((int64_t *) (x)))
+// #define tolower(c) (isupper(c) ? (c)+0x20 : (c))
+// #define toupper(c) (islower(c) ? (c)-0x20 : (c))
 
 // memory functions
 extern void *memcpy(void *dst, const void *src, size_t n);

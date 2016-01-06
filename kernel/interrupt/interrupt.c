@@ -6,6 +6,10 @@
 #include <utilities/logging.h>
 #include <drivers/acpi/acpi.h>
 
+////////////////////////////////////////////////////////////////////////////////
+/// IDT
+////////////////////////////////////////////////////////////////////////////////
+
 struct idt_entry {
     uint16_t offset_low;
     uint16_t selector;
@@ -24,52 +28,10 @@ typedef struct idt_ptr idt_ptr_t;
 
 idt_entry_t idt[INT_NUM];
 idt_ptr_t idtr;
-void* interrupt_handler_table[INT_NUM];
+interrupt_handler interrupt_handler_table[INT_NUM];
 
-// Interrupt context, registers saved on stack
-// this structure must be compliant with those push instructions in entries.asm
-struct int_context {
-    uint64_t r15;
-    uint64_t r14;
-    uint64_t r13;
-    uint64_t r12;
-    uint64_t r11;
-    uint64_t r10;
-    uint64_t r9;
-    uint64_t r8;
-    uint64_t rbp;
-    uint64_t rsi;
-    uint64_t rdi;
-    uint64_t rdx;
-    uint64_t rcx;
-    uint64_t rbx;
-    uint64_t rax;
-    uint64_t err_code;
-    uint64_t rip;
-    uint64_t cs;
-    uint64_t rflags;
-    uint64_t rsp;
-    uint64_t ss;
-} __attribute__((packed));
-typedef struct int_context int_context_t;
-
-/**
-    Default interrupt handler that should be replaced
- */
-void default_interrupt_handler(int vec, int_context_t *ctx) {
-    log("#%d cs:rip=%x:%x, ss:rsp=%x:%x, rflags=%x, code %x", vec, ctx->cs, ctx->rip, ctx->ss, ctx->rsp, ctx->rflags, ctx->err_code);
-    if (vec == 14) {    // page fault
-        uint64_t addr;
-        __asm__ __volatile__("mov %%cr2, %0" : "=r"(addr));
-        log("page fault while accessing %x", addr);
-    }
-    while (true) {}
-}
-
-/**
-    fill IDT entry with given handler address
- */
-void fill_idt_entry(idt_entry_t *entry, void *handler) {
+// fill IDT entry with given handler address
+static void fill_idt_entry(idt_entry_t *entry, void *handler) {
     entry->selector = 8;
     entry->offset_low = ((uint64_t) handler) & 0xffff;
     entry->offset_mid = ((uint64_t) handler >> 16) & 0xffff;
@@ -78,19 +40,12 @@ void fill_idt_entry(idt_entry_t *entry, void *handler) {
     entry->reserved = 0;
 }
 
-/**
-    fill IDT entries and load IDTR
- */
-void idt_init() {
-    // initially, fill all interrupt handler as the default one
-    for (int i = 0; i < INT_NUM; ++i) {
-        interrupt_handler_table[i] = (void*) default_interrupt_handler;
-    }
-
+// fill IDT entries and load IDTR
+static void idt_init() {
     // clear IDT with zero
     memset(idt, 0, sizeof(idt));
 
-    // init entry 0~19
+    // internal exceptions, vector 0~31
     fill_idt_entry(&idt[0], isr0);
     fill_idt_entry(&idt[1], isr1);
     fill_idt_entry(&idt[2], isr2);
@@ -111,18 +66,48 @@ void idt_init() {
     fill_idt_entry(&idt[17], isr17);
     fill_idt_entry(&idt[18], isr18);
     fill_idt_entry(&idt[19], isr19);
-
-    // init entry 30
+    fill_idt_entry(&idt[20], isr20);
+    fill_idt_entry(&idt[21], isr21);
+    fill_idt_entry(&idt[22], isr22);
+    fill_idt_entry(&idt[23], isr23);
+    fill_idt_entry(&idt[24], isr24);
+    fill_idt_entry(&idt[25], isr25);
+    fill_idt_entry(&idt[26], isr26);
+    fill_idt_entry(&idt[27], isr27);
+    fill_idt_entry(&idt[28], isr28);
+    fill_idt_entry(&idt[29], isr29);
     fill_idt_entry(&idt[30], isr30);
+    fill_idt_entry(&idt[31], isr31);
 
-    // external interrupts
-    fill_idt_entry(&idt[32], isr32);  // clock
-    fill_idt_entry(&idt[33], isr33);  // keyboard
+    // external interrupts from old PIC - master
+    fill_idt_entry(&idt[32], isr32);
+    fill_idt_entry(&idt[33], isr33);
+    fill_idt_entry(&idt[34], isr34);
+    fill_idt_entry(&idt[35], isr35);
+    fill_idt_entry(&idt[36], isr36);
+    fill_idt_entry(&idt[37], isr37);
+    fill_idt_entry(&idt[38], isr38);
+    fill_idt_entry(&idt[39], isr39);
+
+    // external interrupts from old PIC - slave
+    fill_idt_entry(&idt[40], isr40);
+    fill_idt_entry(&idt[41], isr41);
+    fill_idt_entry(&idt[42], isr42);
+    fill_idt_entry(&idt[43], isr43);
+    fill_idt_entry(&idt[44], isr44);
+    fill_idt_entry(&idt[45], isr45);
+    fill_idt_entry(&idt[46], isr46);
+    fill_idt_entry(&idt[47], isr47);
 
     idtr.base = (uint64_t) idt;
     idtr.limit = INT_NUM * sizeof(idt_entry_t) - 1;
+    __asm__ __volatile__("lidt (%0)" :: "a"(&idtr));
     load_idtr(&idtr);   // defined in library/cpu.asm
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// TSS
+////////////////////////////////////////////////////////////////////////////////
 
 // structure of long mode TSS
 struct tss {
@@ -156,13 +141,12 @@ struct tss {
 } __attribute__((packed));
 typedef struct tss tss_t;
 
-tss_t tss;
-
 // the top address of default kernel stack, defined in boot.asm
 extern char kernel_stack_top;
 extern uint64_t gdt[];
+tss_t tss;      // scheduler may need to access tss
 
-void tss_init() {
+static void tss_init() {
     uint64_t rsp0 = (uint64_t) &kernel_stack_top;
     tss.rsp0_l = rsp0 & 0xffffffff;
     tss.rsp0_h = (rsp0 >> 32) & 0xffffffff;
@@ -185,7 +169,45 @@ void tss_init() {
     __asm__ __volatile__("ltr %%ax" :: "a"(0x28));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// Interrupt
+////////////////////////////////////////////////////////////////////////////////
+
+extern void unwind_from(uint64_t rbp);
+
+// Default interrupt handler, just print related information
+static void default_interrupt_handler(int vec, interrupt_context_t *ctx) {
+    switch (vec) {
+    case 0:     // #DE
+    case 1:     // #DB
+    case 2:     // NMI
+    case 3:     // #BP
+    case 4:     // #OF
+    case 13:    // #GP
+        log("#GP cs:rip=%x:%x, ss:rsp=%x:%x, rflags=%x, err=%x",
+            ctx->cs, ctx->rip, ctx->ss, ctx->rsp, ctx->rflags, ctx->err_code);
+        break;
+    case 14: {  // #PF
+        uint64_t virt;
+        __asm__ __volatile__("mov %%cr2, %0" : "=r"(virt));
+        log("#PF %x rip=%x, rsp=%x, err=%x", virt, ctx->rip, ctx->rsp, ctx->err_code);
+    }
+        break;
+    default:
+        log("#%d cs:rip=%x:%x, ss:rsp=%x:%x, rflags=%x, err=%x",
+            vec, ctx->cs, ctx->rip, ctx->ss, ctx->rsp, ctx->rflags, ctx->err_code);
+        break;
+    }
+    //unwind_from(ctx->rbp);
+    while (true) {}
+}
+
 void interrupt_init() {
+    // initially, fill all interrupt handler as the default one
+    for (int i = 0; i < INT_NUM; ++i) {
+        interrupt_handler_table[i] = default_interrupt_handler;
+    }
+
     // setup tss first
     tss_init();
 
@@ -205,4 +227,20 @@ void interrupt_init() {
 
     // enable system-wide interrupt
     //__asm__("sti");
+}
+
+// these two functions even can be called before interrupt was initialized
+
+// replace current interrupt handler with the one given
+void interrupt_install_handler(int vec, interrupt_handler func) {
+    if (0 <= vec && vec < INT_NUM) {
+        interrupt_handler_table[vec] = func;
+    }
+}
+
+// rewrite the interrupt handler with the default one
+void interrupt_remove_handler(int vec) {
+    if (0 <= vec && vec < INT_NUM) {
+        interrupt_handler_table[vec] = default_interrupt_handler;
+    }
 }

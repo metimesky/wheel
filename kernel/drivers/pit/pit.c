@@ -1,5 +1,5 @@
 #include "pit.h"
-#include <utilities/clib.h>
+#include <utilities/env.h>
 #include <utilities/cpu.h>
 #include <drivers/pic/pic.h>
 #include <timming/timming.h>
@@ -7,7 +7,7 @@
 
 void pic_pit_handler() {
     ++tick;
-    pic_eoi(0); // EOI
+    pic_send_eoi(0); // EOI
 }
 
 void apic_pit_handler() {
@@ -17,7 +17,7 @@ void apic_pit_handler() {
 
 void pit_init() {
     // install handler
-    interrupt_handler_table[32] = pic_pit_handler;
+    interrupt_install_handler(32, pic_pit_handler);
     // interrupt_handler_table[48] = apic_pit_handler;
 
     out_byte(CTRL_PORT, 0x34);  // mode 2

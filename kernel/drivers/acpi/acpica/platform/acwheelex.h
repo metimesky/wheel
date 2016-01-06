@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Name: aclinuxex.h - Extra OS specific defines, etc. for Linux
+ * Name: acwheelex.h - Extra OS specific defines, etc. for Wheel
  *
  *****************************************************************************/
 
@@ -41,8 +41,8 @@
  * POSSIBILITY OF SUCH DAMAGES.
  */
 
-#ifndef __ACWHEEL_H__
-#define __ACWHEEL_H__
+#ifndef __ACWHEELEX_H__
+#define __ACWHEELEX_H__
 
 #ifndef ACPI_DIV_64_BY_32
 #define ACPI_DIV_64_BY_32(n_hi, n_lo, d32, q32, r32) \
@@ -62,4 +62,4 @@
     } while (0)
 #endif
 
-#endif /* __ACWHEEL_H__ */
+#endif /* __ACWHEELEX_H__ */

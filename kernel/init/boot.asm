@@ -171,6 +171,7 @@ long_mode_entry:
 
     mov     edi, [mb_eax]
     mov     esi, [mb_ebx]
+    xor     rbp, rbp
     call    init    ; call the main function of kernel
 
     ; halt on return
@@ -224,8 +225,8 @@ mb_eax: dd  0
 mb_ebx: dd  0
 
 [section .bss]
-; reserve 4KB for kernel stack.
-kernel_stack:   resb 0x1000
+; reserve 16KB for kernel stack.
+kernel_stack:   resb 0x4000
 kernel_stack_top:
 
 ; reserve 24KB for page tables. (1 PML4T, 1 PDPT, 4 PDT)

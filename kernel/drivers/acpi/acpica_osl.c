@@ -11,25 +11,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // called during initialization of the ACPICA subsystem
-ACPI_STATUS AcpiOsInitialize(void) {
+ACPI_STATUS AcpiOsInitialize() {
     //TRACE
     // do nothing, just return ok
 	return AE_OK;
 }
 
 // called during termination of the ACPICA subsystem
-ACPI_STATUS AcpiOsTerminate(void) {
+ACPI_STATUS AcpiOsTerminate() {
     TRACE
     // do nothing, just return ok
 	return AE_OK;
 }
 
 // returns the physical address of the ACPI RSDP table
-ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer(void) {
-    ACPI_SIZE Ret;
-    AcpiFindRootPointer(&Ret);  // simple way, only works on x86
-    return Ret;
-
+ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer() {
+    ACPI_SIZE ret;
+    AcpiFindRootPointer(&ret);  // simple way, only works on x86
+    return ret;
+/*
     uint64_t ebda_addr = * ((uint16_t *) 0x40e) << 4;
 
     char *sig_str = "RSD PTR ";     // notice there's a space at the end
@@ -50,7 +50,7 @@ ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer(void) {
         }
     }
 
-    return 0;
+    return 0;*/
 }
 
 // allow the host os to override a predefined ACPI object
@@ -99,13 +99,17 @@ ACPI_STATUS AcpiOsReleaseObject(ACPI_CACHE_T *cache, void *object) {
 // map the physical address to virtual space and return the virtual address
 void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS phy_addr, ACPI_SIZE len) {
     int page_num = (len + 4095) >> 12;  // calculate the number of pages, round upwards
-    // log("mapping %x", phy_addr);
+    if (phy_addr > 0xffffffffUL) {
+        log("mapping %x", phy_addr);
+    }
     return (void *) phy_addr;
 }
 // deletes a mapping that was created by AcpiOsMapMemory
 void AcpiOsUnmapMemory(void *virt_addr, ACPI_SIZE len) {
     int page_num = (len + 4095) >> 12;  // calculate the number of pages, round upwards
-    // log("unmapping %x", virt_addr);
+    if (virt_addr > 0xffffffffUL) {
+        log("unmapping %x", virt_addr);
+    }
 }
 ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS *PhysicalAddress) {
     TRACE
@@ -133,7 +137,7 @@ BOOLEAN AcpiOsWritable(void *Memory, ACPI_SIZE Length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ACPI_THREAD_ID AcpiOsGetThreadId() {
-    TRACE
+    return 0;
 }
 ACPI_STATUS AcpiOsExecute(ACPI_EXECUTE_TYPE Type, ACPI_OSD_EXEC_CALLBACK Function, void *Context) {
     TRACE
@@ -172,11 +176,16 @@ ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_SEM
 ACPI_STATUS AcpiOsDeleteSemaphore(ACPI_SEMAPHORE Handle) {
     TRACE
 }
+static uint32_t val;
 ACPI_STATUS AcpiOsWaitSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units, UINT16 Timeout) {
-    TRACE
+    log("semaphore wait %d, %d, %d", Handle, Units, Timeout);
+    --val;
+    return AE_OK;
 }
 ACPI_STATUS AcpiOsSignalSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units) {
-    TRACE
+    log("semaphore signal %d, %d", Handle, Units);
+    ++val;
+    return AE_OK;
 }
 
 ACPI_STATUS AcpiOsCreateLock(ACPI_SPINLOCK *OutHandle) {

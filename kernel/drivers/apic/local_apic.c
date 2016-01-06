@@ -1,5 +1,6 @@
 #include "apic.h"
 #include <timming/timming.h>
+#include <utilities/env.h>
 #include <utilities/cpu.h>
 #include <utilities/logging.h>
 

@@ -179,9 +179,6 @@ define_isr 45
 define_isr 46
 define_isr 47
 
-; IO APIC IRQs
-;define_isr 48
-
 ; local APIC LVT (currently only timer is used)
 define_isr 48   ; CMCI
 define_isr 49   ; timer
@@ -190,3 +187,5 @@ define_isr 51   ; performance counter
 define_isr 52   ; LINT0
 define_isr 53   ; LINT1
 define_isr 54   ; error
+
+; IO APIC IRQs

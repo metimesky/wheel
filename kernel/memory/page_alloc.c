@@ -1,10 +1,10 @@
 #include "page_alloc.h"
 #include <init/multiboot.h>
-#include <utilities/clib.h>
-#include <utilities/cpu.h>
+#include <utilities/env.h>
+#include <utilities/cpu.h>  // invlpg
 #include <utilities/bitmap.h>
-
-// #include "../kernel/fake_console.h"
+#include <interrupt/interrupt.h>
+#include <utilities/logging.h>
 
 /* 物理内存管理（buddy算法）
  * CPU的分页机制，将内存划分为若干4K的物理页。在buddy算法中，4K大小的物理页也称为0阶块。
@@ -316,4 +316,16 @@ void virt_free_pages(uint64_t addr, int order) {
         free_pages(virt_to_phy(addr), 0);
         addr += 4096;
     }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Page Fault Handler
+////////////////////////////////////////////////////////////////////////////////
+
+// we should check demand paging or swapping here
+void page_fault_handler(int vec, interrupt_context_t *ctx) {
+    uint64_t virt;
+    __asm__ __volatile__("mov %%cr2, %0" : "=r"(virt));
+    log("#PF %x rip=%x, rsp=%x, err=%x", virt, ctx->rip, ctx->rsp, ctx->err_code);
+    while (1) {}
 }
