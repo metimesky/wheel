@@ -43,6 +43,18 @@ static uint8_t color = 0;
 
 static bool cursor_visible = true;
 
+// detect monochrome or color monitor (althrough not make many sense)
+static void detect_monitor() {
+    uint16_t video_type = DATA_U16(0x410) & 0x0030;
+    if (video_type == 0x30) {
+        // monochrome monitor
+    } else if (video_type == 0x20) {
+        // color monitor
+    } else {
+        // no monitor. Oh My God!
+    }
+}
+
 // this function move the cursor to location specified by data member
 static void console_move_cursor() {
     if (!cursor_visible) {

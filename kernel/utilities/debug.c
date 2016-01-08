@@ -9,14 +9,14 @@ void unwind() {
     log("current rbp is %x", rbp);
 
     while (rbp != 0) {
-        log("[rbp], [rbp+8]: 0x%u, 0x%u", DATA_U64(rbp), DATA_U64(rbp+8));
+        log("[rbp], [rbp+8]: 0x%x, 0x%x", DATA_U64(rbp), DATA_U64(rbp+8));
         rbp = DATA_U64(rbp);
     }
 }
 
 void unwind_from(uint64_t rbp) {
-    while (rbp != 0) {
-        log("unwinding: 0x%u", DATA_U64(rbp+8));
+    while (0x100000 < rbp && rbp < 0x300000) {
+        log("unwinding: 0x%x", DATA_U64(rbp+8));
         rbp = DATA_U64(rbp);
     }
 }

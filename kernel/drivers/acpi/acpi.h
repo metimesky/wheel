@@ -1,66 +1,67 @@
+/******************************************************************************
+ *
+ * Name: acpi.h - Master public include file used to interface to ACPICA
+ *
+ *****************************************************************************/
+
+/*
+ * Copyright (C) 2000 - 2015, Intel Corp.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions, and the following disclaimer,
+ *    without modification.
+ * 2. Redistributions in binary form must reproduce at minimum a disclaimer
+ *    substantially similar to the "NO WARRANTY" disclaimer below
+ *    ("Disclaimer") and any redistribution must be conditioned upon
+ *    including a substantially similar Disclaimer requirement for further
+ *    binary redistribution.
+ * 3. Neither the names of the above-listed copyright holders nor the names
+ *    of any contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ * Alternatively, this software may be distributed under the terms of the
+ * GNU General Public License ("GPL") version 2 as published by the Free
+ * Software Foundation.
+ *
+ * NO WARRANTY
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDERS OR CONTRIBUTORS BE LIABLE FOR SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGES.
+ */
+
 #ifndef __ACPI_H__
-#define __ACPI_H__ 1
+#define __ACPI_H__
 
-/* This file deals with Root System Description Table */
+/*
+ * Public include files for use by code that will interface to ACPICA.
+ *
+ * Information includes the ACPICA data types, names, exceptions, and
+ * external interface prototypes. Also included are the definitions for
+ * all ACPI tables (FADT, MADT, etc.)
+ *
+ * Note: The order of these include files is important.
+ */
+#include "platform/acenv.h"     /* Environment-specific items */
+#include "acnames.h"            /* Common ACPI names and strings */
+#include "actypes.h"            /* ACPICA data types and structures */
+#include "acexcep.h"            /* ACPICA exceptions */
+#include "actbl.h"              /* ACPI table definitions */
+#include "acoutput.h"           /* Error output and Debug macros */
+#include "acrestyp.h"           /* Resource Descriptor structs */
+#include "acpiosxf.h"           /* OSL interfaces (ACPICA-to-OS) */
+#include "acpixf.h"             /* ACPI core subsystem external interfaces */
+#include "platform/acenvex.h"   /* Extra environment-specific items */
 
-#include <utilities/clib.h>
-
-/*******************************************************************************
- * Pointer and General Structures
- ******************************************************************************/
-
-struct rsdp_1 {
-    char signature[8];  // "RSD PTR "
-    uint8_t checksum;
-    char oem_id[6];
-    uint8_t revision;
-    uint32_t rsdt_addr;
-} __attribute__((packed));
-typedef struct rsdp_1 rsdp_1_t;
-
-struct rsdp_2 {
-    rsdp_1_t rsdp_1;
-    uint32_t length;
-    uint64_t xsdt_addr;
-    uint8_t ext_checksum;
-    uint8_t reserved[3];
-} __attribute__((packed));
-typedef struct rsdp_2 rsdp_2_t;
-
-// the header is shared in RSDT and XSDT
-// the standard ACPI table header
-struct sdt_header {
-    char signature[4];
-    uint32_t length;
-    uint8_t revision;
-    uint8_t checksum;
-    char oem_id[6];
-    char oem_table_id[8];
-    uint32_t oem_revision;
-    uint32_t creator_id;
-    uint32_t creator_revision;
-} __attribute__((packed));
-typedef struct sdt_header sdt_header_t;
-
-struct rsdt {   // signature = "RSDT"
-    sdt_header_t header;
-    uint32_t sdt_entries[0];
-} __attribute__((packed));
-typedef struct rsdt rsdt_t;
-
-struct xsdt {   // signature = "XSDT"
-    sdt_header_t header;
-    uint64_t sdt_entries[0];
-} __attribute__((packed));
-typedef struct xsdt xsdt_t;
-
-/*******************************************************************************
- * Variables & Functions
- ******************************************************************************/
-
-extern bool is_sdt_valid(sdt_header_t *sdt);
-extern bool acpi_init();
-
-#include "madt.h"
-
-#endif // __ACPI_H__
+#endif /* __ACPI_H__ */

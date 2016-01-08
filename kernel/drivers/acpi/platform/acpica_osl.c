@@ -1,7 +1,8 @@
 // this file defines functions that are required by ACPICA
 // ACPICA OS Layer
 
-#include "acpica/acpi.h"    // we have to include this header first to avoid some wierd problems
+#include "../acpi.h"    // we have to include this header first to avoid some wierd problems
+#include <memory/memory.h>
 #include <utilities/logging.h>
 
 #define TRACE log(__FUNCTION__); while(1){}
@@ -28,29 +29,8 @@ ACPI_STATUS AcpiOsTerminate() {
 ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer() {
     ACPI_SIZE ret;
     AcpiFindRootPointer(&ret);  // simple way, only works on x86
+    log("found root pointer at %x", ret);
     return ret;
-/*
-    uint64_t ebda_addr = * ((uint16_t *) 0x40e) << 4;
-
-    char *sig_str = "RSD PTR ";     // notice there's a space at the end
-    uint64_t sig = * ((uint64_t *) sig_str);
-
-    // 1. search for RSDP in first KB of EBDA
-    uint64_t *addr = (uint64_t *) ebda_addr;
-    for (int i = 0; i < 128; i += 2) {
-        if (sig == addr[i]) {
-            return &addr[i];
-        }
-    }
-
-    // 2. search for RSDP in highest base mem
-    for (uint64_t *addr = (uint64_t *) 0xe0000; addr < 0x100000; addr += 2) {
-        if (sig == *addr) {
-            return addr;
-        }
-    }
-
-    return 0;*/
 }
 
 // allow the host os to override a predefined ACPI object
@@ -116,10 +96,15 @@ ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS
 }
 
 void *AcpiOsAllocate(ACPI_SIZE Size) {
-    TRACE
+    // TRACE
+    void *addr = slab_alloc(Size);
+    log("malloc %d at %x", Size, addr);
+    return addr;
 }
 void AcpiOsFree(void *Memory) {
-    TRACE
+    // TRACE
+    log("freeing at %x", Memory);
+    slab_free(Memory);
 }
 
 BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length) {

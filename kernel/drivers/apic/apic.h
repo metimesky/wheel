@@ -2,6 +2,7 @@
 #define __APIC_H__ 1
 
 #include <utilities/env.h>
+#include <drivers/acpi/acpi.h>
 
 // IO APIC register address map
 // referring to intel 82093AA datasheet
@@ -115,5 +116,12 @@
 
 void io_apic_init(uint64_t base);
 void local_apic_init(uint64_t base);
+
+////////////////////////////////////////////////////////////////////////////////
+/// Initialization
+////////////////////////////////////////////////////////////////////////////////
+
+extern void apic_init();
+extern void apic_init_with_madt(ACPI_TABLE_MADT *madt);
 
 #endif // __APIC_H__

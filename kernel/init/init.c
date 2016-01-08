@@ -1,5 +1,5 @@
 #include "multiboot.h"
-
+#include <utilities/env.h>
 #include <utilities/clib.h>
 #include <utilities/logging.h>
 
@@ -32,20 +32,20 @@ void ps() {
 /* Initialize multi-processor
  */
 void mp_init() {
-    if (!madt_present) {
-        log("Unlucy, no madt exist!");
-        return;
-    }
+    // if (!madt_present) {
+    //     log("Unlucy, no madt exist!");
+    //     return;
+    // }
 
     // ensure no ipi pending
-    while (* ((uint32_t *) (local_apic_base + 0x30)) & (1 << 12)) {}
+    // while (* ((uint32_t *) (local_apic_base + 0x30)) & (1 << 12)) {}
 
     // send INIT IPI -- higher 32-bit half
-    * ((uint32_t *) (local_apic_base + 0x310)) = (uint32_t) local_apic_ids[1] << 24;
+    // * ((uint32_t *) (local_apic_base + 0x310)) = (uint32_t) local_apic_ids[1] << 24;
 
     // send INIT IPI -- lower 32-bit half
-    uint32_t control = (5UL << 8);
-    * ((uint32_t *) (local_apic_base + 0x300)) = control;
+    // uint32_t control = (5UL << 8);
+    // * ((uint32_t *) (local_apic_base + 0x300)) = control;
 
     // wait 10ms (we have to implement PIT or HPET)
 
@@ -82,29 +82,41 @@ void init(uint32_t eax, uint32_t ebx) {
 
     // initialize memory management module
     memory_init(mbi);
-
+        
     // at this stage, only support internal exception and 8259 irq
     // other vectors are registered later
     interrupt_init();
 
+    // early access ACPI tables
+    if (ACPI_FAILURE(AcpiInitializeTables(NULL, 16, FALSE))) {
+        log("Cannot initialize acpi table");
+        return;
+    }
+
+    apic_init();
+
+    while (1) {}
+
 ////////////////////////////////////////////////////////////////////////////////
     log("testing ACPICA table management component.");
     //uint32_t dat = DATA_U32(0x1038000);
-    early_test();
+    // early_test();
+    initialize_acpi_tables();
+    // initialize_full_acpi();
     // unwind_c();
     // halt earlt
     while (1) {}
 ////////////////////////////////////////////////////////////////////////////////
 
     // initialize acpi driver
-    if (!acpi_init()) {
-        log("ACPI not present!");
-        return;
-    }
+    // if (!acpi_init()) {
+    //     log("ACPI not present!");
+    //     return;
+    // }
 
-    if (madt_present) {
-        local_apic_init(local_apic_base);
-    }
+    // if (madt_present) {
+    //     local_apic_init(local_apic_base);
+    // }
 
 
     pit_init();
@@ -117,10 +129,10 @@ void init(uint32_t eax, uint32_t ebx) {
     // map(0xffffffff00000000UL, phy);
     // goto_ring3(ps, 0xffffffff00000000UL);
 
-    acpi_init();
-    if (madt_present) {
-        local_apic_init(local_apic_base);
-    }
+    // acpi_init();
+    // if (madt_present) {
+    //     local_apic_init(local_apic_base);
+    // }
 
     while (1) {}
 

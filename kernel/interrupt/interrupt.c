@@ -177,28 +177,31 @@ extern void unwind_from(uint64_t rbp);
 
 // Default interrupt handler, just print related information
 static void default_interrupt_handler(int vec, interrupt_context_t *ctx) {
-    switch (vec) {
-    case 0:     // #DE
-    case 1:     // #DB
-    case 2:     // NMI
-    case 3:     // #BP
-    case 4:     // #OF
-    case 13:    // #GP
-        log("#GP cs:rip=%x:%x, ss:rsp=%x:%x, rflags=%x, err=%x",
-            ctx->cs, ctx->rip, ctx->ss, ctx->rsp, ctx->rflags, ctx->err_code);
-        break;
-    case 14: {  // #PF
-        uint64_t virt;
-        __asm__ __volatile__("mov %%cr2, %0" : "=r"(virt));
-        log("#PF %x rip=%x, rsp=%x, err=%x", virt, ctx->rip, ctx->rsp, ctx->err_code);
+    static const char* sym[] = {
+        "DE", "DB", "NMI", "BP", "OF", "BR", "UD", "NM",
+        "DF", "><", "TS", "NP", "SS", "GP", "PF", "><",
+        "MF", "AC", "MC", "XF", "><", "><", "><", "><",
+        "><", "><", "><", "><", "><", "><", "SX", "><"
+    };
+
+    // print interrupt info
+    if (vec < 32) {
+        log("Exception #%s, cs:rip=%x:%x, ss:rsp=%x:%x, rflags=%x, err=%x",
+            sym[vec], ctx->cs, ctx->rip, ctx->ss, ctx->rsp, ctx->rflags, ctx->err_code);
+        if (vec == 14) {
+            uint64_t virt;
+            __asm__ __volatile__("mov %%cr2, %0" : "=r"(virt));
+            log("Page Fault virtual address %x", virt);
+        }
+    } else {
+        log("Interrupt #%d, cs:rip=%x:%x, ss:rsp=%x:%x, rflags=%x",
+            vec, ctx->cs, ctx->rip, ctx->ss, ctx->rsp, ctx->rflags);
     }
-        break;
-    default:
-        log("#%d cs:rip=%x:%x, ss:rsp=%x:%x, rflags=%x, err=%x",
-            vec, ctx->cs, ctx->rip, ctx->ss, ctx->rsp, ctx->rflags, ctx->err_code);
-        break;
-    }
-    //unwind_from(ctx->rbp);
+    
+    // stack unwinding
+    unwind_from(ctx->rbp);
+    
+    // stop here
     while (true) {}
 }
 

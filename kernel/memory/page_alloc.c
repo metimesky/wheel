@@ -50,6 +50,7 @@ void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
     multiboot_memory_map_t *mmap = (multiboot_memory_map_t *) mmap_addr;
     int start = -1, end = -1;
     while ((uint32_t) mmap < (mmap_addr + mmap_length)) {
+        // log("mem %x:%x --> %d", mmap->addr, mmap->len, mmap->type);
         if (MULTIBOOT_MEMORY_AVAILABLE == mmap->type) {
             // 获取该内存段的开始和结束地址
             start = mmap->addr;
