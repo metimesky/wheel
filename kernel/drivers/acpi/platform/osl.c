@@ -25,12 +25,14 @@ ACPI_STATUS AcpiOsTerminate() {
 	return AE_OK;
 }
 
-// returns the physical address of the ACPI RSDP table
+// returns the physical address of the ACPI RSDP table (only works on x86)
 ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer() {
     ACPI_SIZE ret;
-    AcpiFindRootPointer(&ret);  // simple way, only works on x86
-    log("found root pointer at %x", ret);
-    return ret;
+    if (ACPI_SUCCESS(AcpiFindRootPointer(&ret))) {
+        return ret;
+    } else {
+        return 0;
+    }
 }
 
 // allow the host os to override a predefined ACPI object
@@ -95,22 +97,20 @@ ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS
     TRACE
 }
 
-void *AcpiOsAllocate(ACPI_SIZE Size) {
-    // TRACE
-    void *addr = slab_alloc(Size);
-    log("malloc %d at %x", Size, addr);
+void *AcpiOsAllocate(ACPI_SIZE n) {
+    void *addr = slab_alloc(n);
+    // log("malloc %d at %x", n, addr);
     return addr;
 }
-void AcpiOsFree(void *Memory) {
-    // TRACE
-    log("freeing at %x", Memory);
-    slab_free(Memory);
+void AcpiOsFree(void *addr) {
+    // log("freeing at %x", addr);
+    slab_free(addr);
 }
 
-BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length) {
+BOOLEAN AcpiOsReadable(void *addr, ACPI_SIZE n) {
     TRACE
 }
-BOOLEAN AcpiOsWritable(void *Memory, ACPI_SIZE Length) {
+BOOLEAN AcpiOsWritable(void *addr, ACPI_SIZE n) {
     TRACE
 }
 

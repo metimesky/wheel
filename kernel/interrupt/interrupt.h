@@ -7,7 +7,7 @@
 
 #include <utilities/env.h>
 
-#define INT_NUM 128
+#define INTERRUPT_NUM 128
 
 // must be compliant with entries.asm
 struct interrupt_context {

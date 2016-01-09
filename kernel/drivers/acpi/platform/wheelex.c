@@ -1,7 +1,10 @@
+// we should give this file another name.
+
 #include "../acpi.h"
 #include <utilities/clib.h>
 #include <utilities/logging.h>
 
+/*
 int io_apic_count;
 int local_apic_count;
 
@@ -69,107 +72,35 @@ static void process_madt(ACPI_TABLE_MADT *madt) {
         }
     }
 }
-
-// static allocated space
-#define TABLE_DESC_NUM 16
-static ACPI_TABLE_DESC table_descs[TABLE_DESC_NUM];
+*/
 
 // early ACPI table access, without dynamic memory support
-void initialize_acpi_tables() {
-    ACPI_STATUS status;
-
-    // first init table management component
-    // status = AcpiInitializeTables(table_descs, TABLE_DESC_NUM, FALSE);
-    status = AcpiInitializeTables(NULL, 16, FALSE);
+bool initialize_acpi_tables() {
+    ACPI_STATUS status = AcpiInitializeTables(NULL, 16, FALSE);
     if (ACPI_FAILURE(status)) {
-        log("acpica::table early init failed, err code %u", status);
+        // Wheel requires ACPI to be available.
+        return false;
     }
-
-    // then find tables one by one
-    ACPI_TABLE_MADT *madt;
-    status = AcpiGetTable(ACPI_SIG_MADT, 1, &madt);
-    if (ACPI_FAILURE(status)) {
-        log("Cannot locate MADT");
-    } else {
-        log("located MADT at %x", madt);
-    }
-
-    ACPI_TABLE_HPET *hpet;
-    status = AcpiGetTable(ACPI_SIG_HPET, 1, &hpet);
-    if (ACPI_FAILURE(status)) {
-        log("Cannot locate HPET");
-    } else {
-        log("located HPET at %x", hpet);
-    }
+    return true;
 }
 
 // full ACPI initialization
-void initialize_full_acpi() {
+bool initialize_full_acpi() {
     ACPI_STATUS status;
 
     // initialize the ACPICA subsystem
     status = AcpiInitializeSubsystem();
     if (ACPI_FAILURE(status)) {
         log("acpica subsystem init failed, err code %u", status);
-        return;
+        return false;
     }
 
+    /* if table has been initialized early, then we won't need to enable it again.
     // initialize the ACPICA Table Manager and get all ACPI tables
     status = AcpiInitializeTables(NULL, 16, FALSE);
     if (ACPI_FAILURE(status)) {
         log("acpica table init failed, err code %u", status);
         return;
     }
-}
-
-// test ACPICA table management component
-void early_test() {
-    ACPI_STATUS status;
-
-    // status = AcpiInitializeSubsystem();
-    // if (ACPI_FAILURE(status)) {
-    //     log("cannot init apic subsystem");
-    //     return;
-    // }
-
-    // early initialize table management component
-    // #define DESC_NUM 2
-    ACPI_TABLE_DESC tables[16];
-    log("size of DESC is %d", sizeof(ACPI_TABLE_DESC));
-    // status = AcpiInitializeTables(tables, 8, TRUE);
-    status = AcpiInitializeTables(NULL, 16, FALSE);
-    if (ACPI_FAILURE(status)) {
-        log("acpica::tbl init failed with err code %u", status);
-    } else {
-        log("acpica::tbl init success!");
-    }
-
-    for (int i = 0; i < 2; ++i) {
-        if (strncmp(tables[i].Signature.Ascii, ACPI_SIG_MADT, 4) == 0) {
-            ACPI_TABLE_MADT *madt = (ACPI_TABLE_MADT *) tables[i].Address;
-            log("found madt at %x, header %x, len %d", madt, tables[i].Pointer, tables[i].Length);
-            process_madt(madt);
-        } else if (strncmp(tables[i].Signature.Ascii, ACPI_SIG_HPET, 4) == 0) {
-            log("found hpet");
-        } else if (strncmp(tables[i].Signature.Ascii, ACPI_SIG_BOOT, 4) == 0) {
-            log("found boot");
-        } else if (strncmp(tables[i].Signature.Ascii, ACPI_SIG_UEFI, 4) == 0) {
-            log("found uefi");
-        }
-    }
-
-    return;
-
-    // initialize ACPICA subsystems
-    status = AcpiInitializeSubsystem();
-    if (ACPI_FAILURE(status)) {
-        log("acpica init failed");
-    }
-
-    status = AcpiLoadTables();
-    if (ACPI_FAILURE(status)) {
-        log("acpica::tbl load tables failed with err code %u", status);
-    } else {
-        log("acpica::tbl load tables success!");
-    }
+    */
 }

@@ -169,8 +169,8 @@ long_mode_entry:
     mov     fs, ax
     mov     gs, ax
 
-    mov     edi, [mb_eax]
-    mov     esi, [mb_ebx]
+    mov     edi, dword [mb_eax]     ; - auto zero upper 32-bit
+    mov     esi, dword [mb_ebx]     ; /
     xor     rbp, rbp
     call    init    ; call the main function of kernel
 

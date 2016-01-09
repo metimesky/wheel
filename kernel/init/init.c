@@ -3,13 +3,14 @@
 #include <utilities/clib.h>
 #include <utilities/logging.h>
 
-#include <drivers/console/console.h>
+#include <memory/memory.h>
 #include <interrupt/interrupt.h>
+#include <timming/timming.h>
+
+#include <drivers/console/console.h>
 #include <drivers/acpi/acpi.h>
 #include <drivers/apic/apic.h>
-#include <memory/memory.h>
-
-#include <timming/timming.h>
+#include <drivers/pic/pic.h>
 #include <drivers/pit/pit.h>
 
 extern void goto_ring3(void *addr, void *rsp);
@@ -66,47 +67,30 @@ void unwind_b() { unwind_a(); }
 void unwind_c() { unwind_b(); }
 
 void init(uint32_t eax, uint32_t ebx) {
-    // initialize early console to print verbose information.
-    // currently only 80x25 text mode is supported, graphics mode may be
-    // turned on later.
-    console_init();
-
-    // check if magic number is compliant
     if (MULTIBOOT_BOOTLOADER_MAGIC != eax) {
-        log("Bootloader not multiboot compliant!");
         return;
     }
 
-    // retrieve multiboot info structure
-    multiboot_info_t *mbi = (multiboot_info_t *) ebx;
+    // initialize console, currently only 80x25 is supported
+    console_init();
 
     // initialize memory management module
-    memory_init(mbi);
-        
-    // at this stage, only support internal exception and 8259 irq
-    // other vectors are registered later
+    memory_init((multiboot_info_t *) ebx);
+
+    // initialize interrupt handling module
     interrupt_init();
 
     // early access ACPI tables
-    if (ACPI_FAILURE(AcpiInitializeTables(NULL, 16, FALSE))) {
-        log("Cannot initialize acpi table");
+    if (!initialize_acpi_tables()) {
+        log("ACPI not available!");
         return;
     }
 
-    apic_init();
+    if (!apic_init()) {
+        pic_init();
+    }
 
     while (1) {}
-
-////////////////////////////////////////////////////////////////////////////////
-    log("testing ACPICA table management component.");
-    //uint32_t dat = DATA_U32(0x1038000);
-    // early_test();
-    initialize_acpi_tables();
-    // initialize_full_acpi();
-    // unwind_c();
-    // halt earlt
-    while (1) {}
-////////////////////////////////////////////////////////////////////////////////
 
     // initialize acpi driver
     // if (!acpi_init()) {
@@ -136,12 +120,13 @@ void init(uint32_t eax, uint32_t ebx) {
 
     while (1) {}
 
-    /* Goto Ring3
-     */
+////////////////////////////////////////////////////////////////////////////////
+// Goto Ring3
     uint64_t rsp = (uint64_t) &st;
     rsp += 4096 - 1;
     rsp &= ~(4096 - 1);
     goto_ring3(ps, rsp);
+////////////////////////////////////////////////////////////////////////////////
 
     while (1) {}
 }

@@ -5,37 +5,37 @@
 #include <utilities/cpu.h>
 #include <utilities/logging.h>
 
-// initialize APIC with information provided by ACPI
-void apic_init_with_madt(ACPI_TABLE_MADT *madt) {
-    ;
-}
-
-// initialize APIC with information from MP tables
-void apic_init_with_mp_table() {
-    ;
-}
-
 int local_apic_count = 0;
 int io_apic_count = 0;
 
 // generic APIC initialization routine
-void apic_init() {
+// return false when APIC is not available.
+bool apic_init() {
     ACPI_TABLE_MADT *madt = NULL;
+
+    // acquire APIC info from MADT
     if (ACPI_FAILURE(AcpiGetTable(ACPI_SIG_MADT, 1, &madt))) {
-        log("Cannot locate MADT, I don't use MP Tables!");
-        // TODO: should use MP table as fallback
-        return;
+        log("Cannot locate MADT");
+        // TODO: MADT not found, so we should find MP tables instead.
+        // what does it mean, it means we have to stick with dual 8259 PICs
+        return false;
     }
+
+    local_apic_count = 0;
+    io_apic_count = 0;
+
     uint8_t *end = (uint8_t *) madt + madt->Header.Length;
     uint8_t *p = (uint8_t *) madt + sizeof(ACPI_TABLE_MADT);
     while (p < end) {
         switch (((ACPI_SUBTABLE_HEADER *) p)->Type) {
-        case ACPI_MADT_TYPE_LOCAL_APIC: {
-            ACPI_MADT_LOCAL_APIC *local_apic = (ACPI_MADT_LOCAL_APIC *) p;
+        case ACPI_MADT_TYPE_LOCAL_APIC:
+            ++local_apic_count;
+            // process_local_apic((ACPI_MADT_LOCAL_APIC *) p);
             log("ACPI_MADT_TYPE_LOCAL_APIC");
-        }
             break;
         case ACPI_MADT_TYPE_IO_APIC:
+            ++io_apic_count;
+            // process_io_apic((ACPI_MADT_IO_APIC *) p);
             log("ACPI_MADT_TYPE_IO_APIC");
             break;
         case ACPI_MADT_TYPE_INTERRUPT_OVERRIDE:
@@ -88,42 +88,14 @@ void apic_init() {
         }
         p += ((ACPI_SUBTABLE_HEADER *) p)->Length;
     }
+
+    log("total %d ioapic and %d lapic", io_apic_count, local_apic_count);
+
+    // local_apic_init(madt->Address);
+
+    // finally, configure BSP's local APIC
+    local_apic_init(madt->Address);
+    // bsp_local_apic_id = ;
+
+    return true;
 }
-
-void io_apic_init(uint64_t base) {
-    ;
-}
-/*
-void local_apic_init(uint64_t base) {
-    // set the physical address for local APIC registers
-    uint64_t msr_apic_base = (uint64_t) base & (~0xfffUL);
-    msr_apic_base |= 1UL << 8;  // this processor is BSP
-    write_msr(0x1b, msr_apic_base);
-
-    // enable local apic
-    uint32_t spurious = * ((uint64_t *) base + SPURIOUS_INT_VECTOR);
-    * ((uint64_t *) base + SPURIOUS_INT_VECTOR) = spurious | 0x100;
-
-    // local APIC timer setup
-
-    // block if a timer event is pending
-    while (DATA_U32(base + LVT_TIMER) & (1U << 12)) {}
-
-    // enable timer
-    DATA_U32(base + LVT_TIMER) = 1UL << 16;
-
-    DATA_U32(base + DIVIDE_CONFIGURATION) = 0;   // divide by 2
-    DATA_U32(base + INITIAL_COUNT) = 0xffffffff; // maximum countdown
-
-    uint64_t tick_a = tick;
-    uint32_t count_a = DATA_U32(base + CURRENT_COUNT);
-
-    while (tick < tick_a + 50) {}
-    uint32_t count_b = DATA_U32(base + CURRENT_COUNT);
-
-    // disable timer
-    DATA_U32(base + LVT_TIMER) = 0UL;
-
-    log("tick 50's differiential is %d.", count_a - count_b);
-}
-*/
