@@ -5,7 +5,10 @@
 #include <timming/timming.h>
 #include <interrupt/interrupt.h>
 
+char *video = (char *) 0xb8000;
+
 void pic_pit_handler() {
+    ++video[0];
     ++tick;
     pic_send_eoi(0); // EOI
 }

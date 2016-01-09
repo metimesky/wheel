@@ -15,7 +15,7 @@ void unwind() {
 }
 
 void unwind_from(uint64_t rbp) {
-    while (0x100000 < rbp && rbp < 0x300000) {
+    while (0x100000 < rbp && rbp < 0x100000000) {
         log("unwinding: 0x%x", DATA_U64(rbp+8));
         rbp = DATA_U64(rbp);
     }

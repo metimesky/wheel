@@ -3,6 +3,7 @@
 #include <utilities/env.h>
 #include <utilities/cpu.h>
 #include <utilities/logging.h>
+#include <drivers/pic/pic.h>
 
 // local APIC register address map
 // local_apic_base is 0xfee00000
@@ -69,6 +70,9 @@ void local_apic_init(uint64_t base) {
     // set default APIC register values
     DATA_U32(base + TASK_PRIORITY)  = 0x20;
 
+    // enable local APIC
+    DATA_U32(base + SPURIOUS_INT_VECTOR) |= 1UL << 8;
+
     // LVT - local APIC timer
     uint32_t lvt_0 = 0;
     lvt_0 |= 48 & 0x000000ff;   // vector = 48
@@ -84,35 +88,39 @@ void local_apic_init(uint64_t base) {
     lvt_1 |= 1 << 16;           // mask, unmask it later
     DATA_U32(base + LVT_THERMAL_SENSOR) = lvt_1;
 
-    // performance monitor counter
+    // LVT - performance monitor counter
     uint32_t lvt_2 = 0;
     lvt_2 |= 50 & 0x000000ff;   // vector = 50
     lvt_2 |= 0  & 0x00000700;   // message type = fixed
     DATA_U32(base + LVT_PERF_MONIT_COUNTER) = lvt_2;
 
-    // local interrupt 0
+    // LVT - local interrupt 0 (LINT0)
     uint32_t lvt_3 = 0;
+    lvt_3 |= 51 & 0x000000ff;   // vector = 51
+    lvt_3 |= 0  & 0x00000700;   // message type = fixed
+    lvt_3 |= 1 << 16;
+    DATA_U32(base + LVT_LINT_0) = lvt_3;
 
-    // local interrupt 1
+    // LVT - local interrupt 1 (LINT1)
     uint32_t lvt_4 = 0;
+    lvt_4 |= 52 & 0x000000ff;   // vector = 52
+    lvt_4 |= 0  & 0x00000700;   // message type = fixed
+    lvt_4 |= 1 << 16;
+    DATA_U32(base + LVT_LINT_1) = lvt_4;
 
-    // APIC error
-
-    // enable local apic
-    // uint32_t spurious = * ((uint64_t *) base + SPURIOUS_INT_VECTOR);
-    // * ((uint64_t *) base + SPURIOUS_INT_VECTOR) = spurious | 0x100;
-    DATA_U32(base + SPURIOUS_INT_VECTOR) |= 1UL << 8;
-
-    // local APIC timer setup
+    return;
+////////////////////////////////////////////////////////////////////////////////
+    // setting up APIC timer
 
     // block if a timer event is pending
     while (DATA_U32(base + LVT_TIMER) & (1U << 12)) {}
 
-    // enable timer
-    DATA_U32(base + LVT_TIMER) = 1UL << 16;
-
     DATA_U32(base + DIVIDE_CONFIGURATION) = 0;   // divide by 2
     DATA_U32(base + INITIAL_COUNT) = 0xffffffff; // maximum countdown
+
+    // start timer (temperarily)
+    DATA_U32(base + LVT_TIMER) &= ~(1 << 16);
+    pic_unmask(0);
 
     uint64_t tick_a = tick;
     uint32_t count_a = DATA_U32(base + CURRENT_COUNT);
@@ -120,8 +128,9 @@ void local_apic_init(uint64_t base) {
     while (tick < tick_a + 50) {}
     uint32_t count_b = DATA_U32(base + CURRENT_COUNT);
 
-    // disable timer
-    DATA_U32(base + LVT_TIMER) = 0UL;
+    // then disable timer again
+    DATA_U32(base + LVT_TIMER) |= 1 << 16;
+    pic_mask(0);
 
     log("tick 50's differiential is %d.", count_a - count_b);
 }
