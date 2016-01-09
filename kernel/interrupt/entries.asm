@@ -108,40 +108,7 @@ isr%1:
 [section .text]
 [BITS 64]
 ; internal exceptions, well-defined
-;define_isr 0
-
-global isr0
-isr0:
-    push    0xffffffff
-
-    ; check if we are comming from user-mode
-    test    word [rsp+24], 3    ; by checking SS selector's RPL
-    ;jnz     come_from_userspace
-
-    ; push the rest of the interrupt frame to the stack
-    save_regs
-
-    cld
-
-    ; save frame pointer to rbp
-    mov    rbp, rsp
-
-    ; Call the interrupt handler.
-    mov     rdi, 0
-    mov     rsi, rbp
-    call    [interrupt_handler_table + 8 * 0]
-
-    ; restore saved frame pointer from rbp
-    mov     rsp, rbp
-
-    ; restore the saved registers.
-    restore_regs
-
-    ; skip error code
-    add     rsp, 8
-
-    iretq
-
+define_isr 0
 define_isr 1
 define_isr 2
 define_isr 3

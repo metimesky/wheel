@@ -86,6 +86,7 @@ void init(uint32_t eax, uint32_t ebx) {
         return;
     }
 
+    // we should check SMP or UP here
     if (!apic_init()) {
         pic_init();
     }

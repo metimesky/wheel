@@ -163,11 +163,12 @@ no_long_mode:
 
 [BITS 64]
 long_mode_entry:
-    mov     ax, gdt.data0
-    mov     ds, ax
-    mov     es, ax
-    mov     fs, ax
-    mov     gs, ax
+    ; init fs and gs (can be used as thread local storage)
+    xor     rax, rax
+    mov     ecx, 0xc0000100     ; FS.base
+    wrmsr
+    mov     ecx, 0xc0000101     ; GS.base
+    wrmsr
 
     mov     edi, dword [mb_eax]     ; - auto zero upper 32-bit
     mov     esi, dword [mb_ebx]     ; /
