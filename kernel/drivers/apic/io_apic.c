@@ -1,13 +1,14 @@
 #include "io_apic.h"
+#include <utilities/logging.h>
 
 // IO APIC register address map
 // referring to intel 82093AA datasheet
 // io_apic_base is 0xfec0??00
-#define IO_REGISTER_SELECT      0x00
+#define IO_REG_SELECT           0x00
 #define IO_WINDOW               0x10
 
 // the following IO APIC registers must be accessed
-// using address in IO_REGISTER_SELECT register
+// using address in IO_REG_SELECT register
 #define IO_APIC_ID              0x00
 #define IO_APIC_VERSION         0x01
 #define IO_APIC_ARBITRATION     0x02
@@ -60,8 +61,18 @@
 #define IO_REDIRECT_TABLE_23_L  0x3e
 #define IO_REDIRECT_TABLE_23_H  0x3f
 
+// IO APIC registers are accessed by an indirect addressing scheme using
+// IO_REG_SELECT and IO_WINDOW
+
+// TODO: maybe REGSEL is accessed by byte
+
 void io_apic_init(uint64_t base) {
-    ;
+    // print some basic info
+    DATA_U32(base + IO_REG_SELECT) = IO_APIC_ID;
+    uint32_t id  = DATA_U32(base + IO_WINDOW);
+    DATA_U32(base + IO_REG_SELECT) = IO_APIC_VERSION;
+    uint32_t ver = DATA_U32(base + IO_WINDOW);
+    log("IO APIC #%d, version %d, max entries %d", id, ver & 0xff, (ver >> 16) & 0xff);
 }
 /*
 int smp_irq_to_pin(unsigned int irq) {

@@ -92,14 +92,18 @@ void local_apic_init(uint64_t base) {
     uint32_t lvt_2 = 0;
     lvt_2 |= 50 & 0x000000ff;   // vector = 50
     lvt_2 |= 0  & 0x00000700;   // message type = fixed
+    lvt_2 |= 1 << 16;           // mask, unmask it later
     DATA_U32(base + LVT_PERF_MONIT_COUNTER) = lvt_2;
 
-    // LVT - local interrupt 0 (LINT0)
-    uint32_t lvt_3 = 0;
-    lvt_3 |= 51 & 0x000000ff;   // vector = 51
-    lvt_3 |= 0  & 0x00000700;   // message type = fixed
-    lvt_3 |= 1 << 16;
-    DATA_U32(base + LVT_LINT_0) = lvt_3;
+    // if i init LINT0  now, the i8253 PIT clock will stop working
+    // because LINT0 is also INTR, the incomming from PIC
+
+    // // LVT - local interrupt 0 (LINT0)
+    // uint32_t lvt_3 = 0;
+    // lvt_3 |= 51 & 0x000000ff;   // vector = 51
+    // lvt_3 |= 0  & 0x00000700;   // message type = fixed
+    // lvt_3 |= 1 << 16;
+    // DATA_U32(base + LVT_LINT_0) = lvt_3;
 
     // LVT - local interrupt 1 (LINT1)
     uint32_t lvt_4 = 0;
@@ -108,7 +112,6 @@ void local_apic_init(uint64_t base) {
     lvt_4 |= 1 << 16;
     DATA_U32(base + LVT_LINT_1) = lvt_4;
 
-    return;
 ////////////////////////////////////////////////////////////////////////////////
     // setting up APIC timer
 
@@ -125,12 +128,12 @@ void local_apic_init(uint64_t base) {
     uint64_t tick_a = tick;
     uint32_t count_a = DATA_U32(base + CURRENT_COUNT);
 
-    while (tick < tick_a + 50) {}
+    while (tick < tick_a + 400) {}
     uint32_t count_b = DATA_U32(base + CURRENT_COUNT);
 
     // then disable timer again
     DATA_U32(base + LVT_TIMER) |= 1 << 16;
     pic_mask(0);
 
-    log("tick 50's differiential is %d.", count_a - count_b);
+    log("tick 400's differiential is %d.", count_a - count_b);
 }
