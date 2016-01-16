@@ -20,20 +20,17 @@
 #define ICW4_BUF_MASTER 0x0C        /* Buffered mode/master */
 #define ICW4_SFNM       0x10        /* Special fully nested (not) */
 
-#define MASTER_IRQ_BASE 32          // map master PIC vector to 32
-#define SLAVE_IRQ_BASE  40          // map slave PIC vector to 40
-
 // initialize dual 8259 PICs, all pins are disabled by default.
 // If the system use APIC, then PIC should be disabled;
 // If the system use PIC, then each pin can be enabled later.
 void pic_init() {
-    out_byte(PIC1_CMD, ICW1_INIT+ICW1_ICW4);  // starts the initialization sequence (in cascade mode)
+    out_byte(PIC1_CMD, ICW1_INIT+ICW1_ICW4);    // starts the initialization sequence (in cascade mode)
     io_wait();
     out_byte(PIC2_CMD, ICW1_INIT+ICW1_ICW4);
     io_wait();
-    out_byte(PIC1_DAT, MASTER_IRQ_BASE);    // ICW2: map master PIC vector base
+    out_byte(PIC1_DAT, PIC_IRQ_VEC_BASE);       // ICW2: map master PIC vector base
     io_wait();
-    out_byte(PIC2_DAT, SLAVE_IRQ_BASE);     // ICW2: map slave PIC vector base
+    out_byte(PIC2_DAT, PIC_IRQ_VEC_BASE + 8);   // ICW2: map slave PIC vector base
     io_wait();
     out_byte(PIC1_DAT, 4);      // ICW3: tell Master PIC that there is a slave PIC at IRQ2 (0000 0100)
     io_wait();

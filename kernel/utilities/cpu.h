@@ -2,6 +2,7 @@
 #define __CPU_H__ 1
 
 #include <utilities/env.h>
+#include <utilities/logging.h>
 
 // static inline void cpuid(uint32_t code, uint32_t* a, uint32_t* d) {
 //     __asm__ __volatile__("cpuid" : "=a"(*a), "=d"(*d) : "a"(code) : "ebx", "ecx");
@@ -28,13 +29,20 @@ static inline void invlpg(void* m) {
     __asm__ __volatile__("invlpg (%0)" :: "b"(m) : "memory");
 }
 
+// directive `A` means edx:eax
+
 static inline uint64_t read_msr(uint32_t msr_id) {
     uint64_t msr_val;
     __asm__ __volatile__("rdmsr" : "=A"(msr_val) : "c"(msr_id));
+    // log("reading %x", msr_val);
     return msr_val;
 }
 
 static inline void write_msr(uint32_t msr_id, uint64_t msr_val) {
+    // log("writing %x", msr_val);
+    // uint32_t edx = msr_val >> 32;
+    // uint32_t eax = msr_val & 0xffffffff;
+    // __asm__ __volatile__("wrmsr" :: "c"(msr_id), "d"(edx), "a"(eax));
     __asm__ __volatile__("wrmsr" :: "c"(msr_id), "A"(msr_val));
 }
 

@@ -13,10 +13,6 @@
 
 ; no matter which type of interrupt, the numbering is continuous
 
-
-PIC_BASE equ 32
-LVT_BASE equ 48
-
 extern interrupt_handler_table
 
 [BITS 64]

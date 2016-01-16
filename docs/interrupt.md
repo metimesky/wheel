@@ -52,6 +52,53 @@ Wheel 的设计目标之一就是使用最新的硬件标准，因此对于中�
 
 TSS 的结构很复杂，但是并不乱，大部分条目都是用不到的。但是需要在 boot.asm 中修改 GDT 的定义，为 TSS 段描述符留出空间。
 
-## 外部中断
+- - -
 
-这里需要对外部中断多说几句。外部中断的分派通过 APIC 控制，外部中断处理完成之后需要发送 EOI 来通知 APIC，中断已经处理完。
+## 外部中断（APIC）
+
+在多核环境下，外部中断就要有APIC参与了。这里要区分两个概念——IRQ和GSI：
+
+- IRQ表示通过8259 PIC与CPU相连的中断
+- GSI表示Global System Interrupt，前16个与IRQ所连的设备相同。
+
+虽然GSI是多核环境下表示外部中断的正确名称，但人们还是习惯使用IRQ，这一点需要注意。
+
+系统IDT总共128个条目，其中0~31用于内部异常，32~47用于老式8259中断控制器的IRQ，local APIC也能产生几种类型的中断，需要为它们分配向量号，剩下的部分就可以留给GSI了。因为GSI是最不确定的，只有解析了MADT表和每个IO APIC才能确定
+
+术语：
+
+- IRQ，特指由 8259 PIC 发生的外部中断
+- GSI，特指由 APIC 发生的外部中断
+
+IO APIC 的前16个中断是 IRQ，后面4个是PCI A~D。
+
+关于外部中断，有几个属性以前没有听说过：
+
+- Polarity，极性，对于 IRQ 0~16，值为 active high；对于 PCI，值为 active low。
+- Trigger mode，触发方式，对于 IRQ，为 edge triggered，对于 PCI，为 level triggered。
+
+Local APIC 有一个 task priority 寄存器，到底有什么用。和 APIC 相关的中断优先级机制是什么。
+
+向量有向量号，local APIC 把向量号的高 4 位当做优先级。由于 local APIC 保留 0~15 的向量号，因此优先级取值范围是 1~15，其中 1 是最低优先级的，15 是最高优先级。因此，每一档优先级可以包含 16 的向量。同级的向量根据低 4 位比较它们的优先级，仍然是数字越大优先级越高。
+
+看似把向量号分成高低两个部分没有任何意义，但英特尔这样定义了，高四位叫做 priority class。
+
+local APIC 还有任务优先级（task priority）和处理器优先级（processor priority）的概念。只有优先级高于 `task_priority` 的中断才会真正打断 CPU。因此将 `task_priority` 设成一个较高的值可以屏蔽一部分低优先级的中断。
+
+处理器优先级（`processor_priority`）则是一个只读的，根据任务优先级和处理器当前正在执行的中断的最高优先级取较大值得出。
+
+最终效果就是，`task_priority` 给中断设了一个阈值，超过它才能中断。`processor_priority` 是当前状态，如果正在处理某个中断，则只有比这个中断优先级更高的中断才能打断 CPU。
+
+但是对于 NMI、SMI、INIT、ExINT 等类型的中断，上面的机制不适用。
+
+### Fixed Interrupts
+
+有一类中断类型叫做 Fixed Interrupts，也就是中断的向量号是由配置指定的。这种类型的中断也是最常见的。
+
+这里涉及到 local APIC 的三个只读的寄存器，IRR（Interrupt Request Reg）、ISR（In-Service Reg）和 TMR（Trigger Mode Reg）。这三个寄存器都是 256 位的，为啥这么多位，是因为 IDT 最多 256 个条目，这三个寄存器中的每一位就表示那个向量号的中断。其中 0~15 的向量号被 local APIC 保留。
+
+local APIC 的一个功能就是接受外部中断，并转发给 CPU，转发之前可以缓冲下来。对于那些已经被 local APIC 接收，但还没有发给 CPU 的中断，就记录在 IRR 中，正在被 CPU 处理的中断记录在 ISR 中。当 CPU 处理完一个中断之后，local APIC 会检查当前还有没有中断已接收但还没发给 CPU 的，也就是检查 IRR 是否为零，若不为零，则将最高位的 `1` 拿下，放进 ISR 中的对应位，表示这个最高优先级的中断正在被 CPU 处理。
+
+OS 发送 EOI 的时候，首先清除 ISR 中的位，然后清除 IRR 中的位。
+
+（NMI, SMI, INIT, ExtINT, the start-up，这些类型的中断特殊）

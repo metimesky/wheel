@@ -55,23 +55,48 @@
 #define CURRENT_COUNT           0x0390
 #define DIVIDE_CONFIGURATION    0x03e0
 
+uint64_t lapic_base = 0;
+
 void local_apic_init(uint64_t base) {
+    lapic_base = base;
     // query CPUID to see if it supports x2APIC
     // uint32_t a, b, c, d;
     // cpuid(1, &a, &b, &c, &d);
 
     // set the physical address for local APIC registers
-    uint64_t apic_base_msr = read_msr(0x1b) & 0x0f00;   // only preserve flags
-    apic_base_msr |= 1UL << 8;      // enable this local apic
-    apic_base_msr |= (uint64_t) base & (~0x0fffUL);     // rewrite the base addr
-    apic_base_msr |= 1UL << 11; // enable this local APIC
+    uint64_t apic_base_msr = read_msr(0x1b);// & 0x0f00;   // only preserve flags
+    apic_base_msr |= base & 0x000ffffffffff000UL;   // rewrite the base addr
+    apic_base_msr |= 1UL << 11;     // enable this local APIC
     write_msr(0x1b, apic_base_msr);
+
+    // get the local apic id
+    log("local apic id %x", DATA_U32(base + LOCAL_APIC_ID));
+
+    // get the version register of this local apic
+    uint32_t version_reg = DATA_U32(base + LOCAL_APIC_VERSION);
+    uint32_t ver = version_reg & 0xff;
+    uint32_t lvt_num = (version_reg >> 16) & 0xff;
+    if (ver < 0x10) {
+        // this is an 82489DX discrete APIC
+        log("82489DX discrete local APIC");
+    } else if (ver < 0x16) {
+        // this is an integrated APIC
+        log("integrated local apic, max lvt %d, EOI-broadcast suppression %s", lvt_num, (version_reg & (1 << 24)) ? "on" : "off");
+    } else {
+        // invalid version
+    }
 
     // set default APIC register values
     DATA_U32(base + TASK_PRIORITY)  = 0x20;
 
     // enable local APIC
-    DATA_U32(base + SPURIOUS_INT_VECTOR) |= 1UL << 8;
+    // DATA_U32(base + SPURIOUS_INT_VECTOR) |= 1UL << 8;
+
+    // LVT - CMCI (corrected machine check error count)
+    uint32_t lvt_cmci = 0;
+    lvt_cmci |= 48 & 0x000000ff;
+    lvt_cmci |= 1 << 16;        // mask
+    DATA_U32(base + LVT_CMCI) = lvt_cmci;
 
     // LVT - local APIC timer
     uint32_t lvt_0 = 0;
@@ -102,6 +127,7 @@ void local_apic_init(uint64_t base) {
     // uint32_t lvt_3 = 0;
     // lvt_3 |= 51 & 0x000000ff;   // vector = 51
     // lvt_3 |= 0  & 0x00000700;   // message type = fixed
+    // lvt_3 |= 1 << 15;           // trigger mode = level sensitive
     // lvt_3 |= 1 << 16;
     // DATA_U32(base + LVT_LINT_0) = lvt_3;
 
@@ -109,8 +135,25 @@ void local_apic_init(uint64_t base) {
     uint32_t lvt_4 = 0;
     lvt_4 |= 52 & 0x000000ff;   // vector = 52
     lvt_4 |= 0  & 0x00000700;   // message type = fixed
+    lvt_4 |= 1 << 15;           // trigger mode = level sensitive
     lvt_4 |= 1 << 16;
     DATA_U32(base + LVT_LINT_1) = lvt_4;
+
+    // Extended interrupts
+    // TODO
+
+    // LVT - error register
+    uint32_t lvt_5 = 0;
+    lvt_5 |= 53 & 0x000000ff;   // vector = 53
+    lvt_5 |= 0  & 0x00000700;   // message type = fixed
+    lvt_5 |= 1 << 16;           // mask, unmask it later
+    DATA_U32(base + LVT_ERROR) = lvt_5;
+
+    // spurious interrupts
+    uint32_t lvt_6 = 0;
+    lvt_6 |= 54 & 0x000000ff;   // vector = 54;
+    lvt_6 |= 1 << 8;            // enable this local APIC
+    DATA_U32(base + SPURIOUS_INT_VECTOR) = lvt_6;
 
 ////////////////////////////////////////////////////////////////////////////////
     // setting up APIC timer
@@ -123,7 +166,7 @@ void local_apic_init(uint64_t base) {
 
     // start timer (temperarily)
     DATA_U32(base + LVT_TIMER) &= ~(1 << 16);
-    pic_unmask(0);
+    // pic_unmask(0);
 
     uint64_t tick_a = tick;
     uint32_t count_a = DATA_U32(base + CURRENT_COUNT);
@@ -133,7 +176,13 @@ void local_apic_init(uint64_t base) {
 
     // then disable timer again
     DATA_U32(base + LVT_TIMER) |= 1 << 16;
-    pic_mask(0);
+    // pic_mask(0);
 
     log("tick 400's differiential is %d.", count_a - count_b);
+}
+
+// issue end of interrupt of local apic
+void local_apic_send_eoi() {
+    // just write a zero value to EOI register
+    DATA_U32(lapic_base + EOI) = 0;
 }

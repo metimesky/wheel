@@ -4,6 +4,11 @@ Wheel 是我个人开发的操作系统（WIP），开发这个系统没有任�
 
 Wheel 是一个运行在 64 位 Intel/AMD CPU 上的操作系统。我在开发过程中，尽量使用最新的硬件标准，例如 64 位工作方式、多核、ACPI、APIC 中断等。
 
+硬件要求：
+- 64 位的 CPU，Intel 和 AMD 均可
+- ACPI，主流的 PC 都支持
+- APIC，虽然不要求多核，但是 APIC 已经成标配了
+
 This OS aim to be new, without any backward compatibility, and use the lastest hardware standard, with one exception -- UEFI.
 
 Wheel does not UEFI, instead, it use old BIOS. Structures like EBDA, SMBIOS and ACPI table are searched rather than queried from UEFI. Main reason is I didn't find any document on UEFI and GRUB, and I don't want to write the whole bootloader just for use UEFI.

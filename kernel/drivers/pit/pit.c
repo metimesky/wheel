@@ -1,27 +1,36 @@
 #include "pit.h"
 #include <utilities/env.h>
 #include <utilities/cpu.h>
+#include <utilities/logging.h>
 #include <drivers/pic/pic.h>
+#include <drivers/apic/apic.h>
 #include <timming/timming.h>
 #include <interrupt/interrupt.h>
 
 char *video = (char *) 0xb8000;
 
-void pic_pit_handler() {
+static inline void real_handler() {
     ++video[0];
     ++tick;
-    pic_send_eoi(0); // EOI
 }
 
-void apic_pit_handler() {
-    ++tick;
-    // api2c_eoi(); // EOI
+static void pit_pic_irq_handler() {
+    real_handler();
+    pic_send_eoi(0);    // EOI
+}
+
+static void pit_apic_gsi_handler() {
+    real_handler();
+    video[0] = 'h';
+    video[2] = 'e';
+    video[4] = 'l';
+    video[6] = 'o';
+    local_apic_send_eoi();   // EOI
 }
 
 void pit_init() {
     // install handler
-    interrupt_install_handler(32, pic_pit_handler);
-    // interrupt_handler_table[48] = apic_pit_handler;
+    interrupt_install_handler(PIC_IRQ_VEC_BASE + 0, pit_pic_irq_handler);
 
     out_byte(CTRL_PORT, 0x34);  // mode 2
     io_wait();
@@ -30,4 +39,12 @@ void pit_init() {
     io_wait();
     out_byte(DATA_PORT, (TIMER/HZ) >> 8);
     io_wait();
+}
+
+// GSI means Global System Interrupt
+// by default APIC maps 16 8259 irq to GSI 0~15, but that can be changed
+
+void pit_map_gsi(int gsi) {
+    log("mapping pit to gsi");
+    interrupt_install_handler(APIC_GSI_VEC_BASE + gsi, pit_apic_gsi_handler);
 }
