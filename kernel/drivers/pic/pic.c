@@ -49,7 +49,7 @@ void pic_init() {
 }
 
 // mask an input of PIC to disable it
-void pic_mask(int irq) {
+void pic_mask(uint8_t irq) {
     uint16_t port;
     uint8_t value;
  
@@ -68,7 +68,7 @@ void pic_mask(int irq) {
 }
 
 // clear an input of PIC to enable it
-void pic_unmask(int irq) {
+void pic_unmask(uint8_t irq) {
     uint16_t port;
     uint8_t value;
  
@@ -86,7 +86,7 @@ void pic_unmask(int irq) {
     io_wait();
 }
 
-void pic_send_eoi(int irq) {
+void pic_send_eoi(uint8_t irq) {
     if ((irq) >= 8) {
         out_byte(PIC2_CMD, 0x20);
         io_wait();

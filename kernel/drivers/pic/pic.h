@@ -7,8 +7,8 @@
 #define PIC_IRQ_VEC_BASE 32
 
 void pic_init();
-void pic_mask(int irq);
-void pic_unmask(int irq);
-void pic_send_eoi(int irq);
+void pic_mask(uint8_t irq);
+void pic_unmask(uint8_t irq);
+void pic_send_eoi(uint8_t irq);
 
 #endif // __PIC_H__

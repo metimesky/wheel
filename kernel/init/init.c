@@ -67,15 +67,23 @@ void unwind_b() { unwind_a(); }
 void unwind_c() { unwind_b(); }
 
 void init(uint32_t eax, uint32_t ebx) {
+    // initialize early 80x25 console support
+    console_init();
+
+    // check bootloader compliance
     if (MULTIBOOT_BOOTLOADER_MAGIC != eax) {
+        log("Bootloader not multiboot compliant!");
         return;
     }
 
-    // initialize console, currently only 80x25 is supported
-    console_init();
-
-    // initialize memory management module
+    // initialize memory manager
     memory_init((multiboot_info_t *) ebx);
+
+    // early access ACPI tables, fail if not exist
+    if (!initialize_acpi_tables()) {
+        log("ACPI not available!");
+        return;
+    }
 
     // initialize interrupt handling module
     interrupt_init();
@@ -86,39 +94,18 @@ void init(uint32_t eax, uint32_t ebx) {
     // start receiving external interrupts, currently none
     __asm__ __volatile__("sti");
 
-    // setup old 8253 pit and enable it
+    // intialize old 8253 PIT
     pit_init();
-    // pic_unmask(0);
-
-    // early access ACPI tables
-    if (!initialize_acpi_tables()) {
-        log("ACPI not available!");
-        return;
-    }
 
     // we should check SMP or UP here
     if (!apic_init()) {
-        // pic_init();
-        // shouldn't be pic_init anymore, but we should unmask all pins.
+        log("No APIC support!");
+        return;
     }
 
-    // pic_unmask(0);
     log("Welcome to WHEEL OS!");
 
     while (1) {}
-
-    // initialize acpi driver
-    // if (!acpi_init()) {
-    //     log("ACPI not present!");
-    //     return;
-    // }
-
-    // if (madt_present) {
-    //     local_apic_init(local_apic_base);
-    // }
-
-
-    pit_init();
 
     // test interruption
     // __asm__ __volatile__ ("sti");

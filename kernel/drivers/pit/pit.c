@@ -7,6 +7,10 @@
 #include <timming/timming.h>
 #include <interrupt/interrupt.h>
 
+/* PIT is an old timming device, the primary use of PIT is to synchronize
+ * the more acurate APIC timer.
+ */
+
 char *video = (char *) 0xb8000;
 
 static inline void real_handler() {
@@ -21,10 +25,7 @@ static void pit_pic_irq_handler() {
 
 static void pit_apic_gsi_handler() {
     real_handler();
-    video[2] = 'h';
-    video[4] = 'e';
-    video[6] = 'l';
-    video[8] = 'o';
+    // --video[158];
     local_apic_send_eoi();   // EOI
 }
 
@@ -46,5 +47,5 @@ void pit_init() {
 
 void pit_map_gsi(int gsi) {
     log("mapping pit to gsi");
-    interrupt_install_handler(APIC_GSI_VEC_BASE + gsi, pit_apic_gsi_handler);
+    interrupt_install_handler(gsi, pit_apic_gsi_handler);
 }
