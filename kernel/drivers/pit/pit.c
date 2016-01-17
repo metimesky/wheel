@@ -21,10 +21,10 @@ static void pit_pic_irq_handler() {
 
 static void pit_apic_gsi_handler() {
     real_handler();
-    video[0] = 'h';
-    video[2] = 'e';
-    video[4] = 'l';
-    video[6] = 'o';
+    video[2] = 'h';
+    video[4] = 'e';
+    video[6] = 'l';
+    video[8] = 'o';
     local_apic_send_eoi();   // EOI
 }
 

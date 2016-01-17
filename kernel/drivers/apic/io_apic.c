@@ -91,22 +91,44 @@ void io_apic_init(ACPI_MADT_IO_APIC *ioapic, ACPI_MADT_INTERRUPT_OVERRIDE *overr
     uint32_t ver = DATA_U32(base + IO_WINDOW);
     log("io apic #%d, gsi%d, ver%d, max entries %d", id, ioapic->GlobalIrqBase, ver & 0xff, (ver >> 16) & 0xff);
 
+    if (ioapic->GlobalIrqBase != 0) {
+        log("IO APIC's GSI base is not 0!");
+        return;
+    }
+
+    // mask all pins
+    for (int i = 0; i < 16; ++i) {
+        ;
+    }
+
+    // print the information of first redirect entry
+    log("redirect irq %d to gsi %d, flag %x", override[0]->SourceIrq, override[0]->GlobalIrq, override[0]->IntiFlags);
+
     // fill redirect table entry 2
     uint32_t ent2_l = 0;
-    ent2_l |= (APIC_GSI_VEC_BASE + 2) & 0x000000ffUL;   // vector number
-    ent2_l |= 0 & 0x00000700UL; // delivery mode = fixed
-    ent2_l |= 1U << 11;         // destination mode = physical mode, meaning send to one CPU
-    ent2_l |= 0U << 13;         // interrupt input pin polarity = active high
-    ent2_l |= 0U << 15;         // trigger mode = edge trigger
-    ent2_l |= 0U << 16;         // mask
-    DATA_U32(base + IO_REG_SELECT) = IO_REDIRECT_TABLE_L(2);
-    DATA_U32(base + IO_WINDOW) = ent2_l;
-    uint32_t ent2_h = 0;
-    ent2_h |= 0xff000000 & 0xff000000;   // target apic id
-    DATA_U32(base + IO_REG_SELECT) = IO_REDIRECT_TABLE_H(2);
-    DATA_U32(base + IO_WINDOW) = ent2_h;
+    ent2_l |= (APIC_GSI_VEC_BASE + 2) & 0x000000ff;        // vector number
+    ent2_l |= 0 & 0x00000700;           // delivery mode
+    io_apic_write(base, IO_REDIRECT_TABLE_L(2), ent2_l);
 
-    // pit_map_gsi(2);
+    uint32_t ent2_h = 0;
+    ent2_h |= 0 & 0xff000000;       // target local APIC ID
+    io_apic_write(base, IO_REDIRECT_TABLE_H(2), ent2_h);
+    // // fill redirect table entry 2
+    // uint32_t ent2_l = 0;
+    // ent2_l |= (APIC_GSI_VEC_BASE + 2) & 0x000000ffUL;   // vector number
+    // ent2_l |= 0 & 0x00000700UL; // delivery mode = fixed
+    // ent2_l |= 0U << 11;         // destination mode = physical mode, meaning send to one CPU
+    // ent2_l |= 0U << 13;         // interrupt input pin polarity = active high
+    // ent2_l |= 0U << 15;         // trigger mode = edge trigger
+    // ent2_l |= 0U << 16;         // mask
+    // DATA_U32(base + IO_REG_SELECT) = IO_REDIRECT_TABLE_L(2);
+    // DATA_U32(base + IO_WINDOW) = ent2_l;
+    // uint32_t ent2_h = 0;
+    // ent2_h |= 0xff000000 & 0xff000000;   // target apic id
+    // DATA_U32(base + IO_REG_SELECT) = IO_REDIRECT_TABLE_H(2);
+    // DATA_U32(base + IO_WINDOW) = ent2_h;
+
+    pit_map_gsi(2);
 }
 
 /*

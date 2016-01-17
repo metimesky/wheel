@@ -84,7 +84,7 @@ void init(uint32_t eax, uint32_t ebx) {
     pic_init();
 
     // start receiving external interrupts, currently none
-    // __asm__ __volatile__("sti");
+    __asm__ __volatile__("sti");
 
     // setup old 8253 pit and enable it
     pit_init();
