@@ -1,6 +1,6 @@
 #include "apic.h"
 #include <drivers/acpi/acpi.h>
-#include <timming/timming.h>
+// #include <timing/timing.h>
 #include <utilities/clib.h>
 #include <utilities/cpu.h>
 #include <utilities/logging.h>

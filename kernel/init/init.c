@@ -5,13 +5,14 @@
 
 #include <memory/memory.h>
 #include <interrupt/interrupt.h>
-#include <timming/timming.h>
+#include <timing/timing.h>
 
 #include <drivers/console/console.h>
 #include <drivers/acpi/acpi.h>
 #include <drivers/apic/apic.h>
 #include <drivers/pic/pic.h>
 #include <drivers/pit/pit.h>
+#include <drivers/hpet/hpet.h>
 
 extern void goto_ring3(void *addr, void *rsp);
 extern void delay();
@@ -94,8 +95,10 @@ void init(uint32_t eax, uint32_t ebx) {
     // start receiving external interrupts, currently none
     __asm__ __volatile__("sti");
 
-    // intialize old 8253 PIT
-    pit_init();
+    // intialize timmer, try HPET first, fallback to PIT
+    if (!hpet_init()) {
+        pit_init();
+    }
 
     // we should check SMP or UP here
     if (!apic_init()) {

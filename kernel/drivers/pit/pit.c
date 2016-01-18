@@ -4,7 +4,7 @@
 #include <utilities/logging.h>
 #include <drivers/pic/pic.h>
 #include <drivers/apic/apic.h>
-#include <timming/timming.h>
+#include <timing/timing.h>
 #include <interrupt/interrupt.h>
 
 /* PIT is an old timming device, the primary use of PIT is to synchronize

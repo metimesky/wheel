@@ -1,5 +1,5 @@
 #include "apic.h"
-#include <timming/timming.h>
+#include <timing/timing.h>
 #include <utilities/env.h>
 #include <utilities/cpu.h>
 #include <utilities/logging.h>
@@ -193,6 +193,8 @@ void local_apic_local_init() {
 
     ////////////////////////////////////////////////////////////////////////////
     // setting up APIC timer, by synchronizing with 8253 PIT
+    // Do we really need to synchronize APIC timer with PIT?
+    // just use APIC timer in scheduler won't require acurate timming.
 
     // block if a timer event is pending
     while (DATA_U32(local_apic_base + LVT_TIMER) & (1U << 12)) {}

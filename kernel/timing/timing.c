@@ -1,4 +1,4 @@
-#include "timming.h"
+#include "timing.h"
 
 volatile uint64_t tick = 0UL;
 
