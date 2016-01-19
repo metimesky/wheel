@@ -7,9 +7,15 @@
 #include <timing/timing.h>
 #include <interrupt/interrupt.h>
 
-/* PIT is an old timming device, the primary use of PIT is to synchronize
- * the more acurate APIC timer.
+/* PIT is an old timming device, when HPET is not available, we use PIT to
+ * achieve acurate timing.
+ * This file assumes a 8254 chip.
  */
+
+#define TIMER 1193180
+
+#define CTRL_PORT 0x43
+#define DATA_PORT 0x40
 
 char *video = (char *) 0xb8000;
 

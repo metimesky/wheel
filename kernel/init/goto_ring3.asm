@@ -1,5 +1,7 @@
 global goto_ring3
 global delay
+global ap
+global ap_end
 
 ; void goto_ring3(void *addr, void *rsp);
 
@@ -31,3 +33,15 @@ delay:
     nop
     nop
     ret
+
+[section .text]
+    ;org 0x7c000
+[BITS 16]
+ap:
+    xor     ax, ax
+    mov     gs, ax
+    mov     al, 'A'
+    mov     ah, 0x0e
+    mov     word [gs: 0xb8006], ax
+    jmp     $
+ap_end:

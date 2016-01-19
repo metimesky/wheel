@@ -12,9 +12,6 @@
  * APIC, one has to specifically call `local_apic_local_init`.
  */
 
-// at most 256 local APICs are supported
-#define MAX_LOCAL_APIC_NUM 256
-
 // local APIC register address map
 // local_apic_base is usually 0xfee00000
 #define LOCAL_APIC_ID           0x0020
@@ -65,9 +62,9 @@
 #define CURRENT_COUNT           0x0390
 #define DIVIDE_CONFIGURATION    0x03e0
 
-static uint64_t local_apic_base;
-static int local_apic_count;
-static ACPI_MADT_LOCAL_APIC* local_apic_arr[MAX_LOCAL_APIC_NUM];
+uint64_t local_apic_base;
+int local_apic_count;
+ACPI_MADT_LOCAL_APIC* local_apic_arr[MAX_LOCAL_APIC_NUM];
 
 // initialize this module, only assign global variables
 void local_apic_init(ACPI_TABLE_MADT *madt) {
@@ -101,9 +98,11 @@ void local_apic_local_init() {
 
     // set the physical address for local APIC registers
     uint64_t apic_base_msr = read_msr(0x1b);// & 0x0f00;   // only preserve flags
-    apic_base_msr |= local_apic_base & 0x000ffffffffff000UL;   // rewrite the base addr
+    log("read msr %x", apic_base_msr);
+    // apic_base_msr |= local_apic_base & 0x000ffffffffff000UL;   // rewrite the base addr
     apic_base_msr |= 1UL << 11;     // enable this local APIC
-    write_msr(0x1b, apic_base_msr);
+    log("write msr %x", apic_base_msr);
+    // write_msr(0x1b, apic_base_msr);
 
     // get the local apic id
     log("local apic id %x", DATA_U32(local_apic_base + LOCAL_APIC_ID));
@@ -232,6 +231,15 @@ uint8_t local_apic_get_processor_id(int index) {
         return local_apic_arr[index]->ProcessorId;
     }
     return 0xff;
+}
+
+// the act of writing to the low doubleword of the ICR causes the IPI to be sent
+void local_apic_send_ipi(uint64_t icr) {
+    // ensure no IPI pending
+    while (DATA_U32(local_apic_base + INTERRUPT_COMMAND_0) & (1U << 12)) {}
+
+    DATA_U32(local_apic_base + INTERRUPT_COMMAND_1) = (icr >> 32) & 0xffffffff;
+    DATA_U32(local_apic_base + INTERRUPT_COMMAND_0) = icr & 0xffffffff;
 }
 
 // issue end of interrupt of local apic

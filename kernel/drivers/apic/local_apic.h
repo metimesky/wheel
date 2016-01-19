@@ -13,6 +13,15 @@
 #define LVT_LINT1_VEC
 #define LVT_EXINT_VEC
 
+
+// at most 256 local APICs are supported
+#define MAX_LOCAL_APIC_NUM 256
+
+// other modules need to access these fields
+extern uint64_t local_apic_base;
+extern int local_apic_count;
+extern ACPI_MADT_LOCAL_APIC* local_apic_arr[MAX_LOCAL_APIC_NUM];
+
 /* Initialization order:
  * first, call `local_apic_init`.
  * then, for each local apic entry, call `local_apic_add`,
@@ -26,6 +35,7 @@ extern void local_apic_local_init();
 
 extern uint8_t local_apic_get_id(int index);
 extern uint8_t local_apic_get_processor_id(int index);
+extern void local_apic_send_ipi(uint64_t icr);
 extern void local_apic_send_eoi();
 
 #endif // __LOCAL_APIC_H__

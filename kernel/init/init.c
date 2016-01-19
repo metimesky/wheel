@@ -108,6 +108,9 @@ void init(uint32_t eax, uint32_t ebx) {
 
     log("Welcome to WHEEL OS!");
 
+    // start APs
+    apic_mp_init();
+
     while (1) {}
 
     // test interruption
