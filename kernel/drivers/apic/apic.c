@@ -83,14 +83,22 @@ bool apic_init() {
 }
 
 static core_init(uint8_t id) {
-    uint64_t icr = 0UL;
-    icr |= 0UL & 0x00000000000000ffUL;    // vector number
-    icr |= (5UL << 8) & 0x0000000000000700UL;  // delivery mode = INIT
-    icr |= 0UL << 11;   // destination mode = physical
-    icr |= 1UL << 14;   // assert, only INIT-deAssert must be de-assert
-    icr |= 1UL << 15;   // trigger mode = level, only valid for INIT-deAssert
-    icr |= (0UL << 18) & 0x00000000000c0000UL;  // destination shorthand = no
-    icr |= (1UL << 56) & 0xff00000000000000UL;  // destination field (target local apic id in physical mode)
+/*    uint32_t icr_l = 0UL;
+    icr |= 0U & 0x000000ffU;    // vector number
+    icr |= (5U << 8) & 0x00000700UL;  // delivery mode = INIT
+    icr |= 0U << 11;   // destination mode = physical
+    icr |= 1U << 14;   // assert, only INIT-deAssert must be de-assert
+    icr |= 1U << 15;   // trigger mode = level, only valid for INIT-deAssert
+    // icr |= (0UL << 18) & 0x000c0000UL;  // destination shorthand = no
+    uint32_t icr_h = 0x01000000U;  // destination field (target local apic id in physical mode)
+    DATA_U32(local_apic_base + 0x310) = icr_h;
+    DATA_U32(local_apic_base + 0x300) = icr_l;
+
+    // wait for 10ms
+    busy_wait(10);
+
+    // wait for delivery
+    while (DATA_U32(local_apic_base + 0x300) & (1U << 12)) {}
 
     log("1");
     local_apic_send_ipi(icr);   // send INIT IPI (assert)
@@ -119,7 +127,7 @@ static core_init(uint8_t id) {
     local_apic_send_ipi(icr);
     busy_wait(2);
 
-    log("5");
+    log("5");*/
 }
 
 extern char ap;
@@ -128,10 +136,12 @@ extern char ap_end;
 // initialize multiprocessor
 bool apic_mp_init() {
     // set shutdown code
-    * ((uint8_t *) 0x0f) = 0x0a;
+    out_byte(0x70, 0x0f);
+    out_byte(0x71, 0x0a);
 
     // set warm reset vector to 0x7c000
-    * ((uint32_t *) 0x0467) = 0x7c000;
+    * ((uint16_t *) 0x0467 + 0) = 0x7000;       // segment
+    * ((uint16_t *) 0x0467 + 2) = 0xc000;       // offset
 
     // copy real mode startup code to 0x7c000
     log("copying");

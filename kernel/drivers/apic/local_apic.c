@@ -102,7 +102,7 @@ void local_apic_local_init() {
     // apic_base_msr |= local_apic_base & 0x000ffffffffff000UL;   // rewrite the base addr
     apic_base_msr |= 1UL << 11;     // enable this local APIC
     log("write msr %x", apic_base_msr);
-    // write_msr(0x1b, apic_base_msr);
+    write_msr(0x1b, apic_base_msr);
 
     // get the local apic id
     log("local apic id %x", DATA_U32(local_apic_base + LOCAL_APIC_ID));
@@ -127,11 +127,7 @@ void local_apic_local_init() {
     // enable local APIC
     DATA_U32(local_apic_base + SPURIOUS_INT_VECTOR) |= 1UL << 8;
 
-    // LVT - CMCI (corrected machine check error count)
-    uint32_t lvt_cmci = 0;
-    lvt_cmci |= 48 & 0x000000ff;
-    lvt_cmci |= 1 << 16;        // mask
-    DATA_U32(local_apic_base + LVT_CMCI) = lvt_cmci;
+    // LVT - CMCI is not implemented by Bochs
 
     // LVT - local APIC timer
     uint32_t lvt_0 = 0;
@@ -246,4 +242,87 @@ void local_apic_send_ipi(uint64_t icr) {
 void local_apic_send_eoi() {
     // just write a zero value to EOI register
     DATA_U32(local_apic_base + EOI) = 0;
+}
+
+// this function can only be called on BSP!!!
+void local_apic_start_ap() {
+    uint32_t icr_l, icr_h;
+
+    DATA_U32(local_apic_base + ERROR_STATUS) = 0;
+    log("0 error status reg is %x", DATA_U32(local_apic_base + ERROR_STATUS));
+
+    icr_l = 0U;
+    icr_l |= 0U & 0x000000ffU;    // vector number
+    icr_l |= (5U << 8) & 0x00000700U;  // delivery mode = INIT
+    icr_l |= 0U << 11;   // destination mode = physical
+    icr_l |= 1U << 14;   // assert
+    icr_l |= 1U << 15;   // trigger mode = level, only valid for INIT-deAssert
+    // icr |= (0UL << 18) & 0x000c0000UL;  // destination shorthand = no
+    icr_h = 0x01000000U;  // destination field (target local apic id in physical mode)
+
+    // send INIT IPI -- assert
+    DATA_U32(local_apic_base + INTERRUPT_COMMAND_1) = icr_h;
+    DATA_U32(local_apic_base + INTERRUPT_COMMAND_0) = icr_l;
+
+    // wait for 10 ms
+    busy_wait(10);
+
+    // check error status
+    DATA_U32(local_apic_base + ERROR_STATUS) = 0;
+    log("1 error status reg is %x", DATA_U32(local_apic_base + ERROR_STATUS));
+
+    // wait for delivery
+    while (DATA_U32(local_apic_base + 0x300) & (1U << 12)) {}
+
+    icr_l = 0U;
+    icr_l |= 0U & 0x000000ffU;       // vector number
+    icr_l |= (5U << 8) & 0x00000700U;   // delivery mode = INIT
+    icr_l |= 0U << 11;   // destination mode = physical
+    icr_l |= 0U << 14;   // de-assert
+    icr_l |= 1U << 15;   // trigger mode = level, only valid for INIT-deAssert
+    // icr_l |= (0UL << 18) & 0x000c0000U;  // destination shorthand = no
+    icr_h = 0x01000000U;  // destination field (target local apic id in physical mode)
+
+    // send INIT IPI --deassert
+    DATA_U32(local_apic_base + INTERRUPT_COMMAND_1) = icr_h;
+    DATA_U32(local_apic_base + INTERRUPT_COMMAND_0) = icr_l;
+    busy_wait(20);
+
+    // check error status
+    DATA_U32(local_apic_base + ERROR_STATUS) = 0;
+    log("2 error status reg is %x", DATA_U32(local_apic_base + ERROR_STATUS));
+
+    // wait for delivery
+    while (DATA_U32(local_apic_base + 0x300) & (1U << 12)) {}
+
+    // we assume this is not 82489 chip, so send two more STARTUP IPI
+    icr_l = 0U;
+    icr_l = 0x7c & 0x000000ff;      // vector number
+    icr_l |= (6U << 8) & 0x00000700U;   // delivery mode = STARTUP
+    icr_l |= 0U << 11;   // destination mode = physical
+    icr_l |= 1U << 14;   // assert
+    icr_l |= 1U << 15;   // trigger mode = level, only valid for INIT-deAssert
+    // icr_l |= (0UL << 18) & 0x000c0000U;  // destination shorthand = no
+    icr_h = 0x01000000U;  // destination field (target local apic id in physical mode)
+
+    // send STARTUP IPI, pass 1
+    DATA_U32(local_apic_base + INTERRUPT_COMMAND_1) = icr_h;
+    DATA_U32(local_apic_base + INTERRUPT_COMMAND_0) = icr_l;
+    busy_wait(2);
+
+    // check error status
+    DATA_U32(local_apic_base + ERROR_STATUS) = 0;
+    log("3 error status reg is %x", DATA_U32(local_apic_base + ERROR_STATUS));
+
+    // wait for delivery
+    while (DATA_U32(local_apic_base + 0x300) & (1U << 12)) {}
+
+    // send STARTUP IPI, pass 2
+    DATA_U32(local_apic_base + INTERRUPT_COMMAND_1) = icr_h;
+    DATA_U32(local_apic_base + INTERRUPT_COMMAND_0) = icr_l;
+    busy_wait(2);
+
+    // check error status
+    DATA_U32(local_apic_base + ERROR_STATUS) = 0;
+    log("4 error status reg is %x", DATA_U32(local_apic_base + ERROR_STATUS));
 }

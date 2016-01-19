@@ -31,19 +31,27 @@ static inline void invlpg(void* m) {
 
 // directive `A` means edx:eax
 
+typedef union {
+    uint64_t u64;
+    uint32_t u32[2];
+} da;
+
 static inline uint64_t read_msr(uint32_t msr_id) {
-    uint64_t msr_val;
-    __asm__ __volatile__("rdmsr" : "=A"(msr_val) : "c"(msr_id));
-    // log("reading %x", msr_val);
-    return msr_val;
+    // uint64_t msr_val;
+    // __asm__ __volatile__("rdmsr" : "=A"(msr_val) : "c"(msr_id));
+    // return msr_val;
+
+    da val;
+    __asm__ __volatile__("rdmsr" : "=a"(val.u32[0]), "=d"(val.u32[1]) : "c"(msr_id));
+    return val.u64;
 }
 
 static inline void write_msr(uint32_t msr_id, uint64_t msr_val) {
     // log("writing %x", msr_val);
-    // uint32_t edx = msr_val >> 32;
-    // uint32_t eax = msr_val & 0xffffffff;
-    // __asm__ __volatile__("wrmsr" :: "c"(msr_id), "d"(edx), "a"(eax));
-    __asm__ __volatile__("wrmsr" :: "c"(msr_id), "A"(msr_val));
+    uint32_t edx = msr_val >> 32;
+    uint32_t eax = msr_val & 0xffffffff;
+    __asm__ __volatile__("wrmsr" :: "c"(msr_id), "d"(edx), "a"(eax));
+    // __asm__ __volatile__("wrmsr" :: "c"(msr_id), "A"(msr_val));
 }
 
 // read the CPU's time stamp value (pentium+), one of MSR
