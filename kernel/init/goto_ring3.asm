@@ -1,7 +1,5 @@
 global goto_ring3
 global delay
-global ap
-global ap_end
 
 ; void goto_ring3(void *addr, void *rsp);
 
@@ -11,7 +9,7 @@ global ap_end
 goto_ring3:
     ; align the rsp at 16-byte boundary
     mov     rax, rsp
-    and     rax, 0xfffffffffffffff0
+    and     eax, 0xfffffff0
     mov     rsp, rax
 
     mov     rax, 0x23
@@ -33,15 +31,3 @@ delay:
     nop
     nop
     ret
-
-[section .text]
-    ;org 0x7c000
-[BITS 16]
-ap:
-    xor     ax, ax
-    mov     gs, ax
-    mov     al, 'A'
-    mov     ah, 0x0e
-    mov     word [gs: 0xb8006], ax
-    jmp     $
-ap_end:

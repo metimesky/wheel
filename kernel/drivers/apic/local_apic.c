@@ -246,6 +246,19 @@ void local_apic_send_eoi() {
 
 // this function can only be called on BSP!!!
 void local_apic_start_ap() {
+    // check cpu local id
+    for (int i = 0; i < local_apic_count; ++i) {
+        log("local apic #%d, processor id %d", local_apic_arr[i]->Id, local_apic_arr[i]->ProcessorId);
+    }
+    
+    // set the warm reset vector
+    * ((uint16_t *) 0x467) = 0x7c00;    // segment
+    * ((uint16_t *) 0x469) = 0x0000;    // offset
+
+    // CMOS shutdown code
+    out_byte(0x70, 0x0f);   // address
+    out_byte(0x71, 0x0a);   // value
+
     uint32_t icr_l, icr_h;
 
     DATA_U32(local_apic_base + ERROR_STATUS) = 0;
