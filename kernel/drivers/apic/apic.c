@@ -68,7 +68,7 @@ bool apic_init() {
     ent2 |= 0UL << 13;                      // interrupt input pin polarity = high active
     ent2 |= 0UL << 15;                      // trigger mode = edge sensitive
     ent2 |= 1UL << 16;                      // interrupt mask
-    ent2 |= ((uint64_t) local_apic_get_id(0) << 56) & 0xff00000000000000UL;    // target
+    ent2 |= (((uint64_t) local_apic_arr[0]->Id) << 56) & 0xff00000000000000UL;    // target
     pit_map_gsi(80);
     io_apic_set_gsi(2, ent2);
     io_apic_unmask(2);

@@ -135,8 +135,6 @@ enter_long_mode:
 
     ; enter 64-bit submode
     lgdt    [gdt_ptr]
-
-    ; jump to real 64-bit code
     jmp     gdt.code0:long_mode_entry
 
     ; should never return here
@@ -163,6 +161,14 @@ no_long_mode:
 
 [BITS 64]
 long_mode_entry:
+    ; init segment registers (although they are ignored)
+    mov     ax, gdt.data0
+    mov     ds, ax
+    mov     es, ax
+    mov     fs, ax
+    mov     gs, ax
+    mov     ss, ax
+
     ; init fs and gs (can be used as thread local storage)
     xor     rax, rax
     mov     ecx, 0xc0000100     ; FS.base

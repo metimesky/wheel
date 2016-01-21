@@ -104,6 +104,8 @@ void io_apic_interrupt_override(ACPI_MADT_INTERRUPT_OVERRIDE *override) {
     uint8_t irq = override->SourceIrq;
     uint32_t gsi = override->GlobalIrq;
 
+    log("int override irq:%d -> gsi:%d", irq, gsi);
+
     if (override->SourceIrq < 16) {
         irq_target[override->SourceIrq] = override->GlobalIrq;
         irq_flags[override->SourceIrq] = override->IntiFlags;

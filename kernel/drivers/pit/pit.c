@@ -24,12 +24,16 @@ static inline void real_handler() {
     ++tick;
 }
 
-static void pit_pic_irq_handler() {
+static void pit_pic_irq_handler(int vec, interrupt_context_t *ctx) {
     real_handler();
     pic_send_eoi(0);    // EOI
 }
 
-static void pit_apic_gsi_handler() {
+static void pit_apic_gsi_handler(int vec, interrupt_context_t *ctx) {
+    // log("ret ss:rsp=%x:%x", ctx->ss, ctx->rsp);
+    // uint64_t ss;
+    // __asm__ __volatile__("movw %%ss, %%ax" : "=a"(ss));
+    // log("current ss is %x", ss);
     real_handler();
     // --video[158];
     local_apic_send_eoi();   // EOI
