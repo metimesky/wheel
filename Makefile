@@ -42,7 +42,7 @@ write: $(bin) $(fda)
 
 run: $(fda)
 	@printf "\033[1;31mexecuting qemu\033[0m\n"
-	@qemu-system-x86_64 -m 32 -smp 2 -fda $(fda)
+	@qemu-system-x86_64 -m 32 -smp 2 -fda $(fda) -d guest_errors,int -D log.txt
 
 clean:
 	@printf "\033[1;34mcleaning objects\033[0m\n"
@@ -51,8 +51,8 @@ clean:
 $(bin): $(objects) $(lds)
 	@printf "\033[1;34mlinking kernel\033[0m\n"
 	@mkdir -p $(@D)
-	@$(LD) $(LDFLAGS) -T $(lds) -Map $(map) -o $@ $^
-	@# @objcopy -O $@ $@
+	@$(LD) $(LDFLAGS) -T $(lds) -Map $(map) -o $@.elf $^
+	@objcopy -O binary $@.elf $@
 
 $(dst_dir)/%.asm.o: %.asm
 	@printf "\033[1;32massembling $< to $@\033[0m\n"

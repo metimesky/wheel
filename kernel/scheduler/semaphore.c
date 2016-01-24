@@ -64,5 +64,5 @@ bool spinlock_trylock(spinlock_t *lock) {
 void spinlock_unlock(spinlock_t *lock) {
     // TODO: should use atom primitives
     // *lock = SPINLOCK_FREE;
-    __asm__ __volatile__("lock movl $0, %0" :: "m"(*lock));
+    __asm__ __volatile__("movl $0, %0" :: "m"(*lock));
 }

@@ -10,39 +10,34 @@ SECTIONS {
         *(.eh_frame)
     }
 
-    . = 0x7c000;
-    .tramp : {
-        *(.tramp)
-        trampoline_end = .;
-    }
+    kernel_start = 16M;
 
-    . = 1M;
-    kernel_start = .;
-
-    .text /* BLOCK(4K) */ : /* ALIGN(4K) */ {
-        kernel_text_start = .;
+    kernel_text_start = kernel_start;
+    .text kernel_text_start : AT(kernel_text_start) {
         *(.boot)
-        /*
-        *(.tramp)
-        trampoline_end = .;
-        */
         *(.text*)
-        kernel_text_end = .;
-    } = 0x90    /* NOP */
+    } = 0x90
+    kernel_text_end = kernel_text_start + SIZEOF(.text);
 
-    .data /* BLOCK(4K) */ : AT(ADDR(.text)+SIZEOF(.text)) /* ALIGN(4K) */ {
-        kernel_data_start = .;
+    trampoline_start = ALIGN(kernel_text_end, 16);
+    .tramp 0x7c000 : AT(trampoline_start) {
+        *(.tramp)
+    } = 0x90
+    trampoline_end = trampoline_start + SIZEOF(.tramp);
+
+    kernel_data_start = ALIGN(trampoline_end, 16);
+    .data kernel_data_start : AT(kernel_data_start) {
         *(.rodata*)
         *(.data*)
-        kernel_data_end = .;
     } = 0
+    kernel_data_end = kernel_data_start + SIZEOF(.data);
 
-    .bss /* BLOCK(4K) */ : AT(ADDR(.data)+SIZEOF(.data)) /* ALIGN(4K) */ {
-        kernel_bss_start = .;
+    kernel_bss_start = ALIGN(kernel_data_end, 16);
+    .bss kernel_bss_start : AT(kernel_bss_start) {
         *(COMMON)
         *(.bss)
-        kernel_bss_end = .;
     } = 0
+    kernel_bss_end = kernel_bss_start + SIZEOF(.bss);
 
     kernel_end = .;
 }

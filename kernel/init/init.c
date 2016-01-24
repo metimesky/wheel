@@ -68,7 +68,9 @@ void unwind_b() { unwind_a(); }
 void unwind_c() { unwind_b(); }
 
 extern void local_apic_start_ap();
+extern char kernel_text_end;
 extern char trampoline;
+extern char trampoline_start;
 extern char trampoline_end;
 
 void init(uint32_t eax, uint32_t ebx) {
@@ -113,14 +115,15 @@ void init(uint32_t eax, uint32_t ebx) {
     log("Welcome to WHEEL OS!");
 
     // copy real mode startup code to 0x7c000
-    log("copying");
     char code[] = "\xb8\x00\xb8\x8e\xe8\xb0\x58\xb4\x1e\x65\xa3\x06\x00\xeb\xfe\xeb\xfe";
-    char *src = &trampoline;
+    char *src = &trampoline_start;
     char *dst = (char *) 0x7c000;
-    int n = &trampoline_end - &trampoline;
+    int n = &trampoline_end - &trampoline_start;
+    log("tramp is %x, copying from %x to %x, len %d", &trampoline_start, src, dst, n);
     for (int i = 0; i < n; ++i) {
         dst[i] = src[i];
     }
+    // while (1) {}
     // for (int i = 0; i < 17; ++i) {
     //     dst[i] = code[i];
     // }
