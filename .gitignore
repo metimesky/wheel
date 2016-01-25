@@ -32,6 +32,9 @@
 # Output directory
 build
 
+# QEMU log file
+log.txt
+
 # Editor / IDE
 *~
 .idea
