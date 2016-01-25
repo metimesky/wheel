@@ -73,6 +73,16 @@ extern char trampoline;
 extern char trampoline_start;
 extern char trampoline_end;
 
+void ap_do_sth() {
+    char *video = (char *) 0xb8000;
+    char s[] = "hello, AP!";
+    for (int i = 0; s[i]; ++i) {
+        video[2*(i+40)] = s[i];
+        video[2*(i+40)+1] = 0x0e;
+    }
+    while (1) {}
+}
+
 void init(uint32_t eax, uint32_t ebx) {
     // initialize early 80x25 console support
     console_init();
@@ -114,19 +124,14 @@ void init(uint32_t eax, uint32_t ebx) {
 
     log("Welcome to WHEEL OS!");
 
-    // copy real mode startup code to 0x7c000
-    char code[] = "\xb8\x00\xb8\x8e\xe8\xb0\x58\xb4\x1e\x65\xa3\x06\x00\xeb\xfe\xeb\xfe";
+    // copy real mode trampoline code to 0x7c000
     char *src = &trampoline_start;
     char *dst = (char *) 0x7c000;
     int n = &trampoline_end - &trampoline_start;
-    log("tramp is %x, copying from %x to %x, len %d", &trampoline_start, src, dst, n);
+    log("copying from %x to %x, len %d", src, dst, n);
     for (int i = 0; i < n; ++i) {
         dst[i] = src[i];
     }
-    // while (1) {}
-    // for (int i = 0; i < 17; ++i) {
-    //     dst[i] = code[i];
-    // }
 
     // start AP
     local_apic_start_ap();

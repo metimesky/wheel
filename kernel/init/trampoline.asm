@@ -8,6 +8,11 @@
 
 global trampoline
 
+extern gdt
+extern gdt_ptr
+extern pml4t
+extern ap_do_sth
+
 ; To avoid relocation truncation, we have to calculate effective address by
 ; hard coding target virtual address 0x7c000.
 %define addr(v) (0x7c000 + v - $$)
@@ -113,5 +118,54 @@ pm_trampoline:
     mov     al, 'd'
     mov     [gs:0xb801e], ax
 
+    ; set page table address
+    mov     edi, pml4t
+    mov     cr3, edi
+
+    ; enable PAE-paging
+    mov     eax, cr4
+    or      eax, 1 << 5
+    mov     cr4, eax
+
+    ; set LM-bit
+    mov     ecx, 0xc0000080
+    rdmsr
+    or      eax, 1 << 8
+    wrmsr
+
+    ; enable paging
+    mov     eax, cr0
+    or      eax, 1 << 31
+    mov     cr0, eax
+
+    ; enter 64-bit submode
+    lgdt    [gdt_ptr]
+    jmp     8:ap_long_entry
+
+    hlt
     jmp     $
-    jmp     $
+
+[BITS 64]
+ap_long_entry:
+    ; init segment registers
+    mov     ax, 0x10
+    mov     ds, ax
+    mov     es, ax
+    mov     fs, ax
+    mov     gs, ax
+    mov     ss, ax
+
+    ; init fs and gs (can be used as thread local storage)
+    xor     rax, rax
+    mov     ecx, 0xc0000100     ; FS.base
+    wrmsr
+    mov     ecx, 0xc0000101     ; GS.base
+    wrmsr
+
+    ; setup stack and execute function
+    mov     rsp, ap_stack_top
+    call    ap_do_sth
+
+[section .bss]
+ap_stack:   resb 0x1000
+ap_stack_top:

@@ -5,6 +5,7 @@
 ; of initial kernel stack, GDT and initial page tables.
 
 global gdt
+global gdt_ptr
 global kernel_stack_top
 global pml4t
 
