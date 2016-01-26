@@ -123,6 +123,13 @@ void ap_post_init() {
 
 ////////////////////////////////////////////////////////////////////////////////
     // first init interrupt, no need to fill idt, just load it
+    // __asm__ ("lidt");
+
+    // load TSS
+    // __asm__ ("ltr");
+
+    // initialize local apic, it's different from BSP
+    local_apic_local_init();
     
     while (1) {}
 }

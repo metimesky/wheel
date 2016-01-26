@@ -99,7 +99,8 @@ void local_apic_local_init() {
     // set the physical address for local APIC registers
     uint64_t apic_base_msr = read_msr(0x1b);// & 0x0f00;   // only preserve flags
     log("read msr %x", apic_base_msr);
-    // apic_base_msr |= local_apic_base & 0x000ffffffffff000UL;   // rewrite the base addr
+    apic_base_msr &= ~0x000ffffffffff000UL;
+    apic_base_msr |= local_apic_base & 0x000ffffffffff000UL;   // rewrite the base addr
     apic_base_msr |= 1UL << 11;     // enable this local APIC
     log("write msr %x", apic_base_msr);
     write_msr(0x1b, apic_base_msr);

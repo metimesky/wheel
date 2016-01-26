@@ -9,6 +9,9 @@
     third layer is object cache allocator (slab_alloc.c)
  */
 
+// TODO: we should have static allocator, that is, once allocated, the resource
+// will never be reclaimed. It's best for GDT, TSS and buddy-bitmap.
+
 #include <utilities/clib.h>
 #include <init/multiboot.h>
 
