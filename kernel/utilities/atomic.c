@@ -1,4 +1,7 @@
-static inline int arch_atomic_swap(volatile int *x, int v) {
+#include <utilities/env.h>
+
+// set v to given value, and return the original value.
+static inline int atomic_swap(volatile int *x, int v) {
     __asm__ __volatile__("xchg %0, %1" : "=r"(v), "=m"(*x) : "0"(v) : "memory");
     return v;
 }

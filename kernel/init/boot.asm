@@ -233,8 +233,8 @@ mb_eax: dd  0
 mb_ebx: dd  0
 
 [section .bss]
-; reserve 16KB for kernel stack.
-kernel_stack:   resb 0x4000
+; reserve 4KB for kernel stack.
+kernel_stack:   resb 0x1000
 kernel_stack_top:
 
 ; reserve 24KB for page tables. (1 PML4T, 1 PDPT, 4 PDT)

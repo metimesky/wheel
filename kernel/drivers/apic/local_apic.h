@@ -35,7 +35,10 @@ extern void local_apic_local_init();
 
 extern uint8_t local_apic_get_id(int index);
 extern uint8_t local_apic_get_processor_id(int index);
-extern void local_apic_send_ipi(uint64_t icr);
+extern void local_apic_send_ipi(uint32_t icr_h, uint32_t icr_l);
 extern void local_apic_send_eoi();
+
+extern void local_apic_poll_error();
+// extern void local_apic_start_ap();
 
 #endif // __LOCAL_APIC_H__

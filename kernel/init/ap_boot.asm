@@ -6,24 +6,18 @@
 ; Since this piece of code is compiled as 16-bit, when relocating, the
 ; 64-bit virtual address cannot be fit in 16-bit slot.
 
-global trampoline
-
 extern gdt
 extern gdt_ptr
 extern pml4t
-extern ap_do_sth
+extern ap_post_init
 
 ; To avoid relocation truncation, we have to calculate effective address by
 ; hard coding target virtual address 0x7c000.
 %define addr(v) (0x7c000 + v - $$)
 
-[section .tramp]
+[section .ap_boot]
 [BITS 16]
-
-; AP starts executing this code in real mode.
-; 16 bit mode real mode is too limited, we have to use full address to
-; express them. 0x7c00:0x0000
-trampoline:
+ap_entry:
     ; disable interrupt
     cli
 
@@ -36,26 +30,8 @@ trampoline:
     mov     ax, 0xb800
     mov     gs, ax
 
-    ; print information
-    mov     ah, 0x0e
-    mov     al, 'H'
-    mov     [gs:10], ax
-    mov     al, 'a'
-    mov     [gs:12], ax
-    mov     al, 'l'
-    mov     [gs:14], ax
-    mov     al, 'l'
-    mov     [gs:16], ax
-    mov     al, 'o'
-    mov     [gs:18], ax
-
     ; AP is different with BSP, we don't need to enable A20
     lgdt    [tmp_gdt_ptr-$$]     ; it will truncated to 16-bit
-
-    ; enable A20
-    in      al, 0x92
-    or      al, 2
-    out     0x92, al
 
     ; enable protected mode
     mov     eax, cr0
@@ -63,7 +39,7 @@ trampoline:
     mov     cr0, eax
 
     ; jump into 32-bit protected mode code
-    jmp     dword 8:addr(pm_trampoline)
+    jmp     dword tmp_gdt.code:addr(start32)
 
     hlt
     jmp     $
@@ -95,28 +71,13 @@ tmp_gdt_ptr:
 
 
 [BITS 32]
-
-; Now we have switched into 32-bit protected mode
-ALIGN 8
-pm_trampoline:
-    mov     ax, 0x10
+start32:
+    mov     ax, tmp_gdt.data
     mov     ds, ax
     mov     es, ax
     mov     fs, ax
     mov     gs, ax
     mov     ss, ax
-
-    mov     ah, 0x0c
-    mov     al, 'W'
-    mov     [gs:0xb8016], ax
-    mov     al, 'o'
-    mov     [gs:0xb8018], ax
-    mov     al, 'r'
-    mov     [gs:0xb801a], ax
-    mov     al, 'l'
-    mov     [gs:0xb801c], ax
-    mov     al, 'd'
-    mov     [gs:0xb801e], ax
 
     ; set page table address
     mov     edi, pml4t
@@ -140,13 +101,13 @@ pm_trampoline:
 
     ; enter 64-bit submode
     lgdt    [gdt_ptr]
-    jmp     8:ap_long_entry
+    jmp     8:start64
 
     hlt
     jmp     $
 
 [BITS 64]
-ap_long_entry:
+start64:
     ; init segment registers
     mov     ax, 0x10
     mov     ds, ax
@@ -162,10 +123,12 @@ ap_long_entry:
     mov     ecx, 0xc0000101     ; GS.base
     wrmsr
 
-    ; setup stack and execute function
-    mov     rsp, ap_stack_top
-    call    ap_do_sth
+    ; read the stack top address from 0x7cff8
+    mov     rax, [0x7cff8]
+    mov     rsp, rax
 
-[section .bss]
-ap_stack:   resb 0x1000
-ap_stack_top:
+    call    ap_post_init
+
+    ; should never return
+    hlt
+    jmp     $

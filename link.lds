@@ -19,13 +19,13 @@ SECTIONS {
     } = 0x90
     kernel_text_end = kernel_text_start + SIZEOF(.text);
 
-    trampoline_start = ALIGN(kernel_text_end, 16);
-    .tramp 0x7c000 : AT(trampoline_start) {
-        *(.tramp)
+    ap_boot_start = ALIGN(kernel_text_end, 16);
+    .ap_boot 0x7c000 : AT(ap_boot_start) {
+        *(.ap_boot)
     } = 0x90
-    trampoline_end = trampoline_start + SIZEOF(.tramp);
+    ap_boot_end = ap_boot_start + SIZEOF(.ap_boot);
 
-    kernel_data_start = ALIGN(trampoline_end, 16);
+    kernel_data_start = ALIGN(ap_boot_end, 16);
     .data kernel_data_start : AT(kernel_data_start) {
         *(.rodata*)
         *(.data*)

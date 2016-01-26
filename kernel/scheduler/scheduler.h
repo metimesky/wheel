@@ -5,5 +5,6 @@
 #include <utilities/clib.h>
 
 #include "semaphore.h"
+#include "timing.h"
 
 #endif // __SCHEDULER_H__

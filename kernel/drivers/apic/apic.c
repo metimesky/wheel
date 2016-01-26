@@ -1,11 +1,10 @@
 #include "apic.h"
 #include <drivers/acpi/acpi.h>
-// #include <timing/timing.h>
 #include <utilities/clib.h>
 #include <utilities/cpu.h>
 #include <utilities/logging.h>
 #include <drivers/pit/pit.h>
-#include <timing/timing.h>
+#include <scheduler/scheduler.h>
 
 // generic APIC initialization routine
 // return false when APIC is not available.
