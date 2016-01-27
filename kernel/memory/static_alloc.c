@@ -10,7 +10,7 @@ void static_alloc_init() {
     kernel_end = (uint64_t) &kernel_bss_end;
 }
 
-uint64_t alloc_static(size_t len) {
+void *alloc_static(size_t len) {
     // align the address by 16
     kernel_end += 15;
     kernel_end &= ~15;
@@ -18,5 +18,5 @@ uint64_t alloc_static(size_t len) {
     uint64_t ret = kernel_end;
     kernel_end += len;
 
-    return ret;
+    return (void *) ret;
 }

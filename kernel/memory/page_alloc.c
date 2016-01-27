@@ -39,6 +39,7 @@ uint64_t buddy_num[BUDDY_LEVEL];
 uint64_t free_page_count;
 
 // 初始化页分配器，根据内存布局建立buddy位图
+// TODO: use static_alloc to allocate the buddy-bitmap
 void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
     // 内核结束的位置就是位图的起始地址，但必须8字节对齐
     buddy_map[0] = (uint64_t *) (((uint64_t) &kernel_bss_end + sizeof(uint64_t) - 1) & ~(sizeof(uint64_t) - 1));

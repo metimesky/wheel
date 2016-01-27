@@ -63,6 +63,10 @@ void init(uint32_t eax, uint32_t ebx) {
     log("statically allocated %x.", alloc_static(17));
     log("statically allocated %x.", alloc_static(29));
 
+    /* While allocating GDT and TSS is prefered using static_alloc, stack for
+     * AP is better using page_alloc. So AP startup is splitted into two!!!
+     */
+
     // initialize memory manager, so now we know the number of cpu
     memory_init((multiboot_info_t *) ebx);
 

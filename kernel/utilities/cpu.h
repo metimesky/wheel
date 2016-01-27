@@ -29,28 +29,27 @@ static inline void invlpg(void* m) {
     __asm__ __volatile__("invlpg (%0)" :: "b"(m) : "memory");
 }
 
-// directive `A` means edx:eax
-
-typedef union {
-    uint64_t u64;
-    uint32_t u32[2];
-} da;
-
+// directive `A` means rdx:rax in 64-bit mode
 static inline uint64_t read_msr(uint32_t msr_id) {
-    // uint64_t msr_val;
-    // __asm__ __volatile__("rdmsr" : "=A"(msr_val) : "c"(msr_id));
-    // return msr_val;
+    union {
+        uint32_t d[2];
+        uint64_t q;
+    } u;
+    __asm__ __volatile__("rdmsr" : "=d"(u.d[1]), "=a"(u.d[0]) : "c"(msr_id));
 
-    da val;
-    __asm__ __volatile__("rdmsr" : "=a"(val.u32[0]), "=d"(val.u32[1]) : "c"(msr_id));
-    return val.u64;
+    return u.q;
 }
 
 static inline void write_msr(uint32_t msr_id, uint64_t msr_val) {
     // log("writing %x", msr_val);
-    uint32_t edx = msr_val >> 32;
-    uint32_t eax = msr_val & 0xffffffff;
-    __asm__ __volatile__("wrmsr" :: "c"(msr_id), "d"(edx), "a"(eax));
+    union {
+        uint32_t d[2];
+        uint64_t q;
+    } u;
+    u.q = msr_val;
+    // uint32_t edx = msr_val >> 32;
+    // uint32_t eax = msr_val & 0xffffffff;
+    __asm__ __volatile__("wrmsr" :: "d"(u.d[1]), "a"(u.d[0]), "c"(msr_id));
     // __asm__ __volatile__("wrmsr" :: "c"(msr_id), "A"(msr_val));
 }
 

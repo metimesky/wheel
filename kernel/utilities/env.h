@@ -1,6 +1,10 @@
 #ifndef __ENV_H__
 #define __ENV_H__ 1
 
+/* This header contains the basic programming environment, including
+ * types, macros, and variable arguments.
+ */
+
 // freestanding C library headers
 #include <stdint.h>     // integer type definition
 #include <stddef.h>     // size_t, wchar_t and NULL
@@ -8,7 +12,7 @@
 #include <limits.h>     // macros about integer range
 #include <stdarg.h>     // variable length arguments
 
-// data accessing helpers
+// data accessing helpers -- discouraged
 #define DATA_U8(x)  (* ((uint8_t *)  (x)))
 #define DATA_U16(x) (* ((uint16_t *) (x)))
 #define DATA_U32(x) (* ((uint32_t *) (x)))

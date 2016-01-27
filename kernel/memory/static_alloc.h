@@ -14,6 +14,6 @@
  */
 
 void static_alloc_init();
-uint64_t alloc_static(size_t len);
+void *alloc_static(size_t len);
 
 #endif // __STATIC_ALLOC_H__
