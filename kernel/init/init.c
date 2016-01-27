@@ -5,7 +5,6 @@
 
 #include <memory/memory.h>
 #include <interrupt/interrupt.h>
-// #include <timing/timing.h>
 
 #include <drivers/console/console.h>
 #include <drivers/acpi/acpi.h>
@@ -40,6 +39,9 @@ void ps() {
 extern ap_init();
 
 void init(uint32_t eax, uint32_t ebx) {
+    // static allocator
+    static_alloc_init();
+
     // initialize early 80x25 console support
     console_init();
 
@@ -49,14 +51,20 @@ void init(uint32_t eax, uint32_t ebx) {
         return;
     }
 
-    // initialize memory manager
-    memory_init((multiboot_info_t *) ebx);
-
     // early access ACPI tables, fail if not exist
     if (!initialize_acpi_tables()) {
         log("ACPI not available!");
         return;
     }
+
+    // now the acpi has initialized, we know the number of cores
+    // so we can switch GDT, with a TSS entry for each core
+    log("statically allocated %x.", alloc_static(32));
+    log("statically allocated %x.", alloc_static(17));
+    log("statically allocated %x.", alloc_static(29));
+
+    // initialize memory manager, so now we know the number of cpu
+    memory_init((multiboot_info_t *) ebx);
 
     // initialize interrupt handling module
     interrupt_init();

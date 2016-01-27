@@ -9,7 +9,7 @@ global gdt_ptr
 global kernel_stack_top
 global pml4t
 
-extern  kernel_start
+extern  kernel_text_start
 extern  kernel_data_end
 extern  kernel_bss_end
 
@@ -28,7 +28,7 @@ multiboot_header:
     dd      MB1_FLAGS
     dd      MB1_CHECK
     dd      multiboot_header    ; header_addr
-    dd      kernel_start        ; load_addr
+    dd      kernel_text_start   ; load_addr
     dd      kernel_data_end     ; load_end_addr
     dd      kernel_bss_end      ; bss_end_addr
     dd      multiboot_entry     ; entry_addr

@@ -10,9 +10,7 @@ SECTIONS {
         *(.eh_frame)
     }
 
-    kernel_start = 16M;
-
-    kernel_text_start = kernel_start;
+    kernel_text_start = 16M;
     .text kernel_text_start : AT(kernel_text_start) {
         *(.boot)
         *(.text*)
@@ -38,6 +36,4 @@ SECTIONS {
         *(.bss)
     } = 0
     kernel_bss_end = kernel_bss_start + SIZEOF(.bss);
-
-    kernel_end = .;
 }

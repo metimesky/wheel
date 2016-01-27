@@ -15,6 +15,7 @@
 #include <utilities/clib.h>
 #include <init/multiboot.h>
 
+#include "static_alloc.h"
 #include "page_alloc.h"
 #include "slab_alloc.h"
 

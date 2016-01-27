@@ -5,6 +5,7 @@
 extern void page_fault_handler(int vec, interrupt_context_t *ctx);
 
 void memory_init(multiboot_info_t *mbi) {
+    // before setting up memory manager, allocate static resource first
     // init page allocator (creating buddy)
     page_alloc_init(mbi->mmap_addr, mbi->mmap_length);
 
