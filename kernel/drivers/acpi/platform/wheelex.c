@@ -4,9 +4,12 @@
 #include <utilities/clib.h>
 #include <utilities/logging.h>
 
+static ACPI_TABLE_DESC acpi_tables[16];
+
 // early ACPI table access, without dynamic memory support
 bool initialize_acpi_tables() {
-    ACPI_STATUS status = AcpiInitializeTables(NULL, 16, FALSE);
+    // ACPI_STATUS status = AcpiInitializeTables(NULL, 16, FALSE);
+    ACPI_STATUS status = AcpiInitializeTables(acpi_tables, 16, FALSE);
     if (ACPI_FAILURE(status)) {
         // Wheel requires ACPI to be available.
         return false;

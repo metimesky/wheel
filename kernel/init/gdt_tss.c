@@ -1,4 +1,6 @@
-#include "tss.h"
+#include "gdt_tss.h"
+#include <memory/memory.h>
+#include <drivers/apic/apic.h>
 
 // the top address of default kernel stack, defined in boot.asm
 extern char kernel_stack_top;
@@ -6,8 +8,13 @@ extern uint64_t gdt[];
 
 static tss_t tss;      // scheduler may need to access tss
 
-// in boot.asm, we reserved space for tss descriptor, now we make use of it.
-void tss_init() {
+void gdt_tss_init() {
+    gdt_ptr;
+    alloc_static();
+}
+
+// initialize the TSS of BSP
+void bsp_tss_init() {
     uint64_t rsp0 = (uint64_t) &kernel_stack_top;
     tss.rsp0_l = rsp0 & 0xffffffff;
     tss.rsp0_h = (rsp0 >> 32) & 0xffffffff;

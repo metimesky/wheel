@@ -99,11 +99,11 @@ ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS
 
 void *AcpiOsAllocate(ACPI_SIZE n) {
     void *addr = slab_alloc(n);
-    // log("malloc %d at %x", n, addr);
+    log("osl::malloc %d at %x", n, addr);
     return addr;
 }
 void AcpiOsFree(void *addr) {
-    // log("freeing at %x", addr);
+    log("osl::freeing at %x", addr);
     slab_free(addr);
 }
 

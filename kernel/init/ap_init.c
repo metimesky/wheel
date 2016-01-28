@@ -17,6 +17,12 @@ volatile int ap_started;
 void ap_init() {
     ap_started = 0;
 
+    // allocate new GDT and TSS for each core
+    size_t n = 0;
+    n += 5 * sizeof(uint64_t);  // GDT dummy, two code, two data
+    n += local_apic_count * 2 * sizeof(uint64_t);   // tss entries in gdt
+    // n += local_apic_count * sizeof(tss_t);
+
     // copy real mode trampoline code to 0x7c000
     memcpy(0x7c000, &ap_boot_start, &ap_boot_end - &ap_boot_start);
 

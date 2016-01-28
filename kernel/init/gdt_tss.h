@@ -1,13 +1,7 @@
-#ifndef __TSS_H__
-#define __TSS_H__ 1
+#ifndef __GDT_TSS_H__
+#define __GDT_TSS_H__ 1
 
 #include <utilities/env.h>
-
-/* Notice that in SMP environment, each CPU should has its own TSS.
- * But currently, Wheel has only one TSS because the space reserved
- * in boot.asm.
- * Multiple TSS will be considered in the future.
- */
 
 // structure of long mode TSS
 struct tss {
@@ -43,10 +37,11 @@ typedef struct tss tss_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-extern void tss_init();
+// switch new gdt and tss, taking multiprocessor into consideration
+extern void gdt_tss_init();
 
 // this function is needed when switching context. the kernel stack of target
 // process should be specified in TSS
 extern void tss_set_rsp0(uint64_t rsp);
 
-#endif // __TSS_H__
+#endif // __GDT_TSS_H__
