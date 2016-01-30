@@ -8,10 +8,10 @@ extern uint64_t gdt[];
 
 static tss_t tss;      // scheduler may need to access tss
 
-void gdt_tss_init() {
-    gdt_ptr;
-    alloc_static();
-}
+// void gdt_tss_init() {
+//     // gdt_ptr;
+//     // alloc_static();
+// }
 
 // initialize the TSS of BSP
 void bsp_tss_init() {

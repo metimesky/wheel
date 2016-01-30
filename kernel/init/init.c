@@ -13,6 +13,8 @@
 #include <drivers/pit/pit.h>
 #include <drivers/hpet/hpet.h>
 
+#include "gdt_tss.h"
+
 extern void goto_ring3(void *addr, void *rsp);
 extern void delay();
 
@@ -37,6 +39,11 @@ void ps() {
  * This function is executed during system initialization.
  */
 extern ap_init();
+
+// switch to new gdt and tss, apic needs to be initialized
+void gdt_tss_init() {
+    ;
+}
 
 void init(uint32_t eax, uint32_t ebx) {
     // initialize static, permanant alloc support, very primitive.
@@ -63,8 +70,14 @@ void init(uint32_t eax, uint32_t ebx) {
     // now the acpi has initialized, we know the number of cores
     // so we can switch GDT, with a TSS entry for each core.
     // New GDT and TSSs are packed into pages, we have to calculate the size.
-    
+    log("Core number is %d", local_apic_count);
+    int gdt_size = 5 * 8; // gdt -- dummy + code0 + data0 + code3 + data3
+    gdt_size += local_apic_count * 16;    // gdt tss entry
+    uint64_t *new_gdt = alloc_static(gdt_size);
 
+    for (int i = 0; i < local_apic_count; ++i) {
+        tss_t *new_tss = (tss_t *) alloc_static(sizeof(tss_t));
+    }
 
     /* While allocating GDT and TSS is prefered using static_alloc, stack for
      * AP is better using page_alloc. So AP startup is splitted into two!!!

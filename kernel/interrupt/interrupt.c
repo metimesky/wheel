@@ -1,6 +1,6 @@
 #include "interrupt.h"
 #include "idt.h"
-#include "tss.h"
+// #include "tss.h"
 #include <utilities/env.h>
 #include <utilities/cpu.h>
 // #include <utilities/clib.h>
@@ -51,7 +51,7 @@ void interrupt_init() {
     }
 
     // setup tss first
-    tss_init();
+    // tss_init();
 
     // create and activate IDT
     idt_init();
