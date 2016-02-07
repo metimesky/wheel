@@ -8,6 +8,9 @@ extern uint64_t gdt[];
 
 static tss_t tss;      // scheduler may need to access tss
 
+// defined in gdt_tss.asm
+extern void reload_gdtr(uint64_t gdtr);
+
 // void gdt_tss_init() {
 //     // gdt_ptr;
 //     // alloc_static();

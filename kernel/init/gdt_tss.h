@@ -1,6 +1,10 @@
 #ifndef __GDT_TSS_H__
 #define __GDT_TSS_H__ 1
 
+/* during multiprocessor startup, we need to switch gdt and assign a tss for
+ * each core
+ */
+
 #include <utilities/env.h>
 
 // structure of long mode TSS
