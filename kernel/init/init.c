@@ -77,11 +77,16 @@ void gdt_tss_init() {
     ;
 }
 
+void smp_init() {
+    // first check the number of processor
+    apic_init()
+}
+
 void init(uint32_t eax, uint32_t ebx) {
-    // initialize static, permanant alloc support, very primitive.
+    // initialize primitive static memory allocator.
     static_alloc_init();
 
-    // initialize early 80x25 console support
+    // initialize early 80x25 console support, so we can `log` now.
     console_init();
 
     // check bootloader compliance
@@ -93,11 +98,14 @@ void init(uint32_t eax, uint32_t ebx) {
     // initialize memory manager, so now we know the number of cpu
     // memory_init((multiboot_info_t *) ebx);
 
-    // early access ACPI tables, fail if not exist
+    // early access ACPI tables, fail if not exist.
     if (!initialize_acpi_tables()) {
         log("ACPI not available!");
         return;
     }
+
+    // once ACPI is initialized, we can access SMP info from MADT.
+    smp_init();
 
     // now the acpi has initialized, we know the number of cores
     // so we can switch GDT, with a TSS entry for each core.

@@ -13,6 +13,8 @@
  * memory is initialized (i.e. page_alloc), this method won't work!
  */
 
+extern uint64_t kernel_end;
+
 void static_alloc_init();
 void *alloc_static(size_t len);
 

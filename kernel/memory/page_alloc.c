@@ -21,7 +21,7 @@
 //       bitmap for DMA. (DMA is only 16MB, a complete buddy is a bit wasteful)
 
 // 定义在linker.lds中，它们的地址是内核的开始/结束位置（不包含buddy_map）
-extern char kernel_load_addr;
+extern char kernel_text_start;
 extern char kernel_bss_end;
 
 // kernel PML4, defined in boot.asm

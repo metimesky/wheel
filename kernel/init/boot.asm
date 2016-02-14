@@ -62,13 +62,13 @@ multiboot_entry:
     popfd
     xor     eax, ecx
     jz      no_long_mode    ; CPUID not supported, thus no long mode
-    
+
     ; check CPUID extended functions
     mov     eax, 0x80000000
     cpuid
     cmp     eax, 0x80000001
     jb      no_long_mode    ; CPUID extended functions not available, thus no long mode
-    
+
     ; check long mode existence
     mov     eax, 0x80000001
     cpuid
@@ -90,7 +90,7 @@ enter_long_mode:
     rep     stosd
     mov     edi, cr3
 
-    ; creating 1 Page-Map Level-4 Entry (PML4)
+    ; creating 1 Page-Map Level-4 Entry (PML4E)
     mov     dword [edi], 0x1007     ; present, read/write, user
     add     dword [edi], pml4t      ; pointing to pml4t+4K (PDP Table)
     add     edi, 0x1000
@@ -103,10 +103,10 @@ enter_long_mode:
     add     dword [edi], pml4t      ; pointing to pml4t+12K
     add     edi, 8
     mov     dword [edi], 0x4007     ; present, read/write, user
-    add     dword [edi], pml4t      ; pointing to pml4t+12K
+    add     dword [edi], pml4t      ; pointing to pml4t+16K
     add     edi, 8
     mov     dword [edi], 0x5007     ; present, read/write, user
-    add     dword [edi], pml4t      ; pointing to pml4t+12K
+    add     dword [edi], pml4t      ; pointing to pml4t+20K
     add     edi, 0x1000 - 24
 
     ; creating 4*512 Page Directory Entries (PDE)
