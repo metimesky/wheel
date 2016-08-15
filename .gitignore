@@ -29,8 +29,9 @@
 *.hex
 *.bin
 
-# Output directory
+# Output
 build
+cd.iso
 
 # QEMU log file
 log.txt
