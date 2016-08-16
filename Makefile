@@ -17,7 +17,7 @@ AS	:=	yasm
 LD	:=	ld
 
 # C compiler flags -- basic
-CFLAGS	:=	-c -m64 -std=c99 -I include -ffreestanding -nostdlib -fno-omit-frame-pointer -fno-stack-protector -fno-zero-initialized-in-bss
+CFLAGS	:=	-c -m64 -std=c99 -I include -I include/drivers/acpi -ffreestanding -nostdlib -fno-omit-frame-pointer -fno-stack-protector -fno-zero-initialized-in-bss
 
 # C compiler flags -- warnings
 CFLAGS	+=	-Wall -Wextra -Werror-implicit-function-declaration -Wwrite-strings -Wno-unused-function -Wno-unused-parameter -Wno-format
