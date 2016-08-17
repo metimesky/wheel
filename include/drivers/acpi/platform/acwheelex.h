@@ -66,13 +66,8 @@
 
 #endif
 
-/*
- * Overrides for in-kernel ACPICA
- */
-// ACPI_STATUS ACPI_INIT_FUNCTION AcpiOsInitialize (
-//     void);
 
-// ACPI_STATUS AcpiOsTerminate (
-//     void);
+extern bool initialize_acpi_tables();
+extern bool initialize_full_acpi();
 
 #endif /* __ACLINUXEX_H__ */

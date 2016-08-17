@@ -1,14 +1,9 @@
-// this file defines functions that are required by ACPICA
-// ACPICA OS Layer
-
-#include "acpi.h"    // we have to include this header first to avoid some wierd problems
-#include <wheel.h>
-// #include <memory/memory.h>
-// #include <utilities/logging.h>
+#include "acpi.h"
+#include <drivers/console.h>
 
 typedef int spinlock_t;
 
-#define TRACE while(1){}
+#define TRACE console_print(__FUNCTION__);while(1){}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Environmental and ACPI tables
@@ -16,24 +11,56 @@ typedef int spinlock_t;
 
 // called during initialization of the ACPICA subsystem
 ACPI_STATUS AcpiOsInitialize() {
-    //TRACE
+    TRACE
     // do nothing, just return ok
-	return AE_OK;
+    return AE_OK;
 }
 
 // called during termination of the ACPICA subsystem
 ACPI_STATUS AcpiOsTerminate() {
     TRACE
     // do nothing, just return ok
-	return AE_OK;
+    return AE_OK;
 }
 
 // returns the physical address of the ACPI RSDP table (only works on x86)
 ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer() {
+    // get the EBDA address (physical)
+    console_print("--- AcpiOsGetRootPointer, ");
+    // while (1) {}
+    uint16_t ebda_addr = * (uint16_t *) (KERNEL_VMA + 0x040e);
+    const char *p = (const char *) (KERNEL_VMA + ((uint64_t)ebda_addr << 4));
+    console_print("ebda %x\n", p);
+    //while (1) { }
+
+    // 1) search the first KB of EBDA
+    for (int i = 0; i < 1024/16; ++i) {
+        if (strncmp(p, "RSD PTR ", 8) == 0) {
+            return (ACPI_PHYSICAL_ADDRESS) (p - KERNEL_VMA);
+        }
+        p += 16;
+    }
+
+    // 2) Search 128K upper memory: E0000h-FFFFFh
+    p = (const char *) (KERNEL_VMA + 0x000e0000);
+    for (int i = 0; i < 128*1024/16; ++i) {
+        if (strncmp(p, "RSD PTR ", 8) == 0) {
+            return (ACPI_PHYSICAL_ADDRESS) (p - KERNEL_VMA);
+        }
+        p += 16;
+    }
+
+    return NULL;
+    while (1) { }
+////////
+    return 0x9fc10;
+    console_print("--- AcpiOsGetRootPointer, ");
     ACPI_SIZE ret;
     if (ACPI_SUCCESS(AcpiFindRootPointer(&ret))) {
+        console_print("got %x.\n", ret);
         return ret;
     } else {
+        console_print("got nothing!\n");
         return 0;
     }
 }
@@ -46,12 +73,14 @@ ACPI_STATUS AcpiOsPredefinedOverride(const ACPI_PREDEFINED_NAMES *PredefinedObje
 
 // allow the host OS to override a firmware ACPI table via a logical address
 ACPI_STATUS AcpiOsTableOverride(ACPI_TABLE_HEADER *old_table, ACPI_TABLE_HEADER **new_table) {
+    TRACE
     *new_table = NULL;  // no replacement is provided
     return AE_OK;
 }
 
 // allow the host OS to override a firmware ACPI table via a physical address
 ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *old_table, ACPI_PHYSICAL_ADDRESS *new_table, UINT32 *new_table_len) {
+    TRACE
     *new_table = 0;     // no replacement will be given
     *new_table_len = 0;
     return AE_OK;
@@ -87,10 +116,13 @@ void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS phy_addr, ACPI_SIZE len) {
     if (phy_addr > 0xffffffffUL) {
         // log("mapping %x", phy_addr);
     }
-    return (void *) phy_addr;
+    console_print("mapping %x\n", phy_addr);
+    return (void *) (KERNEL_VMA + phy_addr);
 }
 // deletes a mapping that was created by AcpiOsMapMemory
 void AcpiOsUnmapMemory(void *virt_addr, ACPI_SIZE len) {
+    console_print("unmapping %x\n", (uint64_t)virt_addr - KERNEL_VMA);
+    return;
     int page_num = (len + 4095) >> 12;  // calculate the number of pages, round upwards
     if (virt_addr > 0xffffffffUL) {
         // log("unmapping %x", virt_addr);
@@ -104,11 +136,13 @@ void *AcpiOsAllocate(ACPI_SIZE n) {
     // void *addr = slab_alloc(n);
     // log("osl::malloc %d at %x", n, addr);
     // return addr;
+    TRACE
     return 0;
 }
 void AcpiOsFree(void *addr) {
     // log("osl::freeing at %x", addr);
     // slab_free(addr);
+    TRACE
 }
 
 BOOLEAN AcpiOsReadable(void *addr, ACPI_SIZE n) {
@@ -126,6 +160,7 @@ BOOLEAN AcpiOsWritable(void *addr, ACPI_SIZE n) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ACPI_THREAD_ID AcpiOsGetThreadId() {
+    TRACE
     return 0;
 }
 ACPI_STATUS AcpiOsExecute(ACPI_EXECUTE_TYPE Type, ACPI_OSD_EXEC_CALLBACK Function, void *Context) {
@@ -167,11 +202,13 @@ ACPI_STATUS AcpiOsDeleteSemaphore(ACPI_SEMAPHORE Handle) {
 }
 static uint32_t val;
 ACPI_STATUS AcpiOsWaitSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units, UINT16 Timeout) {
+    TRACE
     // log("semaphore wait %d, %d, %d", Handle, Units, Timeout);
     --val;
     return AE_OK;
 }
 ACPI_STATUS AcpiOsSignalSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units) {
+    TRACE
     // log("semaphore signal %d, %d", Handle, Units);
     ++val;
     return AE_OK;
