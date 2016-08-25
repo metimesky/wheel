@@ -46,7 +46,6 @@
 #include "acpi.h"
 #include "accommon.h"
 #include "actables.h"
-#include <drivers/console.h>
 
 #define _COMPONENT          ACPI_TABLES
         ACPI_MODULE_NAME    ("tbxface")
@@ -115,7 +114,7 @@ AcpiInitializeTables (
 
 
     ACPI_FUNCTION_TRACE (AcpiInitializeTables);
-    console_print("init tables 1\n");
+
 
     /*
      * Setup the Root Table Array and allocate the table array
@@ -153,15 +152,12 @@ AcpiInitializeTables (
         return_ACPI_STATUS (AE_NOT_FOUND);
     }
 
-    console_print("init tables 2\n");
-
     /*
      * Get the root table (RSDT or XSDT) and extract all entries to the local
      * Root Table Array. This array contains the information of the RSDT/XSDT
      * in a common, more useable format.
      */
     Status = AcpiTbParseRootTable (RsdpAddress);
-    console_print("init tables 3\n");
     return_ACPI_STATUS (Status);
 }
 

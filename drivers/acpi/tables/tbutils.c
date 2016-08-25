@@ -44,7 +44,6 @@
 #include "acpi.h"
 #include "accommon.h"
 #include "actables.h"
-#include <drivers/console.h>
 
 #define _COMPONENT          ACPI_TABLES
         ACPI_MODULE_NAME    ("tbutils")
@@ -291,7 +290,7 @@ AcpiTbParseRootTable (
 
 
     ACPI_FUNCTION_TRACE (TbParseRootTable);
-    console_print("parse 1\n");
+
 
     /* Map the entire RSDP and extract the address of the RSDT or XSDT */
 
@@ -300,11 +299,9 @@ AcpiTbParseRootTable (
     {
         return_ACPI_STATUS (AE_NO_MEMORY);
     }
-    console_print("parse 2\n");
 
     AcpiTbPrintTableHeader (RsdpAddress,
         ACPI_CAST_PTR (ACPI_TABLE_HEADER, Rsdp));
-    console_print("parse 3\n");
 
     /* Use XSDT if present and not overridden. Otherwise, use RSDT */
 
@@ -319,7 +316,6 @@ AcpiTbParseRootTable (
          */
         Address = (ACPI_PHYSICAL_ADDRESS) Rsdp->XsdtPhysicalAddress;
         TableEntrySize = ACPI_XSDT_ENTRY_SIZE;
-        console_print("Xsdt, phy addr: %x\n", Address);
     }
     else
     {
@@ -327,9 +323,7 @@ AcpiTbParseRootTable (
 
         Address = (ACPI_PHYSICAL_ADDRESS) Rsdp->RsdtPhysicalAddress;
         TableEntrySize = ACPI_RSDT_ENTRY_SIZE;
-        console_print("Rsdt, phy addr: %x\n", Address);
     }
-    console_print("parse 4\n");
 
     /*
      * It is not possible to map more than one entry in some environments,

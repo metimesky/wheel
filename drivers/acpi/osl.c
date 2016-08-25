@@ -26,41 +26,36 @@ ACPI_STATUS AcpiOsTerminate() {
 // returns the physical address of the ACPI RSDP table (only works on x86)
 ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer() {
     // get the EBDA address (physical)
-    console_print("--- AcpiOsGetRootPointer, ");
-    // while (1) {}
-    uint16_t ebda_addr = * (uint16_t *) (KERNEL_VMA + 0x040e);
-    const char *p = (const char *) (KERNEL_VMA + ((uint64_t)ebda_addr << 4));
-    console_print("ebda %x\n", p);
-    //while (1) { }
+    // uint16_t ebda_addr = * (uint16_t *) (KERNEL_VMA + 0x040e);
+    // const char *p = (const char *) (KERNEL_VMA + ((uint64_t)ebda_addr << 4));
+    // console_print("ebda %x\n", p);
 
-    // 1) search the first KB of EBDA
-    for (int i = 0; i < 1024/16; ++i) {
-        if (strncmp(p, "RSD PTR ", 8) == 0) {
-            return (ACPI_PHYSICAL_ADDRESS) (p - KERNEL_VMA);
-        }
-        p += 16;
-    }
+    // // 1) search the first KB of EBDA
+    // for (int i = 0; i < 1024/16; ++i) {
+    //     if (strncmp(p, "RSD PTR ", 8) == 0) {
+    //         return (ACPI_PHYSICAL_ADDRESS) (p - KERNEL_VMA);
+    //     }
+    //     p += 16;
+    // }
 
-    // 2) Search 128K upper memory: E0000h-FFFFFh
-    p = (const char *) (KERNEL_VMA + 0x000e0000);
-    for (int i = 0; i < 128*1024/16; ++i) {
-        if (strncmp(p, "RSD PTR ", 8) == 0) {
-            return (ACPI_PHYSICAL_ADDRESS) (p - KERNEL_VMA);
-        }
-        p += 16;
-    }
+    // // 2) Search 128K upper memory: E0000h-FFFFFh
+    // p = (const char *) (KERNEL_VMA + 0x000e0000);
+    // for (int i = 0; i < 128*1024/16; ++i) {
+    //     if (strncmp(p, "RSD PTR ", 8) == 0) {
+    //         return (ACPI_PHYSICAL_ADDRESS) (p - KERNEL_VMA);
+    //     }
+    //     p += 16;
+    // }
 
-    return NULL;
-    while (1) { }
+    // return NULL;
 ////////
-    return 0x9fc10;
-    console_print("--- AcpiOsGetRootPointer, ");
+    // console_print("--- AcpiOsGetRootPointer, ");
     ACPI_SIZE ret;
     if (ACPI_SUCCESS(AcpiFindRootPointer(&ret))) {
-        console_print("got %x.\n", ret);
+        // console_print("got %x.\n", ret);
         return ret;
     } else {
-        console_print("got nothing!\n");
+        // console_print("got nothing!\n");
         return 0;
     }
 }
@@ -73,14 +68,12 @@ ACPI_STATUS AcpiOsPredefinedOverride(const ACPI_PREDEFINED_NAMES *PredefinedObje
 
 // allow the host OS to override a firmware ACPI table via a logical address
 ACPI_STATUS AcpiOsTableOverride(ACPI_TABLE_HEADER *old_table, ACPI_TABLE_HEADER **new_table) {
-    TRACE
     *new_table = NULL;  // no replacement is provided
     return AE_OK;
 }
 
 // allow the host OS to override a firmware ACPI table via a physical address
 ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *old_table, ACPI_PHYSICAL_ADDRESS *new_table, UINT32 *new_table_len) {
-    TRACE
     *new_table = 0;     // no replacement will be given
     *new_table_len = 0;
     return AE_OK;
@@ -116,13 +109,12 @@ void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS phy_addr, ACPI_SIZE len) {
     if (phy_addr > 0xffffffffUL) {
         // log("mapping %x", phy_addr);
     }
-    console_print("mapping %x\n", phy_addr);
+    // console_print("mapping %x\n", phy_addr);
     return (void *) (KERNEL_VMA + phy_addr);
 }
 // deletes a mapping that was created by AcpiOsMapMemory
 void AcpiOsUnmapMemory(void *virt_addr, ACPI_SIZE len) {
-    console_print("unmapping %x\n", (uint64_t)virt_addr - KERNEL_VMA);
-    return;
+    // console_print("unmapping %x\n", (uint64_t)virt_addr - KERNEL_VMA);
     int page_num = (len + 4095) >> 12;  // calculate the number of pages, round upwards
     if (virt_addr > 0xffffffffUL) {
         // log("unmapping %x", virt_addr);
