@@ -12,6 +12,7 @@
 
 // extern void apic_init();
 extern void local_apic_timer_init();
+extern void local_apic_send_ipi();
 
 void init(uint32_t eax, uint32_t ebx) {
     console_init();
@@ -44,6 +45,8 @@ void init(uint32_t eax, uint32_t ebx) {
     __asm__ __volatile__("sti");
 
     local_apic_timer_init();
+
+    local_apic_send_ipi();
 
     while (true) { }
 }

@@ -2,6 +2,7 @@
 #include <drivers/acpi/acpi.h>
 #include <drivers/pit.h>
 #include <lib/cpu.h>
+#include <drivers/console.h>
 
 // Local APIC内存映射寄存器的偏移地址
 #define LOCAL_APIC_ID           0x0020  // Local APIC ID Reg
@@ -49,7 +50,7 @@
 #define LOCAL_APIC_LVT_P6           4           // LO APIC LVT - P6
 #define LOCAL_APIC_LVT_P5           3           // LO APIC LVT - P5
 
-// Local APIC Vector Table位段
+// LVT条目及ICR位段
 #define LOCAL_APIC_VECTOR           0x000000ff  // vectorNo
 #define LOCAL_APIC_MODE             0x00000700  // delivery mode
 #define LOCAL_APIC_FIXED            0x00000000  // delivery mode: FIXED
@@ -63,6 +64,8 @@
 #define LOCAL_APIC_REMOTE           0x00004000  // remote IRR
 #define LOCAL_APIC_EDGE             0x00000000  // trigger mode: Edge
 #define LOCAL_APIC_LEVEL            0x00008000  // trigger mode: Level
+#define LOCAL_APIC_DEASSERT         0x00000000  // level: de-assert
+#define LOCAL_APIC_ASSERT           0x00004000  // level: assert
 #define LOCAL_APIC_MASK             0x00010000  // mask
 
 // Local APIC Spurious-Interrupt Register
@@ -82,17 +85,21 @@
 #define LOCAL_APIC_TIMER_PERIODIC   0x00020000  // Timer Mode: Periodic
 
 // Interrupt Command Register: delivery mode and status
-#define MODE_FIXED                  0x0         // delivery mode: Fixed
-#define MODE_LOWEST                 0x1         // delivery mode: Lowest
-#define MODE_SMI                    0x2         // delivery mode: SMI
-#define MODE_NMI                    0x4         // delivery mode: NMI
-#define MODE_INIT                   0x5         // delivery mode: INIT
-#define MODE_STARTUP                0x6         // delivery mode: StartUp
+#define MODE_FIXED                  0x0000      // delivery mode: Fixed
+#define MODE_LOWEST                 0x0100      // delivery mode: Lowest
+#define MODE_SMI                    0x0200      // delivery mode: SMI
+#define MODE_NMI                    0x0400      // delivery mode: NMI
+#define MODE_INIT                   0x0500      // delivery mode: INIT
+#define MODE_STARTUP                0x0600      // delivery mode: StartUp
+#define SHORTHAND_SELF                  (1 << 18)
+#define SHORTHAND_ALL_SELF              (2 << 18)
+#define SHORTHAND_ALL_EXCLUDING_SELF    (3 << 18)
 #define STATUS_PEND                 0x1000      // delivery status: Pend
 
 struct local_apic {
     uint64_t base;
-    int id;
+    uint32_t id;
+    uint32_t processor_id;
 };
 typedef struct local_apic local_apic_t;
 
@@ -104,6 +111,8 @@ int local_apic_count;
 
 // 添加的工作在BSP中执行
 void local_apic_add(ACPI_MADT_LOCAL_APIC *local_apic) {
+    local_apic_list[local_apic_count].id = local_apic->Id;
+    local_apic_list[local_apic_count].processor_id = local_apic->ProcessorId;
     ++local_apic_count;
 }
 
@@ -111,9 +120,11 @@ void local_apic_address_override(ACPI_MADT_LOCAL_APIC_OVERRIDE *override) {
     ;
 }
 
+static int counter;
 static void local_apic_timer_callback(int vec, interrupt_context_t *ctx) {
     static char *video = (char *)(KERNEL_VMA + 0xa0000);
     ++video[156];
+    ++counter;
     local_apic_send_eoi();
 }
 
@@ -123,12 +134,13 @@ static void get_bus_speed() {
 }
 
 void local_apic_timer_init() {
+    // TODO: calculate bus speed using secondary timer, e.g. PIT
+
     interrupt_set_handler(LVT_VEC_BASE, local_apic_timer_callback);
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CONFIG) = LOCAL_APIC_TIMER_DIVBY_16 & LOCAL_APIC_TIMER_DIVBY_MASK;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 65536;
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) |= (1 << 17);
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) &= ~LOCAL_APIC_MASK;
-    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 100;
-    // *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) = LOCAL_APIC_TIMER_PERIODIC | (LVT_VEC_BASE & LOCAL_APIC_VECTOR);
 }
 
 // Spurious中断的处理函数不需要EOI
@@ -175,10 +187,60 @@ void local_apic_init() {
     // 设置SVR
     interrupt_set_handler(SVR_VEC_NUM, svr_callback);
     *(uint32_t *)(base + LOCAL_APIC_SVR) = LOCAL_APIC_ENABLE | SVR_VEC_NUM;
-
-    // local_apic_timer_init();
 }
 
 void local_apic_send_eoi() {
     *(uint32_t *)(base_addr + LOCAL_APIC_EOI) = 1;
+}
+
+extern char trampoline;
+
+// 发送处理器间中断
+void local_apic_send_ipi() {
+    // set shutdown code
+    *(uint8_t *)(KERNEL_VMA + 0x0f) = 0x0a;
+
+    // set warm-reset vector
+    *(uint16_t *)(KERNEL_VMA + 0x467) = 0x7c00;
+
+    // 复制代码
+    char *src = &trampoline;
+    char *dst = (char *) (KERNEL_VMA + 0x7c000);
+    console_print("copying from %x\n", src);
+    for (int i = 0; i < 100; ++i) {
+        dst[i] = src[i];
+    }
+
+    *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
+
+    // 发送INIT
+    console_print("starting AP with apic id %x\n", local_apic_list[1].id);
+    uint32_t upper32 = (local_apic_list[1].id << 24) & 0xff000000;
+    uint32_t lower32 = LOCAL_APIC_LEVEL | LOCAL_APIC_ASSERT | MODE_INIT;
+    *(uint32_t *)(base_addr + LOCAL_APIC_ICR_H) = upper32;
+    *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
+
+    console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
+    *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
+
+    counter = 0;
+    while (counter < 10) { }
+    // console_print("2\n");
+
+    // 发送Startup-IPI，向量号是初始化代码的实模式地址
+    lower32 = LOCAL_APIC_LEVEL | LOCAL_APIC_ASSERT | MODE_STARTUP | 0x7c;
+    *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
+
+    console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
+    *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
+
+    counter = 0;
+    while (counter < 10) { }
+    // console_print("3\n");
+
+    // 再次发送Startup-IPI
+    *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
+
+    console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
+    *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
 }
