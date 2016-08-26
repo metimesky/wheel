@@ -2,6 +2,7 @@
 #define __INTERRUPT__
 
 #include <wheel.h>
+#include <drivers/acpi/acpi.h>
 
 // 64位模式下最多128个中断
 #define INTERRUPT_NUM 128
@@ -44,7 +45,25 @@ extern void interrupt_init();
 extern interrupt_handler_t interrupt_get_handler(int vec);
 extern void interrupt_set_handler(int vec, interrupt_handler_t cb);
 
+// PIC
+extern void pic_init();
+extern void pic_mask(int irq);
+extern void pic_unmask(int irq);
 extern void pic_send_eoi(int irq);
+
+// IO APIC
+extern int io_apic_count;
+extern void io_apic_add(ACPI_MADT_IO_APIC *io_apic);
+extern void io_apic_interrupt_override(ACPI_MADT_INTERRUPT_OVERRIDE *override);
+extern void io_apic_init();
+extern void io_apic_mask(int gsi);
+extern void io_apic_unmask(int gsi);
+
+// Local APIC
+extern int local_apic_count;
+extern void local_apic_add(ACPI_MADT_LOCAL_APIC *local_apic);
+extern void local_apic_address_override(ACPI_MADT_LOCAL_APIC_OVERRIDE *override);
+extern void local_apic_init();
 extern void local_apic_send_eoi();
 
 #endif

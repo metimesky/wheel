@@ -1,21 +1,19 @@
-#include "apic.h"
+#include <interrupt.h>
 #include <drivers/acpi/acpi.h>
 #include <drivers/console.h>
 
 extern int io_apic_count;
 extern int local_apic_count;
 
-void apic_preinit() {
+bool parse_madt() {
     ACPI_TABLE_MADT *madt = NULL;
     if (ACPI_FAILURE(AcpiGetTable(ACPI_SIG_MADT, 1, &madt))) {
         console_print("Cannot locate MADT!\n");       
-        return;
+        return false;
     }
     console_print("Madt at %p.\n", madt);
     // console_print("Local APIC addr is %x.\n", madt->Address);
 
-    // io_apic_preinit();
-    // local_apic_preinit(madt->Address);
     io_apic_count = 0;
     local_apic_count = 0;
 
@@ -56,4 +54,6 @@ void apic_preinit() {
         }
         p += ((ACPI_SUBTABLE_HEADER *) p)->Length;
     }
+
+    return true;
 }

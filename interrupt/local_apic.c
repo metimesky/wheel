@@ -1,6 +1,6 @@
-#include "apic.h"
 #include <interrupt.h>
 #include <drivers/acpi/acpi.h>
+#include <drivers/pit.h>
 #include <lib/cpu.h>
 
 // Local APIC内存映射寄存器的偏移地址
@@ -78,7 +78,7 @@
 #define LOCAL_APIC_TIMER_DIVBY_64   0x9         // Divide by 64
 #define LOCAL_APIC_TIMER_DIVBY_128  0xa         // Divide by 128
 #define LOCAL_APIC_TIMER_DIVBY_1    0xb         // Divide by 1
-#define LOCAL_APIC_TIMER_DIVBY_MASK 0xf         // mask bits
+#define LOCAL_APIC_TIMER_DIVBY_MASK 0xb         // mask bits
 #define LOCAL_APIC_TIMER_PERIODIC   0x00020000  // Timer Mode: Periodic
 
 // Interrupt Command Register: delivery mode and status
@@ -92,7 +92,7 @@
 
 struct local_apic {
     uint64_t base;
-
+    int id;
 };
 typedef struct local_apic local_apic_t;
 
@@ -111,6 +111,31 @@ void local_apic_address_override(ACPI_MADT_LOCAL_APIC_OVERRIDE *override) {
     ;
 }
 
+static void local_apic_timer_callback(int vec, interrupt_context_t *ctx) {
+    static char *video = (char *)(KERNEL_VMA + 0xa0000);
+    ++video[156];
+    local_apic_send_eoi();
+}
+
+// Local APIC timer的频率与总线频率相关，因此需要使用PIT测量总线速度
+static void get_bus_speed() {
+    ;
+}
+
+void local_apic_timer_init() {
+    interrupt_set_handler(LVT_VEC_BASE, local_apic_timer_callback);
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CONFIG) = LOCAL_APIC_TIMER_DIVBY_16 & LOCAL_APIC_TIMER_DIVBY_MASK;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) |= (1 << 17);
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) &= ~LOCAL_APIC_MASK;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 100;
+    // *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) = LOCAL_APIC_TIMER_PERIODIC | (LVT_VEC_BASE & LOCAL_APIC_VECTOR);
+}
+
+// Spurious中断的处理函数不需要EOI
+static void svr_callback(int vec, interrupt_context_t *ctx) {
+    // console_print("SVR Interrupt\n");
+}
+
 void local_apic_init() {
     uint64_t apic_base_msr = read_msr(IA32_APIC_BASE);
     uint64_t base = apic_base_msr & LOCAL_APIC_BASE_MASK;
@@ -126,9 +151,6 @@ void local_apic_init() {
     // local_apic_list[local_apic_count].base = base;
     // ++local_apic_count;
 
-    // 设置SVR
-    *(uint32_t *)(base + LOCAL_APIC_SVR) |= LOCAL_APIC_FOCUS_DISABLE | SVR_VEC_NUM;
-
     // 获取版本和LVT数目
     uint32_t v = *(uint32_t *)(base + LOCAL_APIC_VER) & LOCAL_APIC_VERSION_MASK;
     uint32_t maxLvt = (*(uint32_t *)(base + LOCAL_APIC_VER) & LOCAL_APIC_MAXLVT_MASK) >> 16;
@@ -139,18 +161,22 @@ void local_apic_init() {
     *(uint32_t *)(base + LOCAL_APIC_TIMER_CONFIG) = 0x0;
     *(uint32_t *)(base + LOCAL_APIC_TIMER_ICR) = 0x0;
 
-    // Symmetric IO Mode
-    *(uint32_t *)(base + LOCAL_APIC_LINT0) = LOCAL_APIC_MASK;
-    *(uint32_t *)(base + LOCAL_APIC_LINT1) = LOCAL_APIC_MASK;
-
-    // lock
-    *(uint32_t *)(base + LOCAL_APIC_TIMER) = LOCAL_APIC_MASK;
-    *(uint32_t *)(base + LOCAL_APIC_ERROR) = LOCAL_APIC_MASK;
-    *(uint32_t *)(base + LOCAL_APIC_PMC) = LOCAL_APIC_MASK;
-    *(uint32_t *)(base + LOCAL_APIC_THERMAL) = LOCAL_APIC_MASK;
+    // 设置LVT条目，默认全部禁用
+    *(uint32_t *)(base + LOCAL_APIC_TIMER) = LOCAL_APIC_MASK|(LVT_VEC_BASE & LOCAL_APIC_VECTOR);
+    *(uint32_t *)(base + LOCAL_APIC_THERMAL) = LOCAL_APIC_MASK | ((LVT_VEC_BASE+1) & LOCAL_APIC_VECTOR);
+    *(uint32_t *)(base + LOCAL_APIC_PMC) = LOCAL_APIC_MASK | ((LVT_VEC_BASE+2) & LOCAL_APIC_VECTOR);
+    *(uint32_t *)(base + LOCAL_APIC_LINT0) = LOCAL_APIC_MASK | ((LVT_VEC_BASE+3) & LOCAL_APIC_VECTOR);
+    *(uint32_t *)(base + LOCAL_APIC_LINT1) = LOCAL_APIC_MASK | ((LVT_VEC_BASE+4) & LOCAL_APIC_VECTOR);
+    *(uint32_t *)(base + LOCAL_APIC_ERROR) = ((LVT_VEC_BASE+5) & LOCAL_APIC_VECTOR);
 
     // discard a pending interrupt if any
-    *(uint32_t *)(base + LOCAL_APIC_EOI) = 0;
+    *(uint32_t *)(base + LOCAL_APIC_EOI) = 1;
+
+    // 设置SVR
+    interrupt_set_handler(SVR_VEC_NUM, svr_callback);
+    *(uint32_t *)(base + LOCAL_APIC_SVR) = LOCAL_APIC_ENABLE | SVR_VEC_NUM;
+
+    // local_apic_timer_init();
 }
 
 void local_apic_send_eoi() {

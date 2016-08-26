@@ -1,4 +1,3 @@
-#include "apic.h"
 #include <wheel.h>
 #include <interrupt.h>
 #include <drivers/acpi/acpi.h>
@@ -62,6 +61,9 @@ typedef struct io_apic io_apic_t;
 static io_apic_t io_apic_list[16];
 int io_apic_count;
 
+// IRQ到GSI的映射
+static int gsi_override[16];
+
 // 该函数在BSP上执行，因此在找到IO APIC的同时就可以将其初始化
 void io_apic_add(ACPI_MADT_IO_APIC *io_apic) {
     console_print("IO APIC id #%x, addr %x Irq base %d\n", io_apic->Id, io_apic->Address, io_apic->GlobalIrqBase);
@@ -121,7 +123,7 @@ void io_apic_mask(int gsi) {
     gsi -= GSI_VEC_BASE;
     for (int i = 0; i < io_apic_count; ++i) {
         if (0 <= gsi && gsi < io_apic_list[i].gsi_count) {
-            console_print("masking index %d in IO APIC %d\n", gsi, i);
+            // console_print("masking index %d in IO APIC %d\n", gsi, i);
             uint32_t upper32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_H(gsi));
             uint32_t lower32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_L(gsi));
             io_apic_write(io_apic_list[i].base, IO_REDTBL_H(gsi), upper32);
@@ -136,7 +138,7 @@ void io_apic_unmask(int gsi) {
     gsi -= GSI_VEC_BASE;
     for (int i = 0; i < io_apic_count; ++i) {
         if (0 <= gsi && gsi < io_apic_list[i].gsi_count) {
-            console_print("masking index %d in IO APIC %d\n", gsi, i);
+            // console_print("unmasking index %d in IO APIC %d\n", gsi, i);
             uint32_t upper32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_H(gsi));
             uint32_t lower32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_L(gsi));
             io_apic_write(io_apic_list[i].base, IO_REDTBL_H(gsi), upper32);

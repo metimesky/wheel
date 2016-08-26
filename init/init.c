@@ -4,14 +4,14 @@
 #include <drivers/console.h>
 #include <drivers/acpi/acpi.h>
 #include <drivers/pit.h>
-#include "apic.h"
 
 // 多核初始化
 // GDT、分页、IDT等配置对于每个核心都要执行，因此最好等到所有核心都启动后再初始化
 
 // 中断，需要计划好IDT每个条目的作用
 
-extern void apic_init();
+// extern void apic_init();
+extern void local_apic_timer_init();
 
 void init(uint32_t eax, uint32_t ebx) {
     console_init();
@@ -34,12 +34,16 @@ void init(uint32_t eax, uint32_t ebx) {
 
     char *video = (char *)(KERNEL_VMA + 0xa0000);
     video[158] = '0';
+    video[156] = '0';
 
+    console_print("Initializing PIT\n");
     pit_init();
     pit_map_gsi(GSI_VEC_BASE + 2);
     io_apic_unmask(GSI_VEC_BASE + 2);
 
     __asm__ __volatile__("sti");
+
+    local_apic_timer_init();
 
     while (true) { }
 }
