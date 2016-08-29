@@ -21,19 +21,19 @@ static inline void real_handler() {
     ++tick;
 }
 
-static void pit_pic_handler(int vec, interrupt_context_t *ctx) {
+static void pit_pic_handler(int vec, int_context_t *ctx) {
     real_handler();
     pic_send_eoi(0);    // EOI
 }
 
-static void pit_apic_handler(int vec, interrupt_context_t *ctx) {
+static void pit_apic_handler(int vec, int_context_t *ctx) {
     real_handler();
     local_apic_send_eoi();   // EOI
 }
 
 void pit_init() {
     // install handler
-    interrupt_set_handler(IRQ_VEC_BASE + 0, pit_pic_handler);
+    idt_set_int_handler(IRQ_VEC_BASE + 0, pit_pic_handler);
 
     out_byte(CTRL_PORT, 0x34);  // mode 2
     io_wait();
@@ -49,5 +49,5 @@ void pit_init() {
 
 void pit_map_gsi(int gsi) {
     // log("mapping pit to gsi");
-    interrupt_set_handler(gsi, pit_apic_handler);
+    idt_set_int_handler(gsi, pit_apic_handler);
 }

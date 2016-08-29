@@ -121,7 +121,7 @@ void local_apic_address_override(ACPI_MADT_LOCAL_APIC_OVERRIDE *override) {
 }
 
 static int counter;
-static void local_apic_timer_callback(int vec, interrupt_context_t *ctx) {
+static void local_apic_timer_callback(int vec, int_context_t *ctx) {
     static char *video = (char *)(KERNEL_VMA + 0xa0000);
     ++video[156];
     ++counter;
@@ -136,7 +136,7 @@ static void get_bus_speed() {
 void local_apic_timer_init() {
     // TODO: calculate bus speed using secondary timer, e.g. PIT
 
-    interrupt_set_handler(LVT_VEC_BASE, local_apic_timer_callback);
+    idt_set_int_handler(LVT_VEC_BASE, local_apic_timer_callback);
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CONFIG) = LOCAL_APIC_TIMER_DIVBY_16 & LOCAL_APIC_TIMER_DIVBY_MASK;
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 65536;
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) |= (1 << 17);
@@ -144,7 +144,7 @@ void local_apic_timer_init() {
 }
 
 // Spurious中断的处理函数不需要EOI
-static void svr_callback(int vec, interrupt_context_t *ctx) {
+static void svr_callback(int vec, int_context_t *ctx) {
     // console_print("SVR Interrupt\n");
 }
 
@@ -185,7 +185,7 @@ void local_apic_init() {
     *(uint32_t *)(base + LOCAL_APIC_EOI) = 1;
 
     // 设置SVR
-    interrupt_set_handler(SVR_VEC_NUM, svr_callback);
+    idt_set_int_handler(SVR_VEC_NUM, svr_callback);
     *(uint32_t *)(base + LOCAL_APIC_SVR) = LOCAL_APIC_ENABLE | SVR_VEC_NUM;
 }
 

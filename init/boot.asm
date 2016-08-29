@@ -2,9 +2,9 @@
 
 ; symbols
 global kernel_entry
-global pml4t
 
 extern init
+extern initial_pml4t_low
 
 KERNEL_VMA  equ 0xffff800000000000      ; located in higher half
 STACK_SIZE  equ 0x1000                  ; just a trampoline stack
@@ -27,39 +27,39 @@ mb1_header:
 
 ALIGN 4
 kernel_entry:
-    ; disable interrupt
+    ; 关中断
     cli
 
-    ; store boot information
+    ; 保存GRUB的引导信息
     mov     [mb_eax], eax
     mov     [mb_ebx], ebx
 
-    ; clear ebp and eflags
+    ; 清ebp和eflags
     mov     ebp, 0
     push    0
     popf
 
-    ; check CPUID extended functions
+    ; 检查是否支持CPUID扩展功能
     mov     eax, 0x80000000
     cpuid
     cmp     eax, 0x80000001
-    jb      no_long_mode  ; extended CPUID not available
+    jb      no_long_mode  ; CPUID扩展功能不存在，说明不支持长方式
 
-    ; check long mode existence
+    ; 检查是否支持长方式
     mov     eax, 0x80000001
     cpuid
     test    edx, 1 << 29
     jz      no_long_mode
 
 enter_long_mode:
-    ; disable paging
+    ; 关闭分页
     mov     eax, cr0
     and     eax, 0x7fffffff
     mov     cr0, eax
 
     ; clear 24KB of memory for 6 page tables, which covers 4GB address space.
     ; we need to cover 4GB because mem mapped devices like APIC are in 3~4G.
-    mov     edi, pml4t
+    mov     edi, initial_pml4t_low
     mov     cr3, edi
     xor     eax, eax
     mov     ecx, 6144
@@ -69,23 +69,23 @@ enter_long_mode:
     ; creating 1 Page-Map Level-4 Entry (PML4E)
     ; 两段地址前4GB均映射到物理地址0~4G
     mov     eax, 0x0007                     ; present, read/write, user
-    add     eax, pml4t + 0x1000             ; point to pml4t + 4K
+    add     eax, initial_pml4t_low + 0x1000 ; point to pml4t + 4K
     mov     [edi], eax                      ; write to pml4t[0]
     mov     [edi+0x800], eax                ; write to pml4t[256]
     add     edi, 0x1000
 
     ; creating 4 Page Directory Pointer Entries (PDPE)
     mov     dword [edi], 0x2007             ; present, read/write, user
-    add     dword [edi], pml4t              ; pointing to pml4t+8K (PD Table)
+    add     dword [edi], initial_pml4t_low  ; pointing to pml4t+8K (PD Table)
     add     edi, 8
     mov     dword [edi], 0x3007             ; present, read/write, user
-    add     dword [edi], pml4t              ; pointing to pml4t+12K
+    add     dword [edi], initial_pml4t_low  ; pointing to pml4t+12K
     add     edi, 8
     mov     dword [edi], 0x4007             ; present, read/write, user
-    add     dword [edi], pml4t              ; pointing to pml4t+16K
+    add     dword [edi], initial_pml4t_low  ; pointing to pml4t+16K
     add     edi, 8
     mov     dword [edi], 0x5007             ; present, read/write, user
-    add     dword [edi], pml4t              ; pointing to pml4t+20K
+    add     dword [edi], initial_pml4t_low  ; pointing to pml4t+20K
     add     edi, 0x1000 - 24
 
     ; creating 4*512 Page Directory Entries (PDE)
@@ -142,9 +142,11 @@ no_long_mode:
 .err_msg_len    equ     $ - .err_msg
 
 [BITS 64]
+
 long_mode_entry:
     ; load GDT again, this time load 64 bit GDT, and jump to higher half
-    lgdt    [tmp_gdt_ptr]
+    mov     rax, tmp_gdt_ptr + KERNEL_VMA
+    lgdt    [rax]
     mov     rax, higher_half + KERNEL_VMA
     jmp     rax
 
@@ -157,24 +159,22 @@ higher_half:
     mov     gs, ax
     mov     ss, ax
 
-    ; setup kernel stack (in higher half)
-    mov     rsp, tmp_stack_top + KERNEL_VMA
+    ; switch kernel stack (in higher half)
+    mov     rsp, qword bsp_stack_top
 
     ; init fs and gs (can be used as thread local storage)
     xor     rax, rax
-    mov     ecx, 0xc0000100     ; FS.base
-    wrmsr
-    mov     ecx, 0xc0000101     ; GS.base
-    wrmsr
+    mov     ecx, 0xc0000100
+    wrmsr                   ; FS.base = 0
+    mov     ecx, 0xc0000101
+    wrmsr                   ; GS.base = 0
 
     ; retrieve bootloader information
     mov     edi, dword [mb_eax]     ; auto zero upper 32-bit half
     mov     esi, dword [mb_ebx]     ; auto zero upper 32-bit half
-    ;mov     rbx, KERNEL_VMA
-    ;add     rsi, rbx
 
     ; disable lower half mapping
-    mov     qword [pml4t], 0
+    mov     qword [initial_pml4t_low], 0
     invlpg  [0]
 
     ; begin executing C code in higher half
@@ -217,13 +217,10 @@ mb_eax: dd  0
 mb_ebx: dd  0
 
 
-[section .boot.bss]
+[section .bss]
 
-; reserve 4KB for kernel stack.
+; 初始内核栈
 ALIGN 0x1000
-tmp_stack:   resb 0x1000
-tmp_stack_top:
+bsp_stack:   resb STACK_SIZE
+bsp_stack_top:
 
-; reserve 24KB for page tables. (1 PML4T, 1 PDPT, 4 PDT)
-ALIGN 0x1000
-pml4t:          resb 0x6000

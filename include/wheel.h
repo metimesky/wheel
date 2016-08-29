@@ -8,8 +8,10 @@
 #include <limits.h>     // macros about integer range
 #include <stdarg.h>     // variable length arguments
 
-// 全局宏定义
+// 内核空间起始虚拟地址
 #define KERNEL_VMA 0xffff800000000000UL
+
+// 将启动相关代码/数据放在单独的section，启动完成后可回收这部分内存
 #define __init __attribute__((section(".init")))
 
 #endif

@@ -24,8 +24,7 @@
 
 #define BIT_MASK(x) (((x) >= sizeof(unsigned long) * 8) ? (0UL-1) : ((1UL << (x)) - 1))
 
-static inline void bitmap_set(unsigned long *bitmap, int start, int nr)
-{
+static inline void bitmap_set(unsigned long *bitmap, int start, int nr) {
     unsigned long *p = bitmap + BITMAP_WORD(start);
     const long size = start + nr;
     int bits_to_set = BITMAP_BITS_PER_WORD - (start % BITMAP_BITS_PER_WORD);
@@ -36,7 +35,7 @@ static inline void bitmap_set(unsigned long *bitmap, int start, int nr)
         nr -= bits_to_set;
         bits_to_set = BITMAP_BITS_PER_WORD;
         mask_to_set = ~0UL;
-        p++;
+        ++p;
     }
     if (nr) {
         mask_to_set &= BITMAP_LAST_WORD_MASK(size);
@@ -44,8 +43,7 @@ static inline void bitmap_set(unsigned long *bitmap, int start, int nr)
     }
 }
 
-static inline void bitmap_clear(unsigned long *bitmap, int start, int nr)
-{
+static inline void bitmap_clear(unsigned long *bitmap, int start, int nr) {
     unsigned long *p = bitmap + BITMAP_WORD(start);
     const long size = start + nr;
     int bits_to_clear = BITMAP_BITS_PER_WORD - (start % BITMAP_BITS_PER_WORD);
@@ -56,7 +54,7 @@ static inline void bitmap_clear(unsigned long *bitmap, int start, int nr)
         nr -= bits_to_clear;
         bits_to_clear = BITMAP_BITS_PER_WORD;
         mask_to_clear = ~0UL;
-        p++;
+        ++p;
     }
     if (nr) {
         mask_to_clear &= BITMAP_LAST_WORD_MASK(size);
@@ -64,28 +62,24 @@ static inline void bitmap_clear(unsigned long *bitmap, int start, int nr)
     }
 }
 
-static inline int bitmap_test(unsigned long *bitmap, int bit)
-{
+static inline int bitmap_test(unsigned long *bitmap, int bit) {
     return BIT_SET(bitmap[BITMAP_WORD(bit)], BITMAP_BIT_IN_WORD(bit));
 }
 
 /* find first zero bit starting from LSB */
-static inline unsigned long _ffz(unsigned long x)
-{
+static inline unsigned long _ffz(unsigned long x) {
     return __builtin_ffsl(~x) - 1;
 }
 
-static inline int bitmap_ffz(unsigned long *bitmap, int numbits)
-{
-    uint i;
-    int bit;
-
-    for (i = 0; i < BITMAP_NUM_WORDS(numbits); i++) {
-        if (bitmap[i] == ~0UL)
+static inline int bitmap_ffz(unsigned long *bitmap, int numbits) {
+    for (int i = 0; i < BITMAP_NUM_WORDS(numbits); ++i) {
+        if (bitmap[i] == ~0UL) {
             continue;
-        bit = i * BITMAP_BITS_PER_WORD + _ffz(bitmap[i]);
-        if (bit < numbits)
+        }
+        int bit = i * BITMAP_BITS_PER_WORD + _ffz(bitmap[i]);
+        if (bit < numbits) {
             return bit;
+        }
         return -1;
     }
     return -1;

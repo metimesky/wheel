@@ -1,17 +1,12 @@
-; 本文件定义了中断处理函数的入口点，真正的实现在interrupt_handler_table数组中
+; 本文件定义了中断处理函数的入口点，真正的实现在int_handler_table数组中
 
-; there are different types of interrupt
-; - for internal exceptions, they might have err code
-; - for external interrupts from PIC, we have to send EOI by writing to port
-; - for external interrupts from APIC, we have to send EOI by writing to memory
+; 定义在idt.c中
+extern int_handler_table
 
-; no matter which type of interrupt, the numbering is continuous
-
-extern interrupt_handler_table
-
+[section .text]
 [BITS 64]
 
-; internal exception with no error code, pushes a dummy error code
+; 不含错误码的ISR
 %macro define_isr 1
 global isr%1
 isr%1:
@@ -19,14 +14,14 @@ isr%1:
     common_int_handler %1
 %endmacro
 
-; internal exception with an error code
+; 含错误码的ISR
 %macro define_isr_e 1
 global isr%1
 isr%1:
     common_int_handler %1
 %endmacro
 
-; save the context, after ss, rsp, rflags, cs, rip
+; 在ss/rsp/rflags/cs/rip和错误码之后，保存其他寄存器
 %macro save_regs 0
     push    rax
     push    rbx
@@ -45,7 +40,7 @@ isr%1:
     push    r15
 %endmacro
 
-; restore the context
+; 恢复寄存器
 %macro restore_regs 0
     pop     r15
     pop     r14
@@ -64,7 +59,7 @@ isr%1:
     pop     rax
 %endmacro
 
-; common part of interrupt handlers
+; 通用中断处理逻辑
 %macro common_int_handler 1
     ; check if we are comming from user-mode
     test    word [rsp+24], 3    ; by checking SS selector's RPL
@@ -81,7 +76,7 @@ isr%1:
     ; Call the interrupt handler.
     mov     rdi, %1
     mov     rsi, rbp
-    mov     rax, qword interrupt_handler_table
+    mov     rax, qword int_handler_table
     call    [rax + 8 * %1]
 
     ; restore saved frame pointer from rbp
@@ -96,41 +91,40 @@ isr%1:
     iretq
 %endmacro
 
-[section .text]
-[BITS 64]
+
 ; internal exceptions, well-defined
-define_isr 0
-define_isr 1
-define_isr 2
-define_isr 3
-define_isr 4
-define_isr 5
-define_isr 6
-define_isr 7
-define_isr_e 8
-define_isr 9
-define_isr_e 10
-define_isr_e 11
-define_isr_e 12
-define_isr_e 13
-define_isr_e 14
-define_isr 15
-define_isr 16
-define_isr_e 17
-define_isr 18
-define_isr 19
-define_isr 20
-define_isr 21
-define_isr 22
-define_isr 23
-define_isr 24
-define_isr 25
-define_isr 26
-define_isr 27
-define_isr 28
-define_isr 29
-define_isr 30
-define_isr 31
+define_isr      0
+define_isr      1
+define_isr      2
+define_isr      3
+define_isr      4
+define_isr      5
+define_isr      6
+define_isr      7
+define_isr_e    8
+define_isr      9
+define_isr_e    10
+define_isr_e    11
+define_isr_e    12
+define_isr_e    13
+define_isr_e    14
+define_isr      15
+define_isr      16
+define_isr_e    17
+define_isr      18
+define_isr      19
+define_isr      20
+define_isr      21
+define_isr      22
+define_isr      23
+define_isr      24
+define_isr      25
+define_isr      26
+define_isr      27
+define_isr      28
+define_isr      29
+define_isr      30
+define_isr      31
 
 ; other not defined interrupts, for later use
 define_isr 32

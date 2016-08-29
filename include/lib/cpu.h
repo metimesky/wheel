@@ -44,6 +44,12 @@ static inline void write_msr(uint32_t msr_id, uint64_t msr_val) {
     __asm__ __volatile__("wrmsr" :: "d"(u.d[1]), "a"(u.d[0]), "c"(msr_id));
 }
 
+static inline uint64_t read_fsbase() { return read_msr(0xc0000100); }
+static inline void write_fsbase(uint64_t val) { write_msr(0xc0000100, val); }
+
+static inline uint64_t read_gsbase() { return read_msr(0xc0000101); }
+static inline void write_gsbase(uint64_t val) { write_msr(0xc0000101, val); }
+
 // read the CPU's time stamp value (pentium+), one of MSR
 static inline uint64_t rdtsc() {
     uint64_t ret;

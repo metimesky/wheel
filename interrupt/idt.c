@@ -1,6 +1,6 @@
-#include "idt.h"
 #include <interrupt.h>
 #include "entries.h"
+#include <drivers/console.h>
 
 struct idt_entry {
     uint16_t offset_low;
@@ -18,11 +18,39 @@ struct idt_ptr {
 } __attribute__((packed));
 typedef struct idt_ptr idt_ptr_t;
 
+// IDT是所有CPU共用的
+int_handler_t int_handler_table[INTERRUPT_NUM];
 static idt_entry_t idt[INTERRUPT_NUM];
 static idt_ptr_t idtr;
 
-// fill IDT entry with given handler address
-static void fill_idt_entry(idt_entry_t *entry, void *handler) {
+// 默认的中断处理函数
+static void default_int_handler(int vec, int_context_t *ctx) {
+    static const char* sym[] = {    // 异常助记符
+        "DE", "DB", "NMI", "BP", "OF", "BR", "UD", "NM",
+        "DF", "><", "TS", "NP", "SS", "GP", "PF", "><",
+        "MF", "AC", "MC", "XF", "><", "><", "><", "><",
+        "><", "><", "><", "><", "><", "><", "SX", "><"
+    };
+
+    if (vec < IRQ_VEC_BASE) {
+        console_print("Exception #%s, cs:rip=%x:%x, ss:rsp=%x:%x, rflags=%x, err=%x\n",
+            sym[vec], ctx->cs, ctx->rip, ctx->ss, ctx->rsp, ctx->rflags, ctx->err_code);
+        if (vec == 14) {
+            // 如果是分页错误，则读取CR2并显示
+            uint64_t virt;
+            __asm__ __volatile__("mov %%cr2, %0" : "=r"(virt));
+            console_print("Page Fault virtual address %x\n", virt);
+        }
+    } else {
+        console_print("Interrupt #%d, cs:rip=%x:%x, ss:rsp=%x:%x, rflags=%x\n",
+            vec, ctx->cs, ctx->rip, ctx->ss, ctx->rsp, ctx->rflags);
+    }
+    
+    while (true) {}
+}
+
+// 填充IDT条目
+static void fill_idt_entry(idt_entry_t *entry, void *handler) __init {
     entry->selector = 8;
     entry->offset_low = ((uint64_t) handler) & 0xffff;
     entry->offset_mid = ((uint64_t) handler >> 16) & 0xffff;
@@ -32,7 +60,12 @@ static void fill_idt_entry(idt_entry_t *entry, void *handler) {
 }
 
 // fill IDT entries and load IDTR
-void idt_init() {
+void idt_init() __init {
+    // initially, fill all interrupt handler as the default one
+    for (int i = 0; i < INTERRUPT_NUM; ++i) {
+        int_handler_table[i] = default_int_handler;
+    }
+
     // internal exceptions, vector 0~31
     fill_idt_entry(&idt[0], isr0);
     fill_idt_entry(&idt[1], isr1);
@@ -165,8 +198,32 @@ void idt_init() {
     fill_idt_entry(&idt[126], isr126);
     fill_idt_entry(&idt[127], isr127);
 
+    idt_load();
+}
+
+// 在AP中执行，用于加载已经初始化完成的IDT
+void idt_load() __init {
     idtr.base = (uint64_t) idt;
     idtr.limit = INTERRUPT_NUM * sizeof(idt_entry_t) - 1;
     __asm__ __volatile__("lidt (%0)" :: "a"(&idtr));
-    // load_idtr(&idtr);   // defined in library/cpu.asm
+}
+
+// 获取中断处理函数指针
+int_handler_t idt_get_int_handler(int vec) {
+    if (0 <= vec && vec < INTERRUPT_NUM) {
+        return int_handler_table[vec];
+    } else {
+        return 0;
+    }
+}
+
+// 设置中断处理函数指针
+void idt_set_int_handler(int vec, int_handler_t cb) {
+    if (0 <= vec && vec < INTERRUPT_NUM) {
+        if (cb == NULL) {
+            int_handler_table[vec] = default_int_handler;
+        } else {
+            int_handler_table[vec] = cb;
+        }
+    }
 }

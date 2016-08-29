@@ -1,5 +1,5 @@
-#ifndef __INTERRUPT__
-#define __INTERRUPT__
+#ifndef __INTERRUPT_H__
+#define __INTERRUPT_H__
 
 #include <wheel.h>
 #include <drivers/acpi/acpi.h>
@@ -13,7 +13,7 @@
 #define GSI_VEC_BASE 64     // IO APIC的Global Int映射的中断向量号
 
 // 终端时保存的上下文，必须和entries.asm中的代码一致
-struct interrupt_context {
+struct int_context {
     uint64_t r15;
     uint64_t r14;
     uint64_t r13;
@@ -36,14 +36,15 @@ struct interrupt_context {
     uint64_t rsp;
     uint64_t ss;
 } __attribute__((packed));
-typedef struct interrupt_context interrupt_context_t;
+typedef struct int_context int_context_t;
 
-typedef void (*interrupt_handler_t)(int vec, interrupt_context_t *ctx);
+typedef void (*int_handler_t)(int vec, int_context_t *ctx);
 
-extern void interrupt_init();
-
-extern interrupt_handler_t interrupt_get_handler(int vec);
-extern void interrupt_set_handler(int vec, interrupt_handler_t cb);
+// IDT
+extern void idt_init();
+extern void idt_load();
+extern int_handler_t idt_get_int_handler(int vec);
+extern void idt_set_int_handler(int vec, int_handler_t cb);
 
 // PIC
 extern void pic_init();
