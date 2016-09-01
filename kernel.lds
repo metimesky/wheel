@@ -1,59 +1,76 @@
-OUTPUT_ARCH(i386:x86-64);
+/* Wheel内核镜像的内存布局 */
+/* 文件中定义的所有标记符号都是物理地址 */
 
-ENTRY(kernel_entry);
+OUTPUT_ARCH(i386:x86-64);
+ENTRY(multiboot_entry);
 
 SECTIONS {
-    LOAD_OFFSET = 0xffff800000000000;
+    LOAD_OFFSET = 0x100000;             /* 加载的物理地址 */
+    KERNEL_VMA = 0xffff800000000000;    /* 内核起始的虚拟地址 */
 
-    . = 0x100000;
+    . = LOAD_OFFSET;
 
-    .boot ALIGN(0x1000) : AT(ADDR(.boot)) {
+    .boot : AT(ADDR(.boot)) {
         *(.boot)
     } = 0x90
 
-    . += LOAD_OFFSET;
+    /* 启动AP的实模式代码，将被复制到0x7c000处执行 */
+    trampoline_start_addr = ALIGN(16);
+    .trampoline 0x7c000 : AT(trampoline_start_addr) {
+        *(.trampoline)
+    } = 0x90
+    trampoline_end_addr = trampoline_start_addr + SIZEOF(.trampoline);
 
-    .init ALIGN(0x1000) : AT(ADDR(.init) - LOAD_OFFSET) {
+    /* 进入higher-half，跳过boot和trampoline的部分 */
+    . = KERNEL_VMA + trampoline_end_addr;
+
+    .init ALIGN(16) : AT(ADDR(.init) - KERNEL_VMA) {
         *(.init)
     } = 0x90
 
-    init_end_addr = . - LOAD_OFFSET;
+    init_end_addr = . - KERNEL_VMA;
 
-    .text ALIGN(0x1000) : AT(ADDR(.text) - LOAD_OFFSET) {
+    .text ALIGN(0x1000) : AT(ADDR(.text) - KERNEL_VMA) {
         *(.text)
     }
 
-    .rodata ALIGN(0x1000) : AT(ADDR(.rodata) - LOAD_OFFSET) {
+    .rodata ALIGN(16) : AT(ADDR(.rodata) - KERNEL_VMA) {
         *(.rodata)
     }
 
-    .data ALIGN(0x1000) : AT(ADDR(.data) - LOAD_OFFSET) {
+    .data ALIGN(16) : AT(ADDR(.data) - KERNEL_VMA) {
         *(.data)
+
+        *(.symbols)
+        PROVIDE(kernel_symbols_start = .);
+        PROVIDE(kernel_symbols_end = .);
+        PROVIDE(bss_start = .);
     }
 
-    .bss ALIGN(0x1000) (NOLOAD) : AT(ADDR(.bss) - LOAD_OFFSET) {
+    .bss ALIGN(0x1000) (NOLOAD) : AT(ADDR(.bss) - KERNEL_VMA) {
         /* 初始页表需要在高地址和低地址中访问，故导出两个符号 */
         initial_pml4t = .;
-        initial_pml4t_low = initial_pml4t - LOAD_OFFSET;
+        initial_pml4t_low = initial_pml4t - KERNEL_VMA;
         . += 0x6000;
 
         *(COMMON)
         *(.bss)
     }
 
-    percpu_start_addr = . - LOAD_OFFSET;
-    .percpu.data ALIGN(0x1000) : AT(ADDR(.percpu.data) - LOAD_OFFSET) {
+    percpu_start_addr = . - KERNEL_VMA;
+    .percpu.data ALIGN(0x1000) : AT(ADDR(.percpu.data) - KERNEL_VMA) {
         *(.percpu.data)
     }
-    percpu_data_end_addr = . - LOAD_OFFSET;
-    .percpu.bss (NOLOAD) : AT(ADDR(.percpu.bss) - LOAD_OFFSET) {
+    percpu_data_end_addr = . - KERNEL_VMA;
+    .percpu.bss (NOLOAD) : AT(ADDR(.percpu.bss) - KERNEL_VMA) {
         *(.percpu.bss)
     }
-    percpu_end_addr = . - LOAD_OFFSET;
+    percpu_end_addr = . - KERNEL_VMA;
 
     /DISCARD/ : {
         *(.comment)
         *(.note.GNU-stack)
+        *(.note.gnu.build-id)
         *(.eh_frame)
     }
 }

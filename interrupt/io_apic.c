@@ -62,11 +62,11 @@ static io_apic_t io_apic_list[16];
 int io_apic_count;
 
 // IRQ到GSI的映射
-static int gsi_override[16];
+static int gsi_override[16] = { -1 };
 
 // 该函数在BSP上执行，因此在找到IO APIC的同时就可以将其初始化
 void io_apic_add(ACPI_MADT_IO_APIC *io_apic) {
-    console_print("IO APIC id #%x, addr %x Irq base %d\n", io_apic->Id, io_apic->Address, io_apic->GlobalIrqBase);
+    // console_print("IO APIC id #%x, addr %x Irq base %d\n", io_apic->Id, io_apic->Address, io_apic->GlobalIrqBase);
     uint64_t base = KERNEL_VMA + io_apic->Address;
 
     //console_print("id %x, arb id %x, ", io_apic_read(base, IO_APIC_ID), io_apic_read(base, IO_APIC_ARB));
@@ -112,7 +112,8 @@ void io_apic_add(ACPI_MADT_IO_APIC *io_apic) {
 }
 
 void io_apic_interrupt_override(ACPI_MADT_INTERRUPT_OVERRIDE *override) {
-    console_print("Override bus%d, irq%d to gsi%d\n", override->Bus, override->SourceIrq, override->GlobalIrq);
+    //console_print("Override bus%d, irq%d to gsi%d\n", override->Bus, override->SourceIrq, override->GlobalIrq);
+    gsi_override[override->SourceIrq] = override->GlobalIrq;
 }
 
 void io_apic_init() {

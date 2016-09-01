@@ -4,6 +4,10 @@
 #include <lib/cpu.h>
 #include <drivers/console.h>
 
+// 该模块不仅负责中断相关配置，还有local Apic Timer
+// local Apic Timer作为调度器的中断源非常合适，但是不适合作为计时间的时钟，
+// 因为节能优化可能改变总线频率
+
 // Local APIC内存映射寄存器的偏移地址
 #define LOCAL_APIC_ID           0x0020  // Local APIC ID Reg
 #define LOCAL_APIC_VER          0x0030  // Local APIC Version Reg
@@ -85,16 +89,16 @@
 #define LOCAL_APIC_TIMER_PERIODIC   0x00020000  // Timer Mode: Periodic
 
 // Interrupt Command Register: delivery mode and status
-#define MODE_FIXED                  0x0000      // delivery mode: Fixed
-#define MODE_LOWEST                 0x0100      // delivery mode: Lowest
-#define MODE_SMI                    0x0200      // delivery mode: SMI
-#define MODE_NMI                    0x0400      // delivery mode: NMI
-#define MODE_INIT                   0x0500      // delivery mode: INIT
-#define MODE_STARTUP                0x0600      // delivery mode: StartUp
-#define SHORTHAND_SELF                  (1 << 18)
-#define SHORTHAND_ALL_SELF              (2 << 18)
-#define SHORTHAND_ALL_EXCLUDING_SELF    (3 << 18)
-#define STATUS_PEND                 0x1000      // delivery status: Pend
+#define MODE_FIXED          0x0000      // delivery mode: Fixed
+#define MODE_LOWEST         0x0100      // delivery mode: Lowest
+#define MODE_SMI            0x0200      // delivery mode: SMI
+#define MODE_NMI            0x0400      // delivery mode: NMI
+#define MODE_INIT           0x0500      // delivery mode: INIT
+#define MODE_STARTUP        0x0600      // delivery mode: StartUp
+#define SENDTO_SELF         (1 << 18)
+#define SENDTO_ALL          (2 << 18)
+#define SENDTO_OTHERS       (3 << 18)
+#define STATUS_PEND         0x1000      // delivery status: Pend
 
 struct local_apic {
     uint64_t base;
@@ -118,29 +122,6 @@ void local_apic_add(ACPI_MADT_LOCAL_APIC *local_apic) {
 
 void local_apic_address_override(ACPI_MADT_LOCAL_APIC_OVERRIDE *override) {
     ;
-}
-
-static int counter;
-static void local_apic_timer_callback(int vec, int_context_t *ctx) {
-    static char *video = (char *)(KERNEL_VMA + 0xa0000);
-    ++video[156];
-    ++counter;
-    local_apic_send_eoi();
-}
-
-// Local APIC timer的频率与总线频率相关，因此需要使用PIT测量总线速度
-static void get_bus_speed() {
-    ;
-}
-
-void local_apic_timer_init() {
-    // TODO: calculate bus speed using secondary timer, e.g. PIT
-
-    idt_set_int_handler(LVT_VEC_BASE, local_apic_timer_callback);
-    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CONFIG) = LOCAL_APIC_TIMER_DIVBY_16 & LOCAL_APIC_TIMER_DIVBY_MASK;
-    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 65536;
-    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) |= (1 << 17);
-    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) &= ~LOCAL_APIC_MASK;
 }
 
 // Spurious中断的处理函数不需要EOI
@@ -193,54 +174,84 @@ void local_apic_send_eoi() {
     *(uint32_t *)(base_addr + LOCAL_APIC_EOI) = 1;
 }
 
-extern char trampoline;
+static int counter;
+static void local_apic_timer_callback(int vec, int_context_t *ctx) {
+    static char *video = (char *)(KERNEL_VMA + 0xa0000);
+    ++counter;
+    if (counter % 1000 == 0) {
+        ++video[154];
+    }
+    local_apic_send_eoi();
+}
 
-// 发送处理器间中断
-void local_apic_send_ipi() {
-    // set shutdown code
-    *(uint8_t *)(KERNEL_VMA + 0x0f) = 0x0a;
+void local_apic_timer_init() {
+    idt_set_int_handler(LVT_VEC_BASE, local_apic_timer_callback);
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CONFIG) = LOCAL_APIC_TIMER_DIVBY_16 & LOCAL_APIC_TIMER_DIVBY_MASK;
+    // *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 65536;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) |= LOCAL_APIC_TIMER_PERIODIC;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) &= ~LOCAL_APIC_MASK;
 
-    // set warm-reset vector
-    *(uint16_t *)(KERNEL_VMA + 0x467) = 0x7c00;
+    // 利用PIT进行同步，计算总线频率
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 0xffffffff;
+    uint32_t t1 = *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CCR);
+    pit_delay(1000);
+    uint32_t t2 = *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CCR);
+
+    console_print("Frequency is %d.\n", t1 - t2);
+
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = (t1 - t2) / 1000;
+}
+
+extern char trampoline_start_addr;
+extern char trampoline_end_addr;
+// extern uint16_t ap_id;
+
+// 发送处理器间中断，启动其他核心
+void local_apic_start_ap() {
+    *(uint8_t *)(KERNEL_VMA + 0x0f) = 0x0a;     // set shutdown code
+    *(uint16_t *)(KERNEL_VMA + 0x467) = 0x7c00; // set warm-reset vector
 
     // 复制代码
-    char *src = &trampoline;
+    char *src = &trampoline_start_addr + KERNEL_VMA;
     char *dst = (char *) (KERNEL_VMA + 0x7c000);
-    console_print("copying from %x\n", src);
-    for (int i = 0; i < 100; ++i) {
-        dst[i] = src[i];
-    }
+    int length = &trampoline_end_addr - &trampoline_start_addr;
+    memcpy(dst, src, length);
 
     *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
 
     // 发送INIT
-    console_print("starting AP with apic id %x\n", local_apic_list[1].id);
-    uint32_t upper32 = (local_apic_list[1].id << 24) & 0xff000000;
-    uint32_t lower32 = LOCAL_APIC_LEVEL | LOCAL_APIC_ASSERT | MODE_INIT;
-    *(uint32_t *)(base_addr + LOCAL_APIC_ICR_H) = upper32;
-    *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
+    for (int i = 1; i < local_apic_count; ++i) {
+        console_print("Starting AP with apic id %x\n", local_apic_list[i].id);
+        // *(uint16_t *)(KERNEL_VMA + 0x7c000 + 510) = 2*i;
+        // *(uint16_t *)(KERNEL_VMA + (char*)&ap_id) = 2*i;
+        
+        uint32_t upper32 = (local_apic_list[i].id << 24) & 0xff000000;
+        uint32_t lower32 = LOCAL_APIC_LEVEL | LOCAL_APIC_ASSERT | MODE_INIT;
+        *(uint32_t *)(base_addr + LOCAL_APIC_ICR_H) = upper32;
+        *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
 
-    console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
-    *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
+        // console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
+        *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
 
-    counter = 0;
-    while (counter < 10) { }
-    // console_print("2\n");
+        counter = 0;
+        while (counter < 10) { }
+        // console_print("2\n");
 
-    // 发送Startup-IPI，向量号是初始化代码的实模式地址
-    lower32 = LOCAL_APIC_LEVEL | LOCAL_APIC_ASSERT | MODE_STARTUP | 0x7c;
-    *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
+        // 发送Startup-IPI，向量号是初始化代码的实模式地址
+        lower32 = LOCAL_APIC_LEVEL | LOCAL_APIC_ASSERT | MODE_STARTUP | 0x7c;
+        *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
 
-    console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
-    *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
+        // console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
+        *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
 
-    counter = 0;
-    while (counter < 10) { }
-    // console_print("3\n");
+        counter = 0;
+        while (counter < 10) { }
+        // console_print("3\n");
 
-    // 再次发送Startup-IPI
-    *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
+        // 再次发送Startup-IPI
+        *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
 
-    console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
-    *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
+        // console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
+        *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
+    }
 }

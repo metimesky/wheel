@@ -67,4 +67,6 @@ extern void local_apic_address_override(ACPI_MADT_LOCAL_APIC_OVERRIDE *override)
 extern void local_apic_init();
 extern void local_apic_send_eoi();
 
+// local APIC Timer
+
 #endif

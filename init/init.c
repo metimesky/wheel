@@ -21,9 +21,9 @@
 
 // extern void apic_init();
 extern void local_apic_timer_init();
-extern void local_apic_send_ipi();
+extern void local_apic_start_ap();
 
-static bool parse_madt() {
+static __init bool parse_madt() {
     ACPI_TABLE_MADT *madt = NULL;
     if (ACPI_FAILURE(AcpiGetTable(ACPI_SIG_MADT, 1, &madt))) {
         console_print("Cannot locate MADT!\n");
@@ -70,6 +70,27 @@ static bool parse_madt() {
     return true;
 }
 
+// typedef struct {
+//     uintptr_t addr;
+//     char name[];
+// } kernel_symbol_t;
+
+// extern void (* symbol_find(const char * name))(void);
+
+// void (* symbol_find(const char * name))(void) {
+//     kernel_symbol_t * k = (kernel_symbol_t *)&kernel_symbols_start;
+
+//     while ((uintptr_t)k < (uintptr_t)&kernel_symbols_end) {
+//         if (strcmp(k->name, name)) {
+//             k = (kernel_symbol_t *)((uintptr_t)k + sizeof *k + strlen(k->name) + 1);
+//             continue;
+//         }
+//         return (void (*)(void))k->addr;
+//     }
+
+//     return NULL;
+// }
+
 void init(uint32_t eax, uint32_t ebx) {
     console_init();
     console_print("Initializing Wheel OS!\n");
@@ -98,6 +119,7 @@ void init(uint32_t eax, uint32_t ebx) {
     console_print("Initializing IDT\n");
     idt_init();
 
+    console_print("Initializing PIC and APIC\n");
     pic_init();         // 初始化PIC，默认禁用全部IRQ
     io_apic_init();     // 初始化IO APIC，默认禁用全部GSI
     local_apic_init();  // 初始化Local APIC，默认禁用全部LVT，启用SVR
@@ -110,20 +132,17 @@ void init(uint32_t eax, uint32_t ebx) {
     console_print("Creating buddy bitmap\n");
     page_alloc_init(mbi->mmap_addr, mbi->mmap_length);
 
-    // char *video = (char *)(KERNEL_VMA + 0xa0000);
-    // video[158] = '0';
-    // video[156] = '0';
-
+    // 初始化并启用PIT时钟
     console_print("Initializing PIT\n");
     pit_init();
-    pit_map_gsi(GSI_VEC_BASE + 2);
+    pit_map_gsi(GSI_VEC_BASE + 2);      // TODO: 这里不要硬编码，根据MADT内容映射
     io_apic_unmask(GSI_VEC_BASE + 2);
 
     __asm__ __volatile__("sti");
 
+    console_print("Initializing timer\n");
     local_apic_timer_init();
-
-    local_apic_send_ipi();
+    local_apic_start_ap();
 
     while (true) { }
 }

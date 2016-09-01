@@ -7,6 +7,9 @@
  * This file assumes a 8254 chip.
  */
 
+// 应该定义通用的timer类，与具体实现无关，里面有sysClockInt和auxClockInt函数，
+// 由相应的设备在真正的中断处理函数中调用
+
 #define TIMER 1193180
 #define HZ 1000
 
@@ -14,11 +17,14 @@
 #define DATA_PORT 0x40
 
 char *video = (char *)(KERNEL_VMA + 0xa0000);
-uint64_t tick = 0;
+static uint64_t pit_tick = 0;
 
 static inline void real_handler() {
-    ++video[158];
-    ++tick;
+    ++pit_tick;
+    if (pit_tick % 1000 == 0) {
+        // pit_tick = 0;
+        ++video[158];
+    }
 }
 
 static void pit_pic_handler(int vec, int_context_t *ctx) {
@@ -31,7 +37,12 @@ static void pit_apic_handler(int vec, int_context_t *ctx) {
     local_apic_send_eoi();   // EOI
 }
 
-void pit_init() {
+void pit_delay(int count) {
+    int target = pit_tick + count;
+    while (pit_tick < target) { }
+}
+
+void __init pit_init() {
     // install handler
     idt_set_int_handler(IRQ_VEC_BASE + 0, pit_pic_handler);
 

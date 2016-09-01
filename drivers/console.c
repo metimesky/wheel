@@ -2,6 +2,8 @@
 #include <drivers/vga.h>
 #include <lib/string.h>
 
+// 可以将console.c放在debug模块中，这只是启动过程中的临时终端
+
 static char console_attr;
 
 static int console_width;

@@ -1,7 +1,7 @@
 ; OS的入口点，GRUB引导之后从这里开始执行
 
-; symbols
-global kernel_entry
+global multiboot_entry
+global tmp_gdt_ptr
 
 extern init
 extern initial_pml4t_low
@@ -17,16 +17,16 @@ MB1_FLAGS   equ 1<<0|1<<1               ; 4K-aligned, mem info
 [section .boot]
 [BITS 32]
     ; jump to the real entry
-    jmp kernel_entry
+    jmp multiboot_entry
 
 ALIGN 4
-mb1_header:
+multiboot1_header:
     dd      MB1_MAGIC
     dd      MB1_FLAGS
     dd      -(MB1_MAGIC+MB1_FLAGS)
 
 ALIGN 4
-kernel_entry:
+multiboot_entry:
     ; 关中断
     cli
 
@@ -97,18 +97,18 @@ enter_long_mode:
     add     edi, 8
     loop    .set_pdp_entry
 
-    ; enable PAE-paging
+    ; 启用PAE分页
     mov     eax, cr4
     or      eax, 1 << 5
     mov     cr4, eax
 
-    ; set LM-bit
+    ; 置LM位
     mov     ecx, 0xc0000080
     rdmsr
     or      eax, 1 << 8
     wrmsr
 
-    ; enable paging
+    ; 开分页，CPU进入长方式（兼容方式）
     mov     eax, cr0
     or      eax, 1 << 31
     mov     cr0, eax
@@ -150,6 +150,8 @@ long_mode_entry:
     mov     rax, higher_half + KERNEL_VMA
     jmp     rax
 
+    jmp     $
+
 higher_half:
     ; init segment registers (although they are ignored)
     mov     ax, tmp_gdt.data0
@@ -159,7 +161,7 @@ higher_half:
     mov     gs, ax
     mov     ss, ax
 
-    ; switch kernel stack (in higher half)
+    ; 加载内核栈
     mov     rsp, qword bsp_stack_top
 
     ; init fs and gs (can be used as thread local storage)
@@ -174,8 +176,9 @@ higher_half:
     mov     esi, dword [mb_ebx]     ; auto zero upper 32-bit half
 
     ; disable lower half mapping
-    mov     qword [initial_pml4t_low], 0
-    invlpg  [0]
+    ; 现在还不能将0~4G的映射禁用，因为AP启动时需要
+    ;mov     qword [initial_pml4t_low], 0
+    ;invlpg  [0]
 
     ; begin executing C code in higher half
     xor     rbp, rbp
