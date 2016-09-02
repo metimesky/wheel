@@ -60,7 +60,7 @@ static void fill_idt_entry(idt_entry_t *entry, void *handler) __init {
 }
 
 // fill IDT entries and load IDTR
-void idt_init() __init {
+void __init idt_init() {
     // initially, fill all interrupt handler as the default one
     for (int i = 0; i < INTERRUPT_NUM; ++i) {
         int_handler_table[i] = default_int_handler;
@@ -202,7 +202,7 @@ void idt_init() __init {
 }
 
 // 在AP中执行，用于加载已经初始化完成的IDT
-void idt_load() __init {
+void __init idt_load() {
     idtr.base = (uint64_t) idt;
     idtr.limit = INTERRUPT_NUM * sizeof(idt_entry_t) - 1;
     __asm__ __volatile__("lidt (%0)" :: "a"(&idtr));

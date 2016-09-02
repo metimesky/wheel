@@ -1,13 +1,17 @@
 #include <wheel.h>
 #include <multiboot.h>
 #include <interrupt.h>
+#include <gdt_tss.h>
 #include <memory.h>
+#include <percpu.h>
 
 #include <drivers/console.h>
 #include <drivers/acpi/acpi.h>
 #include <drivers/pit.h>
 
 #include <lib/string.h>
+
+extern void gdt_init();
 
 // 多核初始化
 // GDT、分页、IDT等配置对于每个核心都要执行，因此最好等到所有核心都启动后再初始化
@@ -19,7 +23,6 @@
 // Wheel将MADT中localApic在表中出现顺序作为索引，创建一个单独的local_apic_list表，里面保存localApicId和cpuId
 // 每个CPU的索引，称作ProcessorId，保存在MSR寄存器GS.BASE中。
 
-// extern void apic_init();
 extern void local_apic_timer_init();
 extern void local_apic_start_ap();
 
@@ -91,6 +94,13 @@ static __init bool parse_madt() {
 //     return NULL;
 // }
 
+void ring3() {
+    console_print("3");
+}
+
+extern void goto_ring3();
+
+// BSP的初始化函数，由boot.asm调用
 void init(uint32_t eax, uint32_t ebx) {
     console_init();
     console_print("Initializing Wheel OS!\n");
@@ -124,9 +134,14 @@ void init(uint32_t eax, uint32_t ebx) {
     io_apic_init();     // 初始化IO APIC，默认禁用全部GSI
     local_apic_init();  // 初始化Local APIC，默认禁用全部LVT，启用SVR
 
-    // 复制per-CPU Data
+    // 知道了CPU的数目，复制per-CPU Data
     console_print("Copying per-CPU Data\n");
     percpu_area_init();
+
+    // 知道了CPU的数目，准备真正的GDT
+    console_print("Initializing GDT and TSS\n");
+    gdt_init();
+    tss_init();
 
     // 初始化物理内存分配器
     console_print("Creating buddy bitmap\n");
@@ -134,15 +149,22 @@ void init(uint32_t eax, uint32_t ebx) {
 
     // 初始化并启用PIT时钟
     console_print("Initializing PIT\n");
-    pit_init();
-    pit_map_gsi(GSI_VEC_BASE + 2);      // TODO: 这里不要硬编码，根据MADT内容映射
-    io_apic_unmask(GSI_VEC_BASE + 2);
+    // pit_init();
+    // pit_map_gsi(GSI_VEC_BASE + 2);      // TODO: 这里不要硬编码，根据MADT内容映射
+    // io_apic_unmask(GSI_VEC_BASE + 2);
 
-    __asm__ __volatile__("sti");
+    //__asm__ __volatile__("sti");
 
     console_print("Initializing timer\n");
-    local_apic_timer_init();
-    local_apic_start_ap();
+    //local_apic_timer_init();
+    //local_apic_start_ap();
+
+    goto_ring3();
 
     while (true) { }
+}
+
+// AP的初始化函数，由trampoline.asm调用
+void ap_init() {
+    ;
 }

@@ -7,7 +7,7 @@
 // 内核结束位置的物理地址
 uint64_t kernel_end_addr;
 
-// 两个per-CPU Data起始地址之间的偏移，页对齐
+// 两个per-CPU Data起始地址之间的偏移
 uint64_t __percpu_offset;
 
 extern char percpu_start_addr;
@@ -15,7 +15,7 @@ extern char percpu_data_end_addr;
 extern char percpu_end_addr;
 
 // 复制.percpu.data和.percpu.bss的内容，该函数必须在page_alloc_init之前执行
-__init void percpu_area_init() {
+void __init percpu_area_init() {
     uint64_t v_percpu_start = (uint64_t)(KERNEL_VMA + &percpu_start_addr);
     uint64_t v_percpu_data_end = (uint64_t) (KERNEL_VMA + &percpu_data_end_addr);
     uint64_t v_percpu_end = (uint64_t)(KERNEL_VMA + &percpu_end_addr);
@@ -23,8 +23,8 @@ __init void percpu_area_init() {
     // per-CPU Data由.percpu.data和.percpu.bss两部分组成，只有.percpu.data的内容需要复制
     uint64_t copy_length = v_percpu_data_end - v_percpu_start;
     
-    // per-CPU Data的长度，向上对齐到页
-    __percpu_offset = (v_percpu_end - v_percpu_start + 4095UL) & ~4095UL;
+    // per-CPU Data的长度
+    __percpu_offset = (v_percpu_end - v_percpu_start + 15UL) & ~15UL;
     
     // 逐一复制per-CPU Data
     for (int i = 1; i < local_apic_count; ++i) {
@@ -43,7 +43,7 @@ static int buddy_length[BUDDY_LEVEL];           // 各阶位图的比特位数
 static uint64_t free_page_count;
 
 // 初始化buddy位图，该函数必须在percpu_area_init之后执行
-__init void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
+void __init page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
     // 0阶位图从当前最末位置开始
     buddy_map[0] = (uint64_t *) (KERNEL_VMA + kernel_end_addr);
     buddy_length[0] = 0;

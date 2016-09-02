@@ -57,12 +57,17 @@ SECTIONS {
         *(.bss)
     }
 
+    . = ALIGN(16);
+    
     percpu_start_addr = . - KERNEL_VMA;
-    .percpu.data ALIGN(0x1000) : AT(ADDR(.percpu.data) - KERNEL_VMA) {
+    .percpu.data : AT(ADDR(.percpu.data) - KERNEL_VMA) {
         *(.percpu.data)
     }
     percpu_data_end_addr = . - KERNEL_VMA;
     .percpu.bss (NOLOAD) : AT(ADDR(.percpu.bss) - KERNEL_VMA) {
+        kernel_stack = .;
+        . += 0x1000;
+        kernel_stack_top = .;
         *(.percpu.bss)
     }
     percpu_end_addr = . - KERNEL_VMA;

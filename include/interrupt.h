@@ -2,6 +2,7 @@
 #define __INTERRUPT_H__
 
 #include <wheel.h>
+#include <percpu.h>
 #include <drivers/acpi/acpi.h>
 
 // 64位模式下最多128个中断

@@ -196,15 +196,19 @@ void local_apic_timer_init() {
     uint32_t t1 = *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CCR);
     pit_delay(1000);
     uint32_t t2 = *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CCR);
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 0;
 
     console_print("Frequency is %d.\n", t1 - t2);
-
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = (t1 - t2) / 1000;
 }
 
 extern char trampoline_start_addr;
 extern char trampoline_end_addr;
 // extern uint16_t ap_id;
+
+// 启动AP过程中传递的参数
+uint32_t __init ap_id;
+uint64_t __init ap_stack_top;
 
 // 发送处理器间中断，启动其他核心
 void local_apic_start_ap() {

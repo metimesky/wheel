@@ -1,17 +1,19 @@
 ; OS的入口点，GRUB引导之后从这里开始执行
+; 此时只有BSP在执行
 
 global multiboot_entry
 global tmp_gdt_ptr
 
 extern init
 extern initial_pml4t_low
+extern kernel_stack_top     ; 定义在kernel.lds中，每个处理器都有一份
 
-KERNEL_VMA  equ 0xffff800000000000      ; located in higher half
-STACK_SIZE  equ 0x1000                  ; just a trampoline stack
+KERNEL_VMA  equ 0xffff800000000000  ; located in higher half
+STACK_SIZE  equ 0x1000              ; just a trampoline stack
 
 ; multiboot spec version 1
-MB1_MAGIC   equ 0x1badb002              ; multiboot 1 magic number
-MB1_FLAGS   equ 1<<0|1<<1               ; 4K-aligned, mem info
+MB1_MAGIC   equ 0x1badb002          ; multiboot 1 magic number
+MB1_FLAGS   equ 1<<0|1<<1           ; 4K-aligned, mem info
 
 
 [section .boot]
@@ -162,7 +164,7 @@ higher_half:
     mov     ss, ax
 
     ; 加载内核栈
-    mov     rsp, qword bsp_stack_top
+    mov     rsp, qword kernel_stack_top
 
     ; init fs and gs (can be used as thread local storage)
     xor     rax, rax
@@ -218,12 +220,4 @@ tmp_gdt_ptr:
 ; temporary store the multiboot info
 mb_eax: dd  0
 mb_ebx: dd  0
-
-
-[section .bss]
-
-; 初始内核栈
-ALIGN 0x1000
-bsp_stack:   resb STACK_SIZE
-bsp_stack_top:
 

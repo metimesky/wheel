@@ -18,6 +18,11 @@ global pm_entry
 
 extern initial_pml4t_low
 extern tmp_gdt_ptr
+extern ap_init
+
+; 启动AP时BSP传递的参数
+extern ap_id
+extern ap_stack_top
 
 KERNEL_VMA  equ 0xffff800000000000
 
@@ -90,7 +95,6 @@ pm_entry:
 
     ; 加载页目录
     mov     edi, initial_pml4t_low
-
     mov     cr3, edi
 
     ; 启用PAE分页
@@ -109,7 +113,7 @@ pm_entry:
     or      eax, 1 << 31
     mov     cr0, eax
 
-    ; 加载长方式的GDT（目前为兼容方式，故加载的是32位GDT）
+    ; 加载长方式的GDT（目前为兼容方式，故加载的是32位GDTR）
     lgdt    [tmp_gdt_ptr]
     jmp     8:long_mode_entry
 
@@ -118,7 +122,7 @@ pm_entry:
 [BITS 64]
 
 long_mode_entry:
-    ; 再次加载GDT，这次加载的是64位GDT
+    ; 再次加载GDT，这次加载的是64位GDTR，且位于高地址
     mov     rax, tmp_gdt_ptr + KERNEL_VMA
     lgdt    [rax]
     mov     rax, higher_half + KERNEL_VMA
@@ -127,6 +131,7 @@ long_mode_entry:
     jmp     $
 
 higher_half:
+    ; 初始化段寄存器
     mov     ax, 16
     mov     ds, ax
     mov     es, ax
@@ -135,7 +140,7 @@ higher_half:
     mov     ss, ax
 
     ; 加载内核栈
-    ;mov     rsp, qword bsp_stack_top
+    mov     rsp, qword ap_stack_top
 
     ; 初始化FS和GS(can be used as thread local storage)
     xor     rax, rax
