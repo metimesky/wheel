@@ -11,10 +11,7 @@
 ; 为何这段代码只能用16位方式编译才通过，但链接的时候，某些符号地址会被截断
 ; 例如lgdt指令的参数
 
-global trampoline_entry
-global pm_gdt
-global pm_gdt_ptr
-global pm_entry
+;global trampoline_entry
 
 extern initial_pml4t_low
 extern tmp_gdt_ptr
@@ -23,6 +20,7 @@ extern ap_init
 ; 启动AP时BSP传递的参数
 extern ap_id
 extern ap_stack_top
+extern ap_init_ok
 
 KERNEL_VMA  equ 0xffff800000000000
 
@@ -37,25 +35,9 @@ trampoline_entry:
     mov     ax, 0x7c00
     mov     ds, ax
 
-    ; 显存段基址为0xa0000
-    mov     ax, 0xa000
-    mov     gs, ax
-
-    ; 获取BSP传入的参数
-    mov     bx, 0
-
-    ; 终端上显示一个'X'
-    mov     al, 'X'
-    mov     ah, 0x4e
-    mov     word [gs:bx], ax   ; 只有BX能作为index
-
     ; 加载GDT
     ; LGDT指令有lgdtw、lgdtd两种，当前为16位，采用实方式寻址
     lgdt    [pm_gdt_ptr]
-
-    mov     al, '2'
-    mov     ah, 0x4e
-    mov     word [gs:bx+2], ax   ; 只有BX能作为index
 
     ; 启用保护方式，禁用分页
     mov     eax, cr0
@@ -63,10 +45,7 @@ trampoline_entry:
     and     eax, 0x7fffffff     ; PG = 0
     mov     cr0, eax
 
-    mov     al, '3'
-    mov     ah, 0x4e
-    mov     word [gs:bx+4], ax   ; 只有BX能作为index
-
+    ; 进入32位保护方式
     jmp     dword 8:pm_entry
 
     jmp     $
@@ -75,18 +54,14 @@ trampoline_entry:
 
 ALIGN 8
 pm_entry:
-    ; 进入保护方式，首先设置段寄存器
+    ; SMP架构下，所有核心都是完全一样的，BSP已经检测了相关支持，AP直接进行初始化就可以了
+
+    ; 首先设置段寄存器
     mov     ax, 16
     mov     ds, ax
     mov     es, ax
     mov     fs, ax
     mov     gs, ax
-
-    mov     al, 'P'
-    mov     ah, 0x4e
-    mov     word [0xa0000], ax
-
-    ; SMP架构下，所有核心都是完全一样的，BSP已经检测了相关支持，AP直接进行初始化就可以了
 
     ; 清ebp和eflags
     mov     ebp, 0
@@ -140,7 +115,8 @@ higher_half:
     mov     ss, ax
 
     ; 加载内核栈
-    mov     rsp, qword ap_stack_top
+    mov     rax, qword ap_stack_top
+    mov     rsp, qword [rax]
 
     ; 初始化FS和GS(can be used as thread local storage)
     xor     rax, rax
@@ -149,6 +125,21 @@ higher_half:
     mov     ecx, 0xc0000101
     wrmsr                   ; GS.base = 0
 
+    ; 将ap_id作为参数传给ap_init
+    mov     rax, qword ap_id
+    mov     rdi, qword [rax]
+
+    ; 报告初始化完成
+    mov     rax, qword ap_init_ok
+    mov     dword [rax], 1
+
+    ; 调用C函数ap_init
+    xor     rbp, rbp
+    mov     rax, qword ap_init
+    call    rax
+
+    ; should never arrive here
+    hlt
     jmp     $
 
 ALIGN 8

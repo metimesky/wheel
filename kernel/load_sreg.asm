@@ -1,9 +1,9 @@
-global switch_gdt
+global load_sreg
 
 [section .init]
 [BITS 64]
 
-switch_gdt:
+load_sreg:
     mov     ax, 16
     mov     ds, ax
     mov     es, ax

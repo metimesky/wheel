@@ -37,23 +37,24 @@ static void pit_apic_handler(int vec, int_context_t *ctx) {
     local_apic_send_eoi();   // EOI
 }
 
-void pit_delay(int count) {
-    int target = pit_tick + count;
-    while (pit_tick < target) { }
+void pit_delay(int ticks) {
+    int end_tick = pit_tick + ticks;
+    while (pit_tick < end_tick) { }
 }
 
 void __init pit_init() {
     // install handler
     idt_set_int_handler(IRQ_VEC_BASE + 0, pit_pic_handler);
 
-    out_byte(CTRL_PORT, 0x36);  // mode 2
+    // 00110110b = 32+16+4+2 = 0x36
+    out_byte(CTRL_PORT, 0x36);  // mode 2, square wave
     io_wait();
 
     //out_byte(DATA_PORT, (TIMER/HZ));
-    out_byte(DATA_PORT, 11931U & 0xff);
+    out_byte(DATA_PORT, 11932U & 0xff);
     io_wait();
     //out_byte(DATA_PORT, (TIMER/HZ) >> 8);
-    out_byte(DATA_PORT, (11931U >> 8) & 0xff);
+    out_byte(DATA_PORT, (11932U >> 8) & 0xff);
     io_wait();
 }
 

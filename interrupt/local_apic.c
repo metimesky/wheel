@@ -114,13 +114,13 @@ static local_apic_t local_apic_list[16];
 int local_apic_count;
 
 // 添加的工作在BSP中执行
-void local_apic_add(ACPI_MADT_LOCAL_APIC *local_apic) {
+void __init local_apic_add(ACPI_MADT_LOCAL_APIC *local_apic) {
     local_apic_list[local_apic_count].id = local_apic->Id;
     local_apic_list[local_apic_count].processor_id = local_apic->ProcessorId;
     ++local_apic_count;
 }
 
-void local_apic_address_override(ACPI_MADT_LOCAL_APIC_OVERRIDE *override) {
+void __init local_apic_address_override(ACPI_MADT_LOCAL_APIC_OVERRIDE *override) {
     ;
 }
 
@@ -129,7 +129,7 @@ static void svr_callback(int vec, int_context_t *ctx) {
     // console_print("SVR Interrupt\n");
 }
 
-void local_apic_init() {
+void __init local_apic_init() {
     uint64_t apic_base_msr = read_msr(IA32_APIC_BASE);
     uint64_t base = apic_base_msr & LOCAL_APIC_BASE_MASK;
     if (local_apic_count == 0) {
@@ -141,8 +141,6 @@ void local_apic_init() {
 
     base += KERNEL_VMA;
     base_addr = base;
-    // local_apic_list[local_apic_count].base = base;
-    // ++local_apic_count;
 
     // 获取版本和LVT数目
     uint32_t v = *(uint32_t *)(base + LOCAL_APIC_VER) & LOCAL_APIC_VERSION_MASK;
@@ -174,17 +172,18 @@ void local_apic_send_eoi() {
     *(uint32_t *)(base_addr + LOCAL_APIC_EOI) = 1;
 }
 
-static int counter;
+static uint64_t local_apic_tick;
+
 static void local_apic_timer_callback(int vec, int_context_t *ctx) {
     static char *video = (char *)(KERNEL_VMA + 0xa0000);
-    ++counter;
-    if (counter % 1000 == 0) {
+    ++local_apic_tick;
+    if (local_apic_tick % 1000 == 0) {
         ++video[154];
     }
     local_apic_send_eoi();
 }
 
-void local_apic_timer_init() {
+void __init local_apic_timer_init() {
     idt_set_int_handler(LVT_VEC_BASE, local_apic_timer_callback);
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CONFIG) = LOCAL_APIC_TIMER_DIVBY_16 & LOCAL_APIC_TIMER_DIVBY_MASK;
     // *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 65536;
@@ -202,16 +201,24 @@ void local_apic_timer_init() {
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = (t1 - t2) / 1000;
 }
 
+void local_apic_delay(int ticks) {
+    uint64_t end_tick = local_apic_tick + ticks;
+    while (local_apic_tick < end_tick) { }
+}
+
 extern char trampoline_start_addr;
 extern char trampoline_end_addr;
-// extern uint16_t ap_id;
+extern char kernel_stack_top;
 
 // 启动AP过程中传递的参数
 uint32_t __init ap_id;
 uint64_t __init ap_stack_top;
+int __init ap_init_ok;
 
 // 发送处理器间中断，启动其他核心
-void local_apic_start_ap() {
+// TODO: 应该将IPI专门抽象出来，写成单独的函数，
+// 然后将启动多核的操作用IPI专用函数重写，放在init.c中
+void __init local_apic_start_ap() {
     *(uint8_t *)(KERNEL_VMA + 0x0f) = 0x0a;     // set shutdown code
     *(uint16_t *)(KERNEL_VMA + 0x467) = 0x7c00; // set warm-reset vector
 
@@ -225,7 +232,10 @@ void local_apic_start_ap() {
 
     // 发送INIT
     for (int i = 1; i < local_apic_count; ++i) {
-        console_print("Starting AP with apic id %x\n", local_apic_list[i].id);
+        console_print("Starting AP with apic id %x.....", local_apic_list[i].id);
+        ap_id = i;
+        ap_stack_top = __percpu_offset * i + kernel_stack_top;
+        ap_init_ok = false;
         // *(uint16_t *)(KERNEL_VMA + 0x7c000 + 510) = 2*i;
         // *(uint16_t *)(KERNEL_VMA + (char*)&ap_id) = 2*i;
         
@@ -235,10 +245,10 @@ void local_apic_start_ap() {
         *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
 
         // console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
-        *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
+        // *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
 
-        counter = 0;
-        while (counter < 10) { }
+        local_apic_tick = 0;
+        while (local_apic_tick < 10) { }
         // console_print("2\n");
 
         // 发送Startup-IPI，向量号是初始化代码的实模式地址
@@ -246,16 +256,18 @@ void local_apic_start_ap() {
         *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
 
         // console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
-        *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
+        // *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
 
-        counter = 0;
-        while (counter < 10) { }
+        local_apic_tick = 0;
+        while (local_apic_tick < 10) { }
         // console_print("3\n");
 
         // 再次发送Startup-IPI
         *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
 
         // console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
-        *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
+        // *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
+        while (!ap_init_ok) { }
+        console_print("Done.\n");
     }
 }

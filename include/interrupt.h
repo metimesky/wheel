@@ -69,5 +69,7 @@ extern void local_apic_init();
 extern void local_apic_send_eoi();
 
 // local APIC Timer
+extern void local_apic_timer_init();
+extern void local_apic_delay(int ticks);
 
 #endif

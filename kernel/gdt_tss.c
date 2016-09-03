@@ -27,8 +27,7 @@ void __init gdt_init() {
     // 分配GDT占用的空间
     gdt = (uint64_t *)(KERNEL_VMA + kernel_end_addr);
     int gdt_length = sizeof(uint64_t) * (5 + 2 * local_apic_count);
-    kernel_end_addr += gdt_length + 15UL;
-    kernel_end_addr &= ~15UL;
+    kernel_end_addr += (gdt_length + 15UL) & ~15UL;
 
     gdt[0] = 0UL;                   // dummy descriptor
     gdt[1] = 0x00a0980000000000UL;  // kernel code segment
@@ -39,13 +38,10 @@ void __init gdt_init() {
     // 循环填充TSS描述符
     for (int i = 0; i < local_apic_count; ++i) {
         // 分配TSS的空间
-        PERCPU_ID(tss, i) = (tss_t *)(KERNEL_VMA + kernel_end_addr);
-        kernel_end_addr += sizeof(tss_t) + 15UL;
-        kernel_end_addr &= ~15UL;
-
-        uint64_t base = (uint64_t)PERCPU_ID(tss, i);
+        uint64_t base = KERNEL_VMA + kernel_end_addr;
         uint64_t limit = sizeof(tss_t);
-        // console_print("TSS base %x, len %x\n", base, limit);
+        PERCPU_ID(tss, i) = base;
+        kernel_end_addr += (limit + 15UL) & ~15UL;
         
         gdt[2*i + 5] = 0;
         gdt[2*i + 5] |= 0x000000000000ffffUL & limit;           // limit [15:0]
@@ -64,10 +60,10 @@ void __init gdt_init() {
     gdt_load();
 }
 
-extern void switch_gdt();
+extern void load_sreg();
 void __init gdt_load() {
     __asm__ __volatile__("lgdt (%0)" :: "a"(&gdtr));
-    switch_gdt();
+    load_sreg();
 }
 
 extern char kernel_stack_top;

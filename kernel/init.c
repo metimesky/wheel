@@ -10,6 +10,7 @@
 #include <drivers/pit.h>
 
 #include <lib/string.h>
+#include <lib/spinlock.h>
 
 extern void gdt_init();
 
@@ -23,7 +24,7 @@ extern void gdt_init();
 // Wheel将MADT中localApic在表中出现顺序作为索引，创建一个单独的local_apic_list表，里面保存localApicId和cpuId
 // 每个CPU的索引，称作ProcessorId，保存在MSR寄存器GS.BASE中。
 
-extern void local_apic_timer_init();
+// extern void local_apic_timer_init();
 extern void local_apic_start_ap();
 
 static __init bool parse_madt() {
@@ -155,16 +156,44 @@ void init(uint32_t eax, uint32_t ebx) {
 
     __asm__ __volatile__("sti");
 
-    // console_print("Initializing timer\n");
-    // local_apic_timer_init();
-    // local_apic_start_ap();
+    console_print("Initializing timer\n");
+    local_apic_timer_init();
+
+    local_apic_start_ap();
 
     //goto_ring3();
 
     while (true) { }
 }
 
+static spinlock_t lock = 0;
+
 // AP的初始化函数，由trampoline.asm调用
-void ap_init() {
-    ;
+void ap_init(int id) {
+    // 设置GS.BASE寄存器，在读取per-CPU Data时需要
+    write_gsbase(id);
+
+    char *video = (char*) (KERNEL_VMA + 0xa0000);
+    video[160*id + 0] = 'A';
+    video[160*id + 1] = 0x0b;
+    video[160*id + 2] = 'P';
+    video[160*id + 3] = 0x0b;
+    
+    idt_load();
+    local_apic_init();
+    gdt_load();
+    idt_load();
+
+    char str[] = "X";
+    for (int i = 0; i < 1000; ++i) {
+        spinlock_lock(&lock);
+            str[0] = 'A'+id;
+            console_set_attr(0x0a + id);
+            console_print(str);
+            console_set_attr(0x1f);
+        spinlock_free(&lock);
+        pit_delay(6000);
+    }
+
+    while (true) { }
 }

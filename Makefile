@@ -32,7 +32,7 @@ iso:	$(BIN)
 	grub-mkrescue -o $(ISO) iso
 
 run:	iso
-	qemu-system-x86_64 -m 64 -smp 2 -cdrom $(ISO)
+	qemu-system-x86_64 -m 64 -smp 4 -cdrom $(ISO)
 
 clean:
 	rm $(OBJ)
