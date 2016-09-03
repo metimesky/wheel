@@ -4,6 +4,10 @@
 
 // 可以将console.c放在debug模块中，这只是启动过程中的临时终端
 
+// video ram is slow, never read from video ram
+// keeping track of video ram content here
+static char buffer[80*25*2];
+
 static char console_attr;
 
 static int console_width;
@@ -29,9 +33,10 @@ void console_init() {
 
     // 清屏
     for (int i = 0; i < console_width*console_height; ++i) {
-        frame_buf[2*i] = ' ';
-        frame_buf[2*i+1] = console_attr;
+        buffer[2*i] = ' ';
+        buffer[2*i+1] = console_attr;
     }
+    memcpy(frame_buf, buffer, frame_buf_len);
 }
 
 void console_set_attr(char attr) {
@@ -39,22 +44,19 @@ void console_set_attr(char attr) {
 }
 
 void console_scroll(int n) {
-    for (int i = n; i < console_height; ++i) {
-        // use memcpy later
-        for (int j = 0; j < console_width; ++j) {
-            //frame_buf[2*(console_width*(i-n) + j)] = frame_buf[2*(console_width*i + j)];
-            //frame_buf[2*(console_width*(i-n) + j)+1] = frame_buf[2*(console_width*i + j)+1];
-            memcpy(frame_buf+2*(console_width*(i-n)+j), frame_buf+2*(console_width*(i)+j), console_width*2);
-        }
-    }
+    // copy height-n lines
+    memcpy(buffer, buffer+2*console_width*n, 2*console_width*(console_height-n));
     
     // clear last n lines
     for (int i = console_height-n; i < console_height; ++i) {
         for (int j = 0; j < console_width; ++j) {
-            frame_buf[2*(console_width*i + j)] = ' ';
-            frame_buf[2*(console_width*i + j)+1] = console_attr;
+            buffer[2*(console_width*i + j)] = ' ';
+            buffer[2*(console_width*i + j)+1] = console_attr;
         }
     }
+
+    // write to video ram
+    memcpy(frame_buf, buffer, frame_buf_len);
 }
 
 void console_putchar(char s) {
@@ -67,6 +69,8 @@ void console_putchar(char s) {
         x = 0;
         break;
     default:
+        buffer[2*(x+y*console_width)] = s;
+        buffer[2*(x+y*console_width)+1] = console_attr;
         frame_buf[2*(x+y*console_width)] = s;
         frame_buf[2*(x+y*console_width)+1] = console_attr;
         ++x;

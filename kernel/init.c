@@ -95,14 +95,25 @@ static __init bool parse_madt() {
 //     return NULL;
 // }
 
+static spinlock_t lock = 0;
+
 void ring3() {
-    console_print("3");
+    char *video = (char*) (KERNEL_VMA + 0xa0000);
+    for (int i = 0; i < 1000; ++i) {
+        spinlock_lock(&lock);
+        console_print("3");
+        // ++video[0];
+        for (int a = 0; a < 1000; ++a) {
+            for (int b = 0; b < 1000; ++b) {
+                video[0] = video[0];
+            }
+        }
+        spinlock_free(&lock);
+        // pit_delay(5000);
+    }
 }
 
 extern void goto_ring3();
-
-static volatile int balance = 10;
-static spinlock_t lock = 0;
 
 // BSP的初始化函数，由boot.asm调用
 void init(uint32_t eax, uint32_t ebx) {
@@ -157,27 +168,15 @@ void init(uint32_t eax, uint32_t ebx) {
     pit_map_gsi(GSI_VEC_BASE + 2);      // TODO: 这里不要硬编码，根据MADT内容映射
     io_apic_unmask(GSI_VEC_BASE + 2);
 
-    __asm__ __volatile__("sti");
+    // __asm__ __volatile__("sti");
 
     console_print("Initializing timer\n");
-    local_apic_timer_init();
+    // local_apic_timer_init();
 
     console_print("Waking up all processors\n");
-    local_apic_start_ap();
+    // local_apic_start_ap();
 
-    // goto_ring3();
-
-    // producer
-    for (int i = 0; i < 1000; ++i) {
-        spinlock_lock(&lock);
-        if (balance < 20) {
-            pit_delay(3000);
-            ++balance;
-        }
-        console_print("+%d", balance);
-        spinlock_free(&lock);
-        pit_delay(2000);
-    }
+    goto_ring3();
 
     while (true) { }
 }
@@ -200,41 +199,16 @@ void ap_init(int id) {
     gdt_load();
     idt_load();
 
-    if (id == 2) {
-        // producer
-        for (int i = 0; i < 1000; ++i) {
-            spinlock_lock(&lock);
-            if (balance < 20) {
-                pit_delay(3000);
-                ++balance;
-            }
-            console_print("+%d", balance);
-            spinlock_free(&lock);
-            pit_delay(6000);
-        }
-    } else {
-        // consumer
-        for (int i = 0; i < 1000; ++i) {
-            spinlock_lock(&lock);
-            if (balance > 0) {
-                --balance;
-            }
-            console_print("-%d", balance);
-            spinlock_free(&lock);
-            pit_delay(8000);
-        }
+    char str[] = "X";
+    for (int i = 0; i < 1000; ++i) {
+        spinlock_lock(&lock);
+            str[0] = 'A'+id;
+            console_set_attr(0x0a + id);
+            console_print(str);
+            console_set_attr(0x1f);
+        spinlock_free(&lock);
+        pit_delay(8000);
     }
-
-    // char str[] = "X";
-    // for (int i = 0; i < 1000; ++i) {
-    //     spinlock_lock(&lock);
-    //         str[0] = 'A'+id;
-    //         console_set_attr(0x0a + id);
-    //         console_print(str);
-    //         console_set_attr(0x1f);
-    //     spinlock_free(&lock);
-    //     pit_delay(6000);
-    // }
 
     while (true) { }
 }
