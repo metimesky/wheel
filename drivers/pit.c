@@ -10,7 +10,7 @@
 // 应该定义通用的timer类，与具体实现无关，里面有sysClockInt和auxClockInt函数，
 // 由相应的设备在真正的中断处理函数中调用
 
-#define TIMER 1193180
+#define TIMER 1193182
 #define HZ 1000
 
 #define CTRL_PORT 0x43
@@ -21,7 +21,7 @@ static uint64_t pit_tick = 0;
 
 static inline void real_handler() {
     ++pit_tick;
-    if (pit_tick % 1000 == 0) {
+    if (pit_tick % 100 == 0) {
         // pit_tick = 0;
         ++video[158];
     }
@@ -46,12 +46,14 @@ void __init pit_init() {
     // install handler
     idt_set_int_handler(IRQ_VEC_BASE + 0, pit_pic_handler);
 
-    out_byte(CTRL_PORT, 0x34);  // mode 2
+    out_byte(CTRL_PORT, 0x36);  // mode 2
     io_wait();
 
-    out_byte(DATA_PORT, (TIMER/HZ));
+    //out_byte(DATA_PORT, (TIMER/HZ));
+    out_byte(DATA_PORT, 11931U & 0xff);
     io_wait();
-    out_byte(DATA_PORT, (TIMER/HZ) >> 8);
+    //out_byte(DATA_PORT, (TIMER/HZ) >> 8);
+    out_byte(DATA_PORT, (11931U >> 8) & 0xff);
     io_wait();
 }
 

@@ -149,17 +149,17 @@ void init(uint32_t eax, uint32_t ebx) {
 
     // 初始化并启用PIT时钟
     console_print("Initializing PIT\n");
-    // pit_init();
-    // pit_map_gsi(GSI_VEC_BASE + 2);      // TODO: 这里不要硬编码，根据MADT内容映射
-    // io_apic_unmask(GSI_VEC_BASE + 2);
+    pit_init();
+    pit_map_gsi(GSI_VEC_BASE + 2);      // TODO: 这里不要硬编码，根据MADT内容映射
+    io_apic_unmask(GSI_VEC_BASE + 2);
 
-    //__asm__ __volatile__("sti");
+    __asm__ __volatile__("sti");
 
-    console_print("Initializing timer\n");
-    //local_apic_timer_init();
-    //local_apic_start_ap();
+    // console_print("Initializing timer\n");
+    // local_apic_timer_init();
+    // local_apic_start_ap();
 
-    goto_ring3();
+    //goto_ring3();
 
     while (true) { }
 }

@@ -25,7 +25,7 @@ void __init gdt_init() {
     kernel_end_addr &= ~15UL;
 
     // 分配GDT占用的空间
-    gdt = (uint64_t *)kernel_end_addr;
+    gdt = (uint64_t *)(KERNEL_VMA + kernel_end_addr);
     int gdt_length = sizeof(uint64_t) * (5 + 2 * local_apic_count);
     kernel_end_addr += gdt_length + 15UL;
     kernel_end_addr &= ~15UL;
@@ -39,23 +39,20 @@ void __init gdt_init() {
     // 循环填充TSS描述符
     for (int i = 0; i < local_apic_count; ++i) {
         // 分配TSS的空间
-        PERCPU_ID(tss, i) = (tss_t *) kernel_end_addr;
+        PERCPU_ID(tss, i) = (tss_t *)(KERNEL_VMA + kernel_end_addr);
         kernel_end_addr += sizeof(tss_t) + 15UL;
         kernel_end_addr &= ~15UL;
 
         uint64_t base = (uint64_t)PERCPU_ID(tss, i);
         uint64_t limit = sizeof(tss_t);
-        console_print("TSS base %x, len %x\n", base, limit);
+        // console_print("TSS base %x, len %x\n", base, limit);
         
-        // TSS清零
-        //memset(base, 0, limit);
-
         gdt[2*i + 5] = 0;
-        gdt[2*i + 5] &= 0x000000000000ffffUL & limit;           // limit [15:0]
-        gdt[2*i + 5] &= 0x000000ffffff0000UL & (base << 16);    // base [23:0]
-        gdt[2*i + 5] &= 0x0000e90000000000UL;                   // P, DPL=3, 64bit Available TSS
-        gdt[2*i + 5] &= 0x000f000000000000UL & (limit << 32);   // limit [19:16]
-        gdt[2*i + 5] &= 0xff00000000000000UL & (base << 32);    // base [31:24]
+        gdt[2*i + 5] |= 0x000000000000ffffUL & limit;           // limit [15:0]
+        gdt[2*i + 5] |= 0x000000ffffff0000UL & (base << 16);    // base [23:0]
+        gdt[2*i + 5] |= 0x0000e90000000000UL;                   // P, DPL=3, 64bit Available TSS
+        gdt[2*i + 5] |= 0x000f000000000000UL & (limit << 32);   // limit [19:16]
+        gdt[2*i + 5] |= 0xff00000000000000UL & (base << 32);    // base [31:24]
 
         gdt[2*i + 6]  = 0x00000000ffffffffUL & (base >> 32);
     }
