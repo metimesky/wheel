@@ -51,8 +51,8 @@ void console_scroll(int n) {
     // clear last n lines
     for (int i = console_height-n; i < console_height; ++i) {
         for (int j = 0; j < console_width; ++j) {
-            //frame_buf[2*(console_width*i + j)] = ' ';
-            frame_buf[2*(console_width*i + j)+1] = ' ';
+            frame_buf[2*(console_width*i + j)] = ' ';
+            frame_buf[2*(console_width*i + j)+1] = console_attr;
         }
     }
 }

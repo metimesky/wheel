@@ -101,6 +101,9 @@ void ring3() {
 
 extern void goto_ring3();
 
+static volatile int balance = 10;
+static spinlock_t lock = 0;
+
 // BSP的初始化函数，由boot.asm调用
 void init(uint32_t eax, uint32_t ebx) {
     console_init();
@@ -159,14 +162,27 @@ void init(uint32_t eax, uint32_t ebx) {
     console_print("Initializing timer\n");
     local_apic_timer_init();
 
+    console_print("Waking up all processors\n");
     local_apic_start_ap();
 
-    //goto_ring3();
+    // goto_ring3();
+
+    // producer
+    for (int i = 0; i < 1000; ++i) {
+        spinlock_lock(&lock);
+        if (balance < 20) {
+            pit_delay(3000);
+            ++balance;
+        }
+        console_print("+%d", balance);
+        spinlock_free(&lock);
+        pit_delay(2000);
+    }
 
     while (true) { }
 }
 
-static spinlock_t lock = 0;
+// static spinlock_t lock = 0;
 
 // AP的初始化函数，由trampoline.asm调用
 void ap_init(int id) {
@@ -184,16 +200,41 @@ void ap_init(int id) {
     gdt_load();
     idt_load();
 
-    char str[] = "X";
-    for (int i = 0; i < 1000; ++i) {
-        spinlock_lock(&lock);
-            str[0] = 'A'+id;
-            console_set_attr(0x0a + id);
-            console_print(str);
-            console_set_attr(0x1f);
-        spinlock_free(&lock);
-        pit_delay(6000);
+    if (id == 2) {
+        // producer
+        for (int i = 0; i < 1000; ++i) {
+            spinlock_lock(&lock);
+            if (balance < 20) {
+                pit_delay(3000);
+                ++balance;
+            }
+            console_print("+%d", balance);
+            spinlock_free(&lock);
+            pit_delay(6000);
+        }
+    } else {
+        // consumer
+        for (int i = 0; i < 1000; ++i) {
+            spinlock_lock(&lock);
+            if (balance > 0) {
+                --balance;
+            }
+            console_print("-%d", balance);
+            spinlock_free(&lock);
+            pit_delay(8000);
+        }
     }
+
+    // char str[] = "X";
+    // for (int i = 0; i < 1000; ++i) {
+    //     spinlock_lock(&lock);
+    //         str[0] = 'A'+id;
+    //         console_set_attr(0x0a + id);
+    //         console_print(str);
+    //         console_set_attr(0x1f);
+    //     spinlock_free(&lock);
+    //     pit_delay(6000);
+    // }
 
     while (true) { }
 }
