@@ -62,7 +62,7 @@ isr%1:
 ; 通用中断处理逻辑
 %macro common_int_handler 1
     ; check if we are comming from user-mode
-    test    word [rsp+24], 3    ; by checking SS selector's RPL
+    ;test    word [rsp+24], 3    ; by checking SS selector's RPL
     ;jnz     come_from_userspace
 
     ; push the rest of the interrupt frame to the stack

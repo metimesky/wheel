@@ -98,22 +98,26 @@ static __init bool parse_madt() {
 static spinlock_t lock = 0;
 
 void ring3() {
+    // __asm__ __volatile__("sti");
     char *video = (char*) (KERNEL_VMA + 0xa0000);
     for (int i = 0; i < 1000; ++i) {
         spinlock_lock(&lock);
         console_print("3");
         // ++video[0];
-        for (int a = 0; a < 1000; ++a) {
-            for (int b = 0; b < 1000; ++b) {
-                video[0] = video[0];
-            }
-        }
+        // for (int a = 0; a < 1000; ++a) {
+        //     for (int b = 0; b < 1000; ++b) {
+        //         video[0] = video[0];
+        //     }
+        // }
         spinlock_free(&lock);
-        // pit_delay(5000);
+        pit_delay(5000);
     }
+
+    while (1) { }
 }
 
-extern void goto_ring3();
+extern void goto_ring3(uint64_t rsp);
+extern uint64_t kernel_end_addr;
 
 // BSP的初始化函数，由boot.asm调用
 void init(uint32_t eax, uint32_t ebx) {
@@ -168,7 +172,7 @@ void init(uint32_t eax, uint32_t ebx) {
     pit_map_gsi(GSI_VEC_BASE + 2);      // TODO: 这里不要硬编码，根据MADT内容映射
     io_apic_unmask(GSI_VEC_BASE + 2);
 
-    // __asm__ __volatile__("sti");
+    __asm__ __volatile__("sti");
 
     console_print("Initializing timer\n");
     // local_apic_timer_init();
@@ -176,7 +180,8 @@ void init(uint32_t eax, uint32_t ebx) {
     console_print("Waking up all processors\n");
     // local_apic_start_ap();
 
-    goto_ring3();
+    //uint64_t p = alloc_pages(0);
+    goto_ring3(kernel_end_addr + 4096);
 
     while (true) { }
 }

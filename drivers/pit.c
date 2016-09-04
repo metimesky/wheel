@@ -17,7 +17,7 @@
 #define DATA_PORT 0x40
 
 char *video = (char *)(KERNEL_VMA + 0xa0000);
-static uint64_t pit_tick = 0;
+static volatile uint64_t pit_tick = 0;
 
 static inline void real_handler() {
     ++pit_tick;
@@ -39,7 +39,9 @@ static void pit_apic_handler(int vec, int_context_t *ctx) {
 
 void pit_delay(int ticks) {
     int end_tick = pit_tick + ticks;
-    while (pit_tick < end_tick) { }
+    while (pit_tick < end_tick) {
+        video[4] ++;
+    }
 }
 
 void __init pit_init() {
