@@ -66,21 +66,38 @@ static inline int bitmap_test(unsigned long *bitmap, int bit) {
     return BIT_SET(bitmap[BITMAP_WORD(bit)], BITMAP_BIT_IN_WORD(bit));
 }
 
-// find first zero bit starting from LSB
-static inline unsigned long _ffz(unsigned long x) {
+// 返回二进制表示中第一个0的下标，如果x全一，则返回-1
+static inline unsigned long __find_first_zero(unsigned long x) {
     return __builtin_ffsl(~x) - 1;
 }
 
-static inline int bitmap_ffz(unsigned long *bitmap, int numbits) {
-    for (int i = 0; i < BITMAP_NUM_WORDS(numbits); ++i) {
+static inline int bitmap_find_first_zero(unsigned long *bitmap, int count) {
+    for (int i = 0; i < BITMAP_NUM_WORDS(count); ++i) {
         if (bitmap[i] == ~0UL) {
             continue;
         }
-        int bit = i * BITMAP_BITS_PER_WORD + _ffz(bitmap[i]);
-        if (bit < numbits) {
+        int bit = i * BITMAP_BITS_PER_WORD + __find_first_zero(bitmap[i]);
+        if (bit < count) {
             return bit;
         }
-        return -1;
+    }
+    return -1;
+}
+
+// 返回二进制表示中第一个1的下标，如果x全零，则返回-1
+static inline unsigned long __find_first_set(unsigned long x) {
+    return __builtin_ffsl(x) - 1;
+}
+
+static inline int bitmap_find_first_set(unsigned long *bitmap, int count) {
+    for (int i = 0; i < BITMAP_NUM_WORDS(count); ++i) {
+        if (bitmap[i] == 0UL) {
+            continue;
+        }
+        int bit = i * BITMAP_BITS_PER_WORD + __find_first_set(bitmap[i]);
+        if (bit < count) {
+            return bit;
+        }
     }
     return -1;
 }

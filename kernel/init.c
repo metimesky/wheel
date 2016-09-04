@@ -162,7 +162,7 @@ void init(uint32_t eax, uint32_t ebx) {
     gdt_init();
     tss_init();
 
-    // 初始化物理内存分配器
+    // 初始化物理内存分配器（最后一个使用kernel_end_addr）
     console_print("Creating buddy bitmap\n");
     page_alloc_init(mbi->mmap_addr, mbi->mmap_length);
 
@@ -180,8 +180,16 @@ void init(uint32_t eax, uint32_t ebx) {
     console_print("Waking up all processors\n");
     // local_apic_start_ap();
 
-    //uint64_t p = alloc_pages(0);
-    goto_ring3(kernel_end_addr + 4096);
+    uint64_t xp1 = alloc_pages(0);
+    console_print("allocated page order 0 at %x\n", xp1);
+    uint64_t xp2 = alloc_pages(0);
+    console_print("allocated page order 0 at %x\n", xp2);
+    uint64_t xp3 = alloc_pages(0);
+    console_print("allocated page order 0 at %x\n", xp3);
+
+    uint64_t p = alloc_pages(0);
+    console_print("allocated page order 0 at %x\n", p);
+    //goto_ring3(KERNEL_VMA + p + 4096);
 
     while (true) { }
 }

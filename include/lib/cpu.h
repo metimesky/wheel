@@ -19,6 +19,12 @@ static inline uint64_t read_cr0() {
     return val;
 }
 
+static inline uint64_t read_cr3() {
+    uint64_t val;
+    __asm__ __volatile__("mov %%cr3, %0" : "=r"(val));
+    return val;
+}
+
 static inline void invlpg(void* m) {
     /* Clobber memory to avoid optimizer re-ordering access before invlpg, which may cause nasty bugs. */
     __asm__ __volatile__("invlpg (%0)" :: "b"(m) : "memory");

@@ -11,8 +11,6 @@
 ; 为何这段代码只能用16位方式编译才通过，但链接的时候，某些符号地址会被截断
 ; 例如lgdt指令的参数
 
-;global trampoline_entry
-
 extern initial_pml4t_low
 extern tmp_gdt_ptr
 extern ap_init

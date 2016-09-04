@@ -3,6 +3,7 @@
 #include <multiboot.h>
 // #include <lib/cpu.h>  // invlpg
 #include <lib/bits.h>
+#include <drivers/console.h>
 
 // 内核结束位置的物理地址
 uint64_t kernel_end_addr;
@@ -111,9 +112,130 @@ void __init page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
     }
 }
 
-extern char init_end_addr;
+// 分配2^order个连续的物理页
+uint64_t alloc_pages(int order) {
+    for (int o = order; o < BUDDY_LEVEL; ++o) {
+        // 寻找第一段可用内存
+        uint64_t idx = bitmap_find_first_set(buddy_map[o], buddy_length[o]);
+        if (idx != -1) {
+            console_print("found at %x, order %d.\n", idx, o);
+            while (o > order) {
+                // 不断将内存块二分
+                bitmap_clear(buddy_map[o], idx, 1);
+                idx <<= 1;
+                --o;
+                bitmap_set(buddy_map[o], idx, 2);
+            }
+            bitmap_clear(buddy_map[o], idx, 1);
+            return ((uint64_t)idx << order) << 12;
+        }
+    }
+    return 0;
+}
 
-// 回收init section的控件
+// addr必须是2^order个页对齐的
+void free_pages(uint64_t addr, int order) {
+    addr >>= order + 12;
+    bitmap_set(buddy_map[order], addr, 1);
+    for (; order < 7 && bitmap_test(buddy_map[order], addr^1); ++order) {
+        // if two neighbouring block can be merged, then merge them
+        bitmap_clear(buddy_map[order], addr&(~1U), 2);
+        addr >>= 1;
+        bitmap_set(buddy_map[order+1], addr, 1);
+    }
+}
+
+// 回收init section的内存空间
+extern char init_end_addr;
 void reclaim_init_space() {
-    ;
+    uint64_t init_end = (uint64_t) &init_end_addr;
+}
+
+
+static inline bool is_page_entry_valid(uint64_t entry) {
+    return entry & 1;
+}
+
+static inline uint64_t canonical_addr(uint64_t addr) {
+    return addr & 0x000ffffffffffe00UL;
+}
+
+// 将phy映射到virt
+bool map(uint64_t *pml4t, uint64_t virt, uint64_t phy) {
+    // first calculate all page entry indexes
+    size_t pml4e_index = (virt >> 39) & 0x01ffUL;   // page-map level-4 entry index
+    size_t pdpe_index  = (virt >> 30) & 0x01ffUL;   // page-directory-pointer entry index
+    size_t pde_index   = (virt >> 21) & 0x01ffUL;   // page-directory entry index
+    size_t pte_index   = (virt >> 12) & 0x01ffUL;   // page-table entry index
+
+    // find page-directory-pointer table
+    uint64_t pml4e = pml4t[pml4e_index];
+    uint64_t *pdpt = (uint64_t *) canonical_addr(pml4e);
+    if (!is_page_entry_valid(pml4e)) {
+        // if the target pdp not exist, then create it
+        pdpt = (uint64_t *) alloc_pages(0); // alloc 4K for page table
+        if (0 == pdpt) {
+            // if we can't alloc page for pdpt, then report error
+            return false;
+        }
+        memset(pdpt, 0UL, 4096);            // making all entries invalid
+
+        // create pml4 entry for pdp
+        pml4t[pml4e_index] = ((uint64_t) pdpt & 0x000ffffffffffe00UL) | 7;   // P, RW, US
+    }
+
+    // find page-directory table
+    uint64_t pdpe = pdpt[pdpe_index];
+    uint64_t *pdt = (uint64_t *) canonical_addr(pdpe);
+    if (!is_page_entry_valid(pdpe)) {
+        // if the page-directory does not exist, then create it
+        pdt = (uint64_t *) alloc_pages(0);  // 4K
+        if (0 == pdt) {
+            return false;
+        }
+        memset(pdt, 0UL, 4096);
+
+        // create pdp entry for pd
+        pdpt[pdpe_index] = ((uint64_t) pdt & 0x000ffffffffffe00UL) | 7;     // P, RW, US
+    }
+
+    // find page table
+    uint64_t pde = pdt[pde_index];
+    uint64_t *pt = (uint64_t *) canonical_addr(pde);
+    if (!is_page_entry_valid(pde)) {
+        // if the page table not exist, then create it
+        pt = (uint64_t *) alloc_pages(0);   // 4K
+        if (0 == pt) {
+            return false;
+        }
+        memset(pt, 0UL, 4096);
+        pdt[pde_index] = ((uint64_t) pt & 0x000ffffffffffe00UL) | 7;    // P, RW, US
+    }
+
+    pt[pte_index] = (phy & 0x000ffffffffffe00UL) | 7; // P, RW, US
+
+    return true;
+}
+
+void unmap(uint64_t *pml4t, uint64_t page) {
+    // first calculate all page entry indexes, just like `map`
+    size_t pml4e_index = (page >> 39) & 0x01ffUL;   // page-map level-4 entry index
+    size_t pdpe_index  = (page >> 30) & 0x01ffUL;   // page-directory-pointer entry index
+    size_t pde_index   = (page >> 21) & 0x01ffUL;   // page-directory entry index
+    size_t pte_index   = (page >> 12) & 0x01ffUL;   // page-table entry index
+    
+    uint64_t *pdpt = (uint64_t *) canonical_addr(pml4t[pml4e_index]);
+    uint64_t *pdt  = (uint64_t *) canonical_addr(pdpt[pdpe_index]);
+    uint64_t *pt   = (uint64_t *) canonical_addr(pdt[pde_index]);
+    pt[pte_index] = 0UL;
+    invlpg(page);
+}
+
+uint64_t virt_to_phy(uint64_t virt) {
+    return virt;
+}
+
+// 返回phy所映射到的内核地址
+uint64_t phy_to_virt(uint64_t phy) {
+    return phy;
 }
