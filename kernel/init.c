@@ -10,7 +10,7 @@
 #include <drivers/pit.h>
 
 #include <lib/string.h>
-#include <lib/spinlock.h>
+#include <scheduler/spinlock.h>
 
 extern void gdt_init();
 
@@ -119,6 +119,45 @@ void ring3() {
 extern void goto_ring3(uint64_t rsp);
 extern uint64_t kernel_end_addr;
 
+
+extern void create_process(uint64_t entry);
+
+static void process_A() {
+    char *video = (char*) (KERNEL_VMA + 0xa0000);
+    while (1) {
+        console_print("A");
+        for (int i = 0; i < 100; ++i) {
+            for (int j = 0; j < 1000; ++j) {
+                video[0] = video[0];
+            }
+        }
+    }
+}
+
+static void process_B() {
+    char *video = (char*) (KERNEL_VMA + 0xa0000);
+    while (1) {
+        console_print("B");
+        for (int i = 0; i < 100; ++i) {
+            for (int j = 0; j < 1000; ++j) {
+                video[0] = video[0];
+            }
+        }
+    }
+}
+
+static void process_C() {
+    char *video = (char*) (KERNEL_VMA + 0xa0000);
+    while (1) {
+        console_print("C");
+        for (int i = 0; i < 100; ++i) {
+            for (int j = 0; j < 1000; ++j) {
+                video[0] = video[0];
+            }
+        }
+    }
+}
+
 // BSP的初始化函数，由boot.asm调用
 void init(uint32_t eax, uint32_t ebx) {
     console_init();
@@ -175,7 +214,7 @@ void init(uint32_t eax, uint32_t ebx) {
     __asm__ __volatile__("sti");
 
     console_print("Initializing timer\n");
-    // local_apic_timer_init();
+    local_apic_timer_init();
 
     console_print("Waking up all processors\n");
     // local_apic_start_ap();
@@ -190,6 +229,10 @@ void init(uint32_t eax, uint32_t ebx) {
     uint64_t p = alloc_pages(0);
     console_print("allocated page order 0 at %x\n", p);
     //goto_ring3(KERNEL_VMA + p + 4096);
+
+    create_process(process_A);
+    create_process(process_B);
+    create_process(process_C);
 
     while (true) { }
 }

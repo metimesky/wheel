@@ -11,45 +11,18 @@ typedef int spinlock_t;
 
 // called during initialization of the ACPICA subsystem
 ACPI_STATUS AcpiOsInitialize() {
-    TRACE
     // do nothing, just return ok
     return AE_OK;
 }
 
 // called during termination of the ACPICA subsystem
 ACPI_STATUS AcpiOsTerminate() {
-    TRACE
     // do nothing, just return ok
     return AE_OK;
 }
 
 // returns the physical address of the ACPI RSDP table (only works on x86)
 ACPI_PHYSICAL_ADDRESS AcpiOsGetRootPointer() {
-    // get the EBDA address (physical)
-    // uint16_t ebda_addr = * (uint16_t *) (KERNEL_VMA + 0x040e);
-    // const char *p = (const char *) (KERNEL_VMA + ((uint64_t)ebda_addr << 4));
-    // console_print("ebda %x\n", p);
-
-    // // 1) search the first KB of EBDA
-    // for (int i = 0; i < 1024/16; ++i) {
-    //     if (strncmp(p, "RSD PTR ", 8) == 0) {
-    //         return (ACPI_PHYSICAL_ADDRESS) (p - KERNEL_VMA);
-    //     }
-    //     p += 16;
-    // }
-
-    // // 2) Search 128K upper memory: E0000h-FFFFFh
-    // p = (const char *) (KERNEL_VMA + 0x000e0000);
-    // for (int i = 0; i < 128*1024/16; ++i) {
-    //     if (strncmp(p, "RSD PTR ", 8) == 0) {
-    //         return (ACPI_PHYSICAL_ADDRESS) (p - KERNEL_VMA);
-    //     }
-    //     p += 16;
-    // }
-
-    // return NULL;
-////////
-    // console_print("--- AcpiOsGetRootPointer, ");
     ACPI_SIZE ret;
     if (ACPI_SUCCESS(AcpiFindRootPointer(&ret))) {
         // console_print("got %x.\n", ret);

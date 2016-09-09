@@ -1,9 +1,7 @@
 #include <memory.h>
 #include <interrupt.h>
 #include <multiboot.h>
-// #include <lib/cpu.h>  // invlpg
 #include <lib/bits.h>
-#include <drivers/console.h>
 
 // 内核结束位置的物理地址
 uint64_t kernel_end_addr;
@@ -41,7 +39,7 @@ void __init percpu_area_init() {
 #define BUDDY_LEVEL 7
 static unsigned long *buddy_map[BUDDY_LEVEL];   // 共7阶位图，1表示可用，0表示不可用或已合并为更高阶的buddy
 static int buddy_length[BUDDY_LEVEL];           // 各阶位图的比特位数
-static uint64_t free_page_count;
+uint64_t free_page_count;
 
 // 初始化buddy位图，该函数必须在percpu_area_init之后执行
 void __init page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
@@ -118,7 +116,6 @@ uint64_t alloc_pages(int order) {
         // 寻找第一段可用内存
         uint64_t idx = bitmap_find_first_set(buddy_map[o], buddy_length[o]);
         if (idx != -1) {
-            console_print("found at %x, order %d.\n", idx, o);
             while (o > order) {
                 // 不断将内存块二分
                 bitmap_clear(buddy_map[o], idx, 1);
@@ -228,14 +225,13 @@ void unmap(uint64_t *pml4t, uint64_t page) {
     uint64_t *pdt  = (uint64_t *) canonical_addr(pdpt[pdpe_index]);
     uint64_t *pt   = (uint64_t *) canonical_addr(pdt[pde_index]);
     pt[pte_index] = 0UL;
-    invlpg(page);
 }
 
 uint64_t virt_to_phy(uint64_t virt) {
-    return virt;
+    return virt - KERNEL_VMA;
 }
 
 // 返回phy所映射到的内核地址
 uint64_t phy_to_virt(uint64_t phy) {
-    return phy;
+    return phy + KERNEL_VMA;
 }

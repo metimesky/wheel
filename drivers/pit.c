@@ -40,7 +40,7 @@ static void pit_apic_handler(int vec, int_context_t *ctx) {
 void pit_delay(int ticks) {
     int end_tick = pit_tick + ticks;
     while (pit_tick < end_tick) {
-        video[4] ++;
+        //video[4] ++;
     }
 }
 

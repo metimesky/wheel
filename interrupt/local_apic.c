@@ -3,6 +3,7 @@
 #include <drivers/pit.h>
 #include <lib/cpu.h>
 #include <drivers/console.h>
+// #include <scheduler.h>
 
 // 该模块不仅负责中断相关配置，还有local Apic Timer
 // local Apic Timer作为调度器的中断源非常合适，但是不适合作为计时间的时钟，
@@ -174,12 +175,16 @@ void local_apic_send_eoi() {
 
 static uint64_t local_apic_tick;
 
+// 定义在scheduler中
+extern void clock_isr();
+
 static void local_apic_timer_callback(int vec, int_context_t *ctx) {
-    static char *video = (char *)(KERNEL_VMA + 0xa0000);
+    // static char *video = (char *)(KERNEL_VMA + 0xa0000);
     ++local_apic_tick;
-    if (local_apic_tick % 1000 == 0) {
-        ++video[154];
-    }
+    clock_isr();
+    // if (local_apic_tick % 1000 == 0) {
+    //     ++video[154];
+    // }
     local_apic_send_eoi();
 }
 
@@ -198,7 +203,7 @@ void __init local_apic_timer_init() {
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 0;
 
     console_print("Frequency is %d.\n", t1 - t2);
-    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = (t1 - t2) / 1000;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = (t1 - t2) / 1;
 }
 
 void local_apic_delay(int ticks) {

@@ -1,7 +1,11 @@
 ; 本文件定义了中断处理函数的入口点，真正的实现在int_handler_table数组中
+; 目前不支持中断重入
 
 ; 定义在idt.c中
 extern int_handler_table
+
+; 定义在scheduler中
+extern kernel_rsp
 
 [section .text]
 [BITS 64]
@@ -68,6 +72,10 @@ isr%1:
     ; push the rest of the interrupt frame to the stack
     save_regs
 
+    ; 将目前的rsp保存起来
+    mov     rax, qword kernel_rsp
+    mov     qword [rax], rsp
+
     cld
 
     ; save frame pointer to rbp
@@ -82,6 +90,10 @@ isr%1:
     ; restore saved frame pointer from rbp
     mov     rsp, rbp
 
+    ; 切换到目标任务的rsp
+    mov     rax, qword kernel_rsp
+    mov     rsp, qword [rax]
+    
     ; restore the saved registers.
     restore_regs
 

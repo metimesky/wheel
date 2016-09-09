@@ -12,6 +12,8 @@ extern void page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length);
 extern uint64_t alloc_pages(int order);
 extern void free_pages(uint64_t addr, int order);
 
+// extern bool map(uint64_t phy, uint64_t virt);
+
 extern void reclaim_init_space();
 
 #endif
