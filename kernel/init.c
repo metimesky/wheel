@@ -10,7 +10,7 @@
 #include <drivers/pit.h>
 
 #include <lib/string.h>
-#include <scheduler/spinlock.h>
+#include <lib/locking.h>
 
 extern void gdt_init();
 
@@ -95,31 +95,43 @@ static __init bool parse_madt() {
 //     return NULL;
 // }
 
-static spinlock_t lock = 0;
+static raw_spinlock_t lock = 0;
 
+// 该函数在ring3环境下开始执行
 void ring3() {
     // __asm__ __volatile__("sti");
     char *video = (char*) (KERNEL_VMA + 0xa0000);
     for (int i = 0; i < 1000; ++i) {
-        spinlock_lock(&lock);
-        console_print("3");
-        // ++video[0];
-        // for (int a = 0; a < 1000; ++a) {
-        //     for (int b = 0; b < 1000; ++b) {
-        //         video[0] = video[0];
-        //     }
-        // }
-        spinlock_free(&lock);
-        pit_delay(5000);
+        raw_spin_lock(&lock);
+        //console_print("3");
+        ++video[0];
+        for (int a = 0; a < 1000; ++a) {
+            for (int b = 0; b < 1000; ++b) {
+                video[0] = video[0];
+            }
+        }
+        raw_spin_unlock(&lock);
+        // pit_delay(5000);
     }
 
     while (1) { }
 }
 
+// 第一个进程的内核入口点
 extern void goto_ring3(uint64_t rsp);
+static void process0_entry() {
+    // 进程刚刚创建的时候，只有内核的上下文，只有内核栈，需要为自己申请专门的用户栈。
+    uint64_t p = alloc_pages(0);
+    console_print("allocated page order 0 at %x\n", p);
+
+    // 进入用户态执行，该函数不应该返回
+    goto_ring3(KERNEL_VMA + p + 4096);
+    while (1) {}
+}
+
 extern uint64_t kernel_end_addr;
 
-
+// 创建进程的时候，入口点是在内核模式下进入的
 extern void create_process(uint64_t entry);
 
 static void process_A() {
@@ -215,6 +227,7 @@ void init(uint32_t eax, uint32_t ebx) {
 
     console_print("Initializing timer\n");
     local_apic_timer_init();
+    io_apic_mask(GSI_VEC_BASE + 2);
 
     console_print("Waking up all processors\n");
     // local_apic_start_ap();
@@ -230,10 +243,14 @@ void init(uint32_t eax, uint32_t ebx) {
     console_print("allocated page order 0 at %x\n", p);
     //goto_ring3(KERNEL_VMA + p + 4096);
 
+    create_process(process0_entry);
     create_process(process_A);
     create_process(process_B);
     create_process(process_C);
 
+    while (1) {
+        //console_print("K");
+    }
     while (true) { }
 }
 
@@ -257,12 +274,12 @@ void ap_init(int id) {
 
     char str[] = "X";
     for (int i = 0; i < 1000; ++i) {
-        spinlock_lock(&lock);
+        raw_spin_lock(&lock);
             str[0] = 'A'+id;
             console_set_attr(0x0a + id);
             console_print(str);
             console_set_attr(0x1f);
-        spinlock_free(&lock);
+        raw_spin_unlock(&lock);
         pit_delay(8000);
     }
 
