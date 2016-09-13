@@ -3,8 +3,16 @@ extern ring32
 global goto_ring3
 global goto_ring32
 
+global syscall_test
+
 [section .text]
+
 [BITS 64]
+
+syscall_test:
+    xor     rax, rax
+    int     80
+    ret
 
 goto_ring3:
     ;mov     rbx, rsp

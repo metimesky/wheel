@@ -12,6 +12,8 @@
 #include <lib/string.h>
 #include <lib/locking.h>
 
+#include <syscall.h>
+
 extern void gdt_init();
 
 // 多核初始化
@@ -24,7 +26,6 @@ extern void gdt_init();
 // Wheel将MADT中localApic在表中出现顺序作为索引，创建一个单独的local_apic_list表，里面保存localApicId和cpuId
 // 每个CPU的索引，称作ProcessorId，保存在MSR寄存器GS.BASE中。
 
-// extern void local_apic_timer_init();
 extern void local_apic_start_ap();
 
 static __init bool parse_madt() {
@@ -74,32 +75,10 @@ static __init bool parse_madt() {
     return true;
 }
 
-// typedef struct {
-//     uintptr_t addr;
-//     char name[];
-// } kernel_symbol_t;
-
-// extern void (* symbol_find(const char * name))(void);
-
-// void (* symbol_find(const char * name))(void) {
-//     kernel_symbol_t * k = (kernel_symbol_t *)&kernel_symbols_start;
-
-//     while ((uintptr_t)k < (uintptr_t)&kernel_symbols_end) {
-//         if (strcmp(k->name, name)) {
-//             k = (kernel_symbol_t *)((uintptr_t)k + sizeof *k + strlen(k->name) + 1);
-//             continue;
-//         }
-//         return (void (*)(void))k->addr;
-//     }
-
-//     return NULL;
-// }
-
 static raw_spinlock_t lock = 0;
 
 // 该函数在ring3环境下开始执行
 void ring3() {
-    // __asm__ __volatile__("sti");
     char *video = (char*) (KERNEL_VMA + 0xa0000);
     for (int i = 0; i < 1000; ++i) {
         //raw_spin_lock(&lock);
@@ -111,26 +90,26 @@ void ring3() {
                 video[0] = video[0];
             }
         }
-        //raw_spin_unlock(&lock);
-        // pit_delay(5000);
     }
 
     while (1) { }
 }
-
+extern void syscall_test();
+extern void syscall_test2();
 void ring32() {
     // __asm__ __volatile__("sti");
     char *video = (char*) (KERNEL_VMA + 0xa0000);
     for (int i = 0; i < 1000; ++i) {
         //raw_spin_lock(&lock);
         //console_print("3");
-        video[4*i+2] = '2';
-        video[4*i+3] = 0x4e;
+        // video[4*i+2] = '2';
+        // video[4*i+3] = 0x4e;
         for (int a = 0; a < 1000; ++a) {
             for (int b = 0; b < 100; ++b) {
                 video[0] = video[0];
             }
         }
+        sys_print("2");
         //raw_spin_unlock(&lock);
         // pit_delay(5000);
     }
@@ -176,6 +155,7 @@ static void process_A() {
                 video[0] = video[0];
             }
         }
+        syscall_test();
     }
 }
 
@@ -205,7 +185,12 @@ static void process_C() {
     }
 }
 
+// void syscall_handler(int n, int_context_t *ctx) {
+//     console_print("syscall#%d", ctx->rax);
+// }
+
 extern void start_schedule();
+extern void syscall_init();
 
 // BSP的初始化函数，由boot.asm调用
 void init(uint32_t eax, uint32_t ebx) {
@@ -262,44 +247,26 @@ void init(uint32_t eax, uint32_t ebx) {
 
     __asm__ __volatile__("sti");
 
-    // console_print("Initializing timer\n");
+    console_print("Initializing timer\n");
     local_apic_timer_init();
     io_apic_mask(GSI_VEC_BASE + 2);
 
     console_print("Waking up all processors\n");
     // local_apic_start_ap();
 
-    // uint64_t xp1 = alloc_pages(0);
-    // console_print("allocated page order 0 at %x\n", xp1);
-    // uint64_t xp2 = alloc_pages(0);
-    // console_print("allocated page order 0 at %x\n", xp2);
-    // uint64_t xp3 = alloc_pages(0);
-    // console_print("allocated page order 0 at %x\n", xp3);
-    // uint64_t xp4 = alloc_pages(0);
-    // console_print("allocated page order 0 at %x\n", xp4);
+    // 安装syscall的ISR
+    syscall_init();
+    // idt_set_int_handler(80, syscall_dispatcher);
 
     // 向run_queue中添加进程，当下一次local APIC timer中断触发时，就会自动切换到这些进程中开始执行
-    // create_process(process0_entry);
-    // create_process(process_A);
-    // create_process(process_B);
-    create_process3(ring3);
-    create_process3(ring32);
-    // create_process3(ring32);
     create_process(process_A);
     create_process(process_B);
-    // create_process(process_C);
+    create_process(process_C);
+    create_process3(ring3);
+    create_process3(ring32);
 
     start_schedule();
 
-    char *video = (char *) (KERNEL_VMA + 0xa0000);
-    while (1) {
-        console_print("K");
-        for (int i = 0; i < 1000; ++i) {
-            for (int j = 0; j < 1000; ++j) {
-                video[0] = video[0];
-            }
-        }
-    }
     while (true) { }
 }
 
