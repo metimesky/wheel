@@ -104,7 +104,26 @@ void ring3() {
     for (int i = 0; i < 1000; ++i) {
         raw_spin_lock(&lock);
         //console_print("3");
-        ++video[0];
+        video[2*i+ 1] = 0x0b;
+        for (int a = 0; a < 1000; ++a) {
+            for (int b = 0; b < 1000; ++b) {
+                video[0] = video[0];
+            }
+        }
+        raw_spin_unlock(&lock);
+        // pit_delay(5000);
+    }
+
+    while (1) { }
+}
+
+void ring32() {
+    // __asm__ __volatile__("sti");
+    char *video = (char*) (KERNEL_VMA + 0xa0000);
+    for (int i = 0; i < 1000; ++i) {
+        raw_spin_lock(&lock);
+        //console_print("3");
+        video[2*i] = '2';
         for (int a = 0; a < 1000; ++a) {
             for (int b = 0; b < 1000; ++b) {
                 video[0] = video[0];
@@ -119,6 +138,7 @@ void ring3() {
 
 // 第一个进程的内核入口点
 extern void goto_ring3(uint64_t rsp);
+extern void goto_ring32(uint64_t rsp);
 static void process0_entry() {
     // 进程刚刚创建的时候，只有内核的上下文，只有内核栈，需要为自己申请专门的用户栈。
     uint64_t p = alloc_pages(0);
@@ -126,6 +146,15 @@ static void process0_entry() {
 
     // 进入用户态执行，该函数不应该返回
     goto_ring3(KERNEL_VMA + p + 4096);
+    while (1) {}
+}
+static void process1_entry() {
+    // 进程刚刚创建的时候，只有内核的上下文，只有内核栈，需要为自己申请专门的用户栈。
+    uint64_t p = alloc_pages(0);
+    console_print("allocated page order 0 at %x\n", p);
+
+    // 进入用户态执行，该函数不应该返回
+    goto_ring32(KERNEL_VMA + p + 4096);
     while (1) {}
 }
 
@@ -136,8 +165,9 @@ extern void create_process(uint64_t entry);
 
 static void process_A() {
     char *video = (char*) (KERNEL_VMA + 0xa0000);
+    int counter = 0;
     while (1) {
-        console_print("A");
+        console_print("A%d ", counter++);
         for (int i = 0; i < 100; ++i) {
             for (int j = 0; j < 1000; ++j) {
                 video[0] = video[0];
@@ -148,8 +178,9 @@ static void process_A() {
 
 static void process_B() {
     char *video = (char*) (KERNEL_VMA + 0xa0000);
+    int counter = 0;
     while (1) {
-        console_print("B");
+        console_print("B%d ", counter++);
         for (int i = 0; i < 100; ++i) {
             for (int j = 0; j < 1000; ++j) {
                 video[0] = video[0];
@@ -160,8 +191,9 @@ static void process_B() {
 
 static void process_C() {
     char *video = (char*) (KERNEL_VMA + 0xa0000);
+    int counter = 0;
     while (1) {
-        console_print("C");
+        console_print("C%d ", counter++);
         for (int i = 0; i < 100; ++i) {
             for (int j = 0; j < 1000; ++j) {
                 video[0] = video[0];
@@ -241,15 +273,22 @@ void init(uint32_t eax, uint32_t ebx) {
 
     uint64_t p = alloc_pages(0);
     console_print("allocated page order 0 at %x\n", p);
-    //goto_ring3(KERNEL_VMA + p + 4096);
+    // goto_ring3(KERNEL_VMA + p + 4096);
 
-    create_process(process0_entry);
+    // create_process(process0_entry);
+    // create_process(process1_entry);
     create_process(process_A);
-    create_process(process_B);
-    create_process(process_C);
+    // create_process(process_B);
+    // create_process(process_C);
 
+    char *video = (char *) (KERNEL_VMA + 0xa0000);
     while (1) {
-        //console_print("K");
+        console_print("K");
+        for (int i = 0; i < 1000; ++i) {
+            for (int j = 0; j < 1000; ++j) {
+                video[0] = video[0];
+            }
+        }
     }
     while (true) { }
 }

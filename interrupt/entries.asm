@@ -5,7 +5,7 @@
 extern int_handler_table
 
 ; 定义在scheduler中
-extern kernel_rsp
+extern target_rsp
 
 [section .text]
 [BITS 64]
@@ -65,17 +65,22 @@ isr%1:
 
 ; 通用中断处理逻辑
 %macro common_int_handler 1
-    ; check if we are comming from user-mode
-    ;test    word [rsp+24], 3    ; by checking SS selector's RPL
-    ;jnz     come_from_userspace
+    ; check whether we are comming from user-space or kernel-space
+    test    word [rsp+40], 3        ; by checking SS selector's RPL
 
     ; push the rest of the interrupt frame to the stack
     save_regs
 
     ; 将目前的rsp保存起来
-    mov     rax, qword kernel_rsp
+    mov     rax, qword target_rsp
     mov     qword [rax], rsp
 
+    ; switch kernel stack if we come from userspace
+    jmp     .from_kernel
+    mov     rax, qword [rsp - 8]
+    mov     rsp, rax
+
+.from_kernel:
     cld
 
     ; save frame pointer to rbp
@@ -91,7 +96,7 @@ isr%1:
     mov     rsp, rbp
 
     ; 切换到目标任务的rsp
-    mov     rax, qword kernel_rsp
+    mov     rax, qword target_rsp
     mov     rsp, qword [rax]
     
     ; restore the saved registers.
