@@ -65,17 +65,23 @@ isr%1:
 
 ; 通用中断处理逻辑
 %macro common_int_handler 1
-
-    ; 保存上下文
+    ; 保存上下文（通用寄存器）
     save_regs
 
     ; 将目前的rsp保存到target_rsp中
-    mov     rax, qword target_rsp
-    mov     qword [rax], rsp
+    ; mov     rax, qword target_rsp
+    ; mov     qword [rax], rsp
+
+    ; 保存rsp到rbp和target_rsp中
+    mov     rbp, rsp
+    mov     rdi, qword target_rsp
+    mov     qword [rdi], rbp
 
     ; 首先判断被中断的是用户态还是内核态
     test    word [rsp+160], 3       ; by checking SS selector's RPL
     jz      .from_kernel
+
+    ; TODO: 如果是用户态，则保存浮点寄存器
 
     ; 如果是用户态，则切换到内核栈
     mov     rax, qword [rsp - 8]
@@ -85,7 +91,7 @@ isr%1:
     cld
 
     ; save frame pointer to rbp
-    mov    rbp, rsp
+    ; mov    rbp, rsp
 
     ; Call the interrupt handler.
     mov     rdi, %1

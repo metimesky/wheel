@@ -3,6 +3,8 @@
 #include <gdt_tss.h>
 #include <interrupt.h>
 
+#include <drivers/console.h>
+
 // 多核的调度比单核复杂很多
 // VxWorks中，BSP负责中断处理
 
@@ -11,8 +13,8 @@
 struct pcb {
     uint32_t pid;
     char *name;
-    uint64_t ustack_top;
     uint64_t resume_rsp;
+    uint64_t ustack_top;
     uint64_t kstack_top;    // const
     int_context_t context;
 };
@@ -39,12 +41,15 @@ void prepare_kernel_thread() {
 void create_process(uint64_t entry) {
     uint64_t stack = alloc_pages(0);
     process_list[process_count].kstack_top = KERNEL_VMA + stack + 4096;
-    process_list[process_count].resume_rsp = &(process_list[process_count].context.r15);
+
     process_list[process_count].context.cs = 0x08;
     process_list[process_count].context.ss = 0x10;
     process_list[process_count].context.rsp = KERNEL_VMA + stack + 4096;
     process_list[process_count].context.rip = entry;
     process_list[process_count].context.rflags = 1UL << 9;  // enable IF
+
+    process_list[process_count].resume_rsp = &(process_list[process_count].context.r15);
+
     ++process_count;
 }
 
@@ -54,36 +59,46 @@ void create_process3(uint64_t entry) {
     process_list[process_count].kstack_top = KERNEL_VMA + kstack + 4096;
     uint64_t ustack = alloc_pages(0);
     process_list[process_count].ustack_top = KERNEL_VMA + ustack + 4096;
+    console_print("new process kstack %x, ustack %x.\n", kstack, ustack);
 
-    process_list[process_count].resume_rsp = &(process_list[process_count].context.r15);
     process_list[process_count].context.cs = 0x18 + 3;
     process_list[process_count].context.ss = 0x20 + 3;
     process_list[process_count].context.rsp = KERNEL_VMA + ustack + 4096;
     process_list[process_count].context.rip = entry;
     process_list[process_count].context.rflags = 1UL << 9;  // enable IF
+
+    process_list[process_count].resume_rsp = &(process_list[process_count].context.r15);
+
     ++process_count;
 }
 
 // 在local APIC Timer中调用，在中断环境下执行
-void clock_isr() {
+void (*clock_isr)(int_context_t *ctx) = NULL;
+
+static void clock_isr_func(int_context_t *ctx) {
     static char *video = (char *) (KERNEL_VMA + 0xa0000);
-    ++video[144];
+    //++video[144];
 
     if (process_count > 0) {
         if (next_pid >= 0 && next_pid < process_count) {
-            process_list[next_pid].resume_rsp = target_rsp;
+            process_list[next_pid].resume_rsp = (uint64_t) ctx;
         }
 
         ++next_pid;
         if (next_pid >= process_count) {
             next_pid = 0;
         }
+        // video[80+2*next_pid+1]++;
 
         // pop时从这里开始
         target_rsp = process_list[next_pid].resume_rsp;
         // target_rsp = (uint64_t)&(process_list[next_pid].context.r15);
 
-        // 下一次中断时，切换到这个位置（通常不需要改变）
+        // 下一次从ring3中断时，切换到这个位置（通常不需要改变）
         ((tss_t *)PERCPU(tss))->rsp0 = (uint64_t)&(process_list[next_pid].context.r15) + sizeof(int_context_t);
     }
+}
+
+void start_schedule() {
+    clock_isr = clock_isr_func;
 }

@@ -102,15 +102,16 @@ void ring3() {
     // __asm__ __volatile__("sti");
     char *video = (char*) (KERNEL_VMA + 0xa0000);
     for (int i = 0; i < 1000; ++i) {
-        raw_spin_lock(&lock);
+        //raw_spin_lock(&lock);
         //console_print("3");
-        video[2*i] = '3';
+        video[4*i] = '3';
+        video[4*i+1] = 0x3e;
         for (int a = 0; a < 100; ++a) {
             for (int b = 0; b < 1000; ++b) {
                 video[0] = video[0];
             }
         }
-        raw_spin_unlock(&lock);
+        //raw_spin_unlock(&lock);
         // pit_delay(5000);
     }
 
@@ -121,15 +122,16 @@ void ring32() {
     // __asm__ __volatile__("sti");
     char *video = (char*) (KERNEL_VMA + 0xa0000);
     for (int i = 0; i < 1000; ++i) {
-        raw_spin_lock(&lock);
+        //raw_spin_lock(&lock);
         //console_print("3");
-        video[2*i] = '2';
+        video[4*i+2] = '2';
+        video[4*i+3] = 0x4e;
         for (int a = 0; a < 1000; ++a) {
-            for (int b = 0; b < 1000; ++b) {
+            for (int b = 0; b < 100; ++b) {
                 video[0] = video[0];
             }
         }
-        raw_spin_unlock(&lock);
+        //raw_spin_unlock(&lock);
         // pit_delay(5000);
     }
 
@@ -203,6 +205,8 @@ static void process_C() {
     }
 }
 
+extern void start_schedule();
+
 // BSP的初始化函数，由boot.asm调用
 void init(uint32_t eax, uint32_t ebx) {
     console_init();
@@ -258,7 +262,7 @@ void init(uint32_t eax, uint32_t ebx) {
 
     __asm__ __volatile__("sti");
 
-    console_print("Initializing timer\n");
+    // console_print("Initializing timer\n");
     local_apic_timer_init();
     io_apic_mask(GSI_VEC_BASE + 2);
 
@@ -276,10 +280,16 @@ void init(uint32_t eax, uint32_t ebx) {
 
     // 向run_queue中添加进程，当下一次local APIC timer中断触发时，就会自动切换到这些进程中开始执行
     // create_process(process0_entry);
+    // create_process(process_A);
+    // create_process(process_B);
+    create_process3(ring3);
+    create_process3(ring32);
+    // create_process3(ring32);
     create_process(process_A);
     create_process(process_B);
-    create_process3(ring3);
     // create_process(process_C);
+
+    start_schedule();
 
     char *video = (char *) (KERNEL_VMA + 0xa0000);
     while (1) {

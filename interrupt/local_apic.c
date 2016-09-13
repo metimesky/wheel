@@ -176,12 +176,14 @@ void local_apic_send_eoi() {
 static uint64_t local_apic_tick;
 
 // 定义在scheduler中
-extern void clock_isr();
+extern void (*clock_isr)(int_context_t *ctx);
 
 static void local_apic_timer_callback(int vec, int_context_t *ctx) {
     // static char *video = (char *)(KERNEL_VMA + 0xa0000);
     ++local_apic_tick;
-    clock_isr();
+    if (clock_isr) {
+        clock_isr(ctx);
+    }
     // if (local_apic_tick % 1000 == 0) {
     //     ++video[154];
     // }
