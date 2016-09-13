@@ -5,7 +5,7 @@
 extern int_handler_table
 
 ; 定义在scheduler中
-extern kernel_rsp
+extern target_rsp
 
 [section .text]
 [BITS 64]
@@ -65,17 +65,23 @@ isr%1:
 
 ; 通用中断处理逻辑
 %macro common_int_handler 1
-    ; 首先判断被中断的是用户态还是内核态
-    ;test    word [rsp+24], 3    ; by checking SS selector's RPL
-    ;jnz     come_from_userspace
 
-    ; push the rest of the interrupt frame to the stack
+    ; 保存上下文
     save_regs
 
-    ; 将目前的rsp保存起来
-    mov     rax, qword kernel_rsp
+    ; 将目前的rsp保存到target_rsp中
+    mov     rax, qword target_rsp
     mov     qword [rax], rsp
 
+    ; 首先判断被中断的是用户态还是内核态
+    test    word [rsp+160], 3       ; by checking SS selector's RPL
+    jz      .from_kernel
+
+    ; 如果是用户态，则切换到内核栈
+    mov     rax, qword [rsp - 8]
+    mov     rsp, rax
+
+.from_kernel:
     cld
 
     ; save frame pointer to rbp
@@ -91,7 +97,7 @@ isr%1:
     mov     rsp, rbp
 
     ; 切换到目标任务的rsp
-    mov     rax, qword kernel_rsp
+    mov     rax, qword target_rsp
     mov     rsp, qword [rax]
     
     ; restore the saved registers.
