@@ -1,6 +1,7 @@
 #include <drivers/console.h>
 #include <drivers/vga.h>
 #include <lib/string.h>
+#include <lib/locking.h>
 
 // 可以将console.c放在debug模块中，这只是启动过程中的临时终端
 

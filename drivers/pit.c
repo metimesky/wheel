@@ -23,7 +23,7 @@ static inline void real_handler() {
     ++pit_tick;
     if (pit_tick % 100 == 0) {
         // pit_tick = 0;
-        ++video[158];
+        // ++video[158];
     }
 }
 

@@ -3,6 +3,7 @@
 #include <gdt_tss.h>
 #include <interrupt.h>
 
+#include <lib/locking.h>
 #include <drivers/console.h>
 
 // 多核的调度比单核复杂很多
@@ -30,15 +31,16 @@ static pcb_t process_list[16];
 static int process_count = 0;   // init函数也作为一个任务存在
 static int next_pid = -1;
 
+// lock for creating process
+static raw_spinlock_t lock = 0;
+
 // 退出ISR时，需要设置正确的RSP，才能恢复到指定的Task状态。
 uint64_t target_rsp;
 
-void prepare_kernel_thread() {
-    ;
-}
-
 // 目前是创建内核层任务
 void create_process(uint64_t entry) {
+    raw_spin_lock(&lock);
+
     uint64_t stack = alloc_pages(0);
     process_list[process_count].kstack_top = KERNEL_VMA + stack + 4096;
 
@@ -51,15 +53,18 @@ void create_process(uint64_t entry) {
     process_list[process_count].resume_rsp = &(process_list[process_count].context.r15);
 
     ++process_count;
+
+    raw_spin_unlock(&lock);
 }
 
 // 创建一个用户层的任务
 void create_process3(uint64_t entry) {
+    raw_spin_lock(&lock);
+
     uint64_t kstack = alloc_pages(0);
-    process_list[process_count].kstack_top = KERNEL_VMA + kstack + 4096;
     uint64_t ustack = alloc_pages(0);
+    process_list[process_count].kstack_top = KERNEL_VMA + kstack + 4096;
     process_list[process_count].ustack_top = KERNEL_VMA + ustack + 4096;
-    console_print("new process kstack %x, ustack %x.\n", kstack, ustack);
 
     process_list[process_count].context.cs = 0x18 + 3;
     process_list[process_count].context.ss = 0x20 + 3;
@@ -70,6 +75,8 @@ void create_process3(uint64_t entry) {
     process_list[process_count].resume_rsp = &(process_list[process_count].context.r15);
 
     ++process_count;
+
+    raw_spin_unlock(&lock);
 }
 
 // 在local APIC Timer中调用，在中断环境下执行
@@ -77,7 +84,6 @@ void (*clock_isr)(int_context_t *ctx) = NULL;
 
 static void clock_isr_func(int_context_t *ctx) {
     static char *video = (char *) (KERNEL_VMA + 0xa0000);
-    //++video[144];
 
     if (process_count > 0) {
         if (next_pid >= 0 && next_pid < process_count) {
@@ -88,11 +94,9 @@ static void clock_isr_func(int_context_t *ctx) {
         if (next_pid >= process_count) {
             next_pid = 0;
         }
-        // video[80+2*next_pid+1]++;
 
         // pop时从这里开始
         target_rsp = process_list[next_pid].resume_rsp;
-        // target_rsp = (uint64_t)&(process_list[next_pid].context.r15);
 
         // 下一次从ring3中断时，切换到这个位置（通常不需要改变）
         ((tss_t *)PERCPU(tss))->rsp0 = (uint64_t)&(process_list[next_pid].context.r15) + sizeof(int_context_t);

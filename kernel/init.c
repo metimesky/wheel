@@ -11,20 +11,9 @@
 
 #include <lib/string.h>
 #include <lib/locking.h>
+#include <lib/printf.h>
 
 #include <syscall.h>
-
-extern void gdt_init();
-
-// 多核初始化
-// GDT、分页、IDT等配置对于每个核心都要执行，因此最好等到所有核心都启动后再初始化
-
-// 中断，需要计划好IDT每个条目的作用
-
-// SMP需要知道机器上各CPU的信息，特别是localApicId和cpuId。
-// 这两个Id不一定连续，因此不宜作为数组的索引。
-// Wheel将MADT中localApic在表中出现顺序作为索引，创建一个单独的local_apic_list表，里面保存localApicId和cpuId
-// 每个CPU的索引，称作ProcessorId，保存在MSR寄存器GS.BASE中。
 
 extern void local_apic_start_ap();
 
@@ -77,66 +66,61 @@ static __init bool parse_madt() {
 
 static raw_spinlock_t lock = 0;
 
-// 该函数在ring3环境下开始执行
-void ring3() {
+static void kernel_task_A() {
     char *video = (char*) (KERNEL_VMA + 0xa0000);
-    for (int i = 0; i < 1000; ++i) {
-        //raw_spin_lock(&lock);
-        //console_print("3");
-        video[4*i] = '3';
-        video[4*i+1] = 0x3e;
-        for (int a = 0; a < 100; ++a) {
-            for (int b = 0; b < 1000; ++b) {
+    int counter = 0;
+    while (1) {
+        console_print("KA%d.", counter++);
+        for (int i = 0; i < 1000; ++i) {
+            for (int j = 0; j < 1000; ++j) {
+                video[0] = video[0];
+            }
+        }
+        // syscall_test();
+    }
+}
+
+static void kernel_task_B() {
+    char *video = (char*) (KERNEL_VMA + 0xa0000);
+    int counter = 0;
+    while (1) {
+        console_print("KB%d.", counter++);
+        for (int i = 0; i < 1000; ++i) {
+            for (int j = 0; j < 1000; ++j) {
                 video[0] = video[0];
             }
         }
     }
-
-    while (1) { }
 }
-extern void syscall_test();
-extern void syscall_test2();
-void ring32() {
-    // __asm__ __volatile__("sti");
+
+void user_task_A() {
     char *video = (char*) (KERNEL_VMA + 0xa0000);
-    for (int i = 0; i < 1000; ++i) {
-        //raw_spin_lock(&lock);
-        //console_print("3");
-        // video[4*i+2] = '2';
-        // video[4*i+3] = 0x4e;
-        for (int a = 0; a < 1000; ++a) {
-            for (int b = 0; b < 100; ++b) {
+    char buf[32];
+    int counter = 0;
+    while (1) {
+        _sprintf(buf, "UA%d.", counter++);
+        sys_print(buf);
+        for (int i = 0; i < 1000; ++i) {
+            for (int j = 0; j < 1000; ++j) {
                 video[0] = video[0];
             }
         }
-        sys_print("2");
-        //raw_spin_unlock(&lock);
-        // pit_delay(5000);
     }
-
-    while (1) { }
 }
 
-// 第一个进程的内核入口点
-extern void goto_ring3(uint64_t rsp);
-extern void goto_ring32(uint64_t rsp);
-static void process0_entry() {
-    // 进程刚刚创建的时候，只有内核的上下文，只有内核栈，需要为自己申请专门的用户栈。
-    uint64_t p = alloc_pages(0);
-    // console_print("allocated page order 0 at %x\n", p);
-
-    // 进入用户态执行，该函数不应该返回
-    goto_ring3(KERNEL_VMA + p + 4096);
-    while (1) {}
-}
-static void process1_entry() {
-    // 进程刚刚创建的时候，只有内核的上下文，只有内核栈，需要为自己申请专门的用户栈。
-    uint64_t p = alloc_pages(0);
-    console_print("allocated page order 0 at %x\n", p);
-
-    // 进入用户态执行，该函数不应该返回
-    goto_ring32(KERNEL_VMA + p + 4096);
-    while (1) {}
+void user_task_B() {
+    char *video = (char*) (KERNEL_VMA + 0xa0000);
+    char buf[32];
+    int counter = 0;
+    while (1) {
+        _sprintf(buf, "UB%d.", counter++);
+        sys_print(buf);
+        for (int i = 0; i < 1000; ++i) {
+            for (int j = 0; j < 1000; ++j) {
+                video[0] = video[0];
+            }
+        }
+    }
 }
 
 extern uint64_t kernel_end_addr;
@@ -144,50 +128,6 @@ extern uint64_t kernel_end_addr;
 // 创建进程的时候，入口点是在内核模式下进入的
 extern void create_process(uint64_t entry);
 extern void create_process3(uint64_t entry);
-
-static void process_A() {
-    char *video = (char*) (KERNEL_VMA + 0xa0000);
-    int counter = 0;
-    while (1) {
-        console_print("A%d ", counter++);
-        for (int i = 0; i < 1000; ++i) {
-            for (int j = 0; j < 1000; ++j) {
-                video[0] = video[0];
-            }
-        }
-        syscall_test();
-    }
-}
-
-static void process_B() {
-    char *video = (char*) (KERNEL_VMA + 0xa0000);
-    int counter = 0;
-    while (1) {
-        console_print("B%d ", counter++);
-        for (int i = 0; i < 1000; ++i) {
-            for (int j = 0; j < 1000; ++j) {
-                video[0] = video[0];
-            }
-        }
-    }
-}
-
-static void process_C() {
-    char *video = (char*) (KERNEL_VMA + 0xa0000);
-    int counter = 0;
-    while (1) {
-        console_print("C%d ", counter++);
-        for (int i = 0; i < 1000; ++i) {
-            for (int j = 0; j < 1000; ++j) {
-                video[0] = video[0];
-            }
-        }
-    }
-}
-
-// void syscall_handler(int n, int_context_t *ctx) {
-//     console_print("syscall#%d", ctx->rax);
-// }
 
 extern void start_schedule();
 extern void syscall_init();
@@ -218,52 +158,45 @@ void init(uint32_t eax, uint32_t ebx) {
     }
 
     // 初始化IDT和int_handler_table
-    console_print("Initializing IDT\n");
     idt_init();
 
-    console_print("Initializing PIC and APIC\n");
+    // PIC and APIC
     pic_init();         // 初始化PIC，默认禁用全部IRQ
     io_apic_init();     // 初始化IO APIC，默认禁用全部GSI
     local_apic_init();  // 初始化Local APIC，默认禁用全部LVT，启用SVR
 
-    // 知道了CPU的数目，复制per-CPU Data
-    console_print("Copying per-CPU Data\n");
+    // copying per-cpu data
     percpu_area_init();
 
-    // 知道了CPU的数目，准备真正的GDT
-    console_print("Initializing GDT and TSS\n");
+    // prepare real gdt and tss
     gdt_init();
     tss_init();
 
     // 初始化物理内存分配器（最后一个使用kernel_end_addr）
-    console_print("Creating buddy bitmap\n");
     page_alloc_init(mbi->mmap_addr, mbi->mmap_length);
 
     // 初始化并启用PIT时钟
-    console_print("Initializing PIT\n");
     pit_init();
     pit_map_gsi(GSI_VEC_BASE + 2);      // TODO: 这里不要硬编码，根据MADT内容映射
     io_apic_unmask(GSI_VEC_BASE + 2);
 
     __asm__ __volatile__("sti");
 
-    console_print("Initializing timer\n");
+    console_print("Initializing Local APIC Timer\n");
     local_apic_timer_init();
     io_apic_mask(GSI_VEC_BASE + 2);
 
-    console_print("Waking up all processors\n");
-    // local_apic_start_ap();
-
     // 安装syscall的ISR
     syscall_init();
-    // idt_set_int_handler(80, syscall_dispatcher);
+
+    console_print("Waking up all processors\n");
+    local_apic_start_ap();
 
     // 向run_queue中添加进程，当下一次local APIC timer中断触发时，就会自动切换到这些进程中开始执行
-    create_process(process_A);
-    create_process(process_B);
-    create_process(process_C);
-    create_process3(ring3);
-    create_process3(ring32);
+    create_process(kernel_task_A);
+    create_process(kernel_task_B);
+    create_process3(user_task_A);
+    create_process3(user_task_B);
 
     start_schedule();
 
@@ -274,30 +207,16 @@ void init(uint32_t eax, uint32_t ebx) {
 
 // AP的初始化函数，由trampoline.asm调用
 void ap_init(int id) {
-    // 设置GS.BASE寄存器，在读取per-CPU Data时需要
+    // 加载GDT之后会将GS.BASE清零，在读取per-CPU Data时需要GS.BASE
+    gdt_load();
     write_gsbase(id);
-
-    char *video = (char*) (KERNEL_VMA + 0xa0000);
-    video[160*id + 0] = 'A';
-    video[160*id + 1] = 0x0b;
-    video[160*id + 2] = 'P';
-    video[160*id + 3] = 0x0b;
     
     idt_load();
     local_apic_init();
-    gdt_load();
-    idt_load();
 
-    char str[] = "X";
-    for (int i = 0; i < 1000; ++i) {
-        raw_spin_lock(&lock);
-            str[0] = 'A'+id;
-            console_set_attr(0x0a + id);
-            console_print(str);
-            console_set_attr(0x1f);
-        raw_spin_unlock(&lock);
-        pit_delay(8000);
-    }
+    tss_init();
+
+    console_print("Processor %d started.", id);
 
     while (true) { }
 }
