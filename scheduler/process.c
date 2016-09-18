@@ -52,6 +52,8 @@ void create_process(uint64_t entry) {
 
     process_list[process_count].resume_rsp = &(process_list[process_count].context.r15);
 
+    console_print("creating kernel task %d at %x, stack %x.\n", process_count, entry, stack);
+
     ++process_count;
 
     raw_spin_unlock(&lock);
@@ -74,10 +76,15 @@ void create_process3(uint64_t entry) {
 
     process_list[process_count].resume_rsp = &(process_list[process_count].context.r15);
 
+    console_print("creating kernel task %d at %x, kstack %x, ustack %x.\n", process_count, entry, kstack, ustack);
+
     ++process_count;
 
     raw_spin_unlock(&lock);
 }
+
+// 是否允许在同一CPU内切换进程
+static bool preemption = false;
 
 // 在local APIC Timer中调用，在中断环境下执行
 void (*clock_isr)(int_context_t *ctx) = NULL;
@@ -85,7 +92,7 @@ void (*clock_isr)(int_context_t *ctx) = NULL;
 static void clock_isr_func(int_context_t *ctx) {
     static char *video = (char *) (KERNEL_VMA + 0xa0000);
 
-    if (process_count > 0) {
+    if (preemption && process_count > 0) {
         if (next_pid >= 0 && next_pid < process_count) {
             process_list[next_pid].resume_rsp = (uint64_t) ctx;
         }
@@ -106,3 +113,6 @@ static void clock_isr_func(int_context_t *ctx) {
 void start_schedule() {
     clock_isr = clock_isr_func;
 }
+
+void preempt_enable() { preemption = true; }
+void preempt_disable() { preemption = false; }

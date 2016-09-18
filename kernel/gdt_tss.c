@@ -17,6 +17,7 @@ static uint64_t *gdt;
 static gdt_ptr_t gdtr;
 
 DEFINE_PERCPU(tss_t*, tss);
+// DEFINE_PERCPU(tss_t, tss);
 
 // 该函数必须在per-CPU Data初始化之后调用
 void __init gdt_init() {
@@ -36,11 +37,14 @@ void __init gdt_init() {
     gdt[4] = 0x00c0f20000000000UL;  // user data segment
 
     // 循环填充TSS描述符
+    console_print("percpu offset is %x\n", __percpu_offset);
     for (int i = 0; i < local_apic_count; ++i) {
         // 分配TSS的空间
         uint64_t base = KERNEL_VMA + kernel_end_addr;
+        // uint64_t base = &raw_percpu_id(tss, i);
         uint64_t limit = sizeof(tss_t);
-        PERCPU_ID(tss, i) = base;
+        raw_percpu_id(tss, i) = base;
+        // console_print("tss%d is at %x\n", i, &(raw_percpu_id(tss, i)));
         kernel_end_addr += (limit + 15UL) & ~15UL;
         
         gdt[2*i + 5] = 0;
@@ -68,7 +72,7 @@ void __init gdt_load() {
 
 extern char kernel_stack_top;
 void __init tss_init() {
-    tss_t *tss = PERCPU(tss);
+    tss_t *tss = (tss_t *)raw_percpu(tss);
     memset(tss, 0, sizeof(tss_t));
     int i = read_gsbase();
     tss->rsp0 = (uint64_t)(&kernel_stack_top + __percpu_offset * i);

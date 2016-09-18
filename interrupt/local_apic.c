@@ -154,7 +154,7 @@ void __init local_apic_init() {
     *(uint32_t *)(base + LOCAL_APIC_TIMER_ICR) = 0x0;
 
     // 设置LVT条目，默认全部禁用
-    *(uint32_t *)(base + LOCAL_APIC_TIMER) = LOCAL_APIC_MASK|(LVT_VEC_BASE & LOCAL_APIC_VECTOR);
+    *(uint32_t *)(base + LOCAL_APIC_TIMER) = LOCAL_APIC_MASK | (LVT_VEC_BASE & LOCAL_APIC_VECTOR);
     *(uint32_t *)(base + LOCAL_APIC_THERMAL) = LOCAL_APIC_MASK | ((LVT_VEC_BASE+1) & LOCAL_APIC_VECTOR);
     *(uint32_t *)(base + LOCAL_APIC_PMC) = LOCAL_APIC_MASK | ((LVT_VEC_BASE+2) & LOCAL_APIC_VECTOR);
     *(uint32_t *)(base + LOCAL_APIC_LINT0) = LOCAL_APIC_MASK | ((LVT_VEC_BASE+3) & LOCAL_APIC_VECTOR);
@@ -173,27 +173,25 @@ void local_apic_send_eoi() {
     *(uint32_t *)(base_addr + LOCAL_APIC_EOI) = 1;
 }
 
-static uint64_t local_apic_tick;
-
-// 定义在scheduler中
-extern void (*clock_isr)(int_context_t *ctx);
+static DEFINE_PERCPU(uint64_t, local_apic_tick);
+extern void (*clock_isr)(int_context_t *ctx);   // 定义在scheduler中
 
 static void local_apic_timer_callback(int vec, int_context_t *ctx) {
-    // static char *video = (char *)(KERNEL_VMA + 0xa0000);
-    ++local_apic_tick;
+    // ++local_apic_tick;
+    volatile uint64_t *t = &PERCPU(local_apic_tick);
+    ++(*t);
+
     if (clock_isr) {
         clock_isr(ctx);
     }
-    // if (local_apic_tick % 1000 == 0) {
-    //     ++video[154];
-    // }
     local_apic_send_eoi();
 }
 
+static uint32_t local_apic_timer_icr = 0;
+
 void __init local_apic_timer_init() {
     idt_set_int_handler(LVT_VEC_BASE, local_apic_timer_callback);
-    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CONFIG) = LOCAL_APIC_TIMER_DIVBY_16 & LOCAL_APIC_TIMER_DIVBY_MASK;
-    // *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 65536;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CONFIG) = LOCAL_APIC_TIMER_DIVBY_1 & LOCAL_APIC_TIMER_DIVBY_MASK;
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) |= LOCAL_APIC_TIMER_PERIODIC;
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) &= ~LOCAL_APIC_MASK;
 
@@ -203,14 +201,24 @@ void __init local_apic_timer_init() {
     pit_delay(1000);
     uint32_t t2 = *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CCR);
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 0;
+    local_apic_timer_icr = (t1 - t2) / 1000;
 
-    console_print("Frequency is %d.\n", t1 - t2);
-    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = (t1 - t2) / 1;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = local_apic_timer_icr;
+}
+
+void __init local_apic_timer_init_ap() {
+    idt_set_int_handler(LVT_VEC_BASE, local_apic_timer_callback);
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CONFIG) = LOCAL_APIC_TIMER_DIVBY_1 & LOCAL_APIC_TIMER_DIVBY_MASK;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) |= LOCAL_APIC_TIMER_PERIODIC;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER) &= ~LOCAL_APIC_MASK;
+
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = local_apic_timer_icr;
 }
 
 void local_apic_delay(int ticks) {
-    uint64_t end_tick = local_apic_tick + ticks;
-    while (local_apic_tick < end_tick) { }
+    volatile uint64_t *t = &PERCPU(local_apic_tick);
+    uint64_t end_tick = *t + ticks;
+    while (*t < end_tick) { }
 }
 
 extern char trampoline_start_addr;
@@ -254,8 +262,7 @@ void __init local_apic_start_ap() {
         // console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
         // *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
 
-        local_apic_tick = 0;
-        while (local_apic_tick < 10) { }
+        local_apic_delay(10);
         // console_print("2\n");
 
         // 发送Startup-IPI，向量号是初始化代码的实模式地址
@@ -265,8 +272,7 @@ void __init local_apic_start_ap() {
         // console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
         // *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
 
-        local_apic_tick = 0;
-        while (local_apic_tick < 10) { }
+        local_apic_delay(10);
         // console_print("3\n");
 
         // 再次发送Startup-IPI

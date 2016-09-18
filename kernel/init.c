@@ -1,6 +1,8 @@
 #include <wheel.h>
 #include <multiboot.h>
 #include <interrupt.h>
+#include <syscall.h>
+#include <scheduler.h>
 #include <gdt_tss.h>
 #include <memory.h>
 #include <percpu.h>
@@ -13,7 +15,6 @@
 #include <lib/locking.h>
 #include <lib/printf.h>
 
-#include <syscall.h>
 
 extern void local_apic_start_ap();
 
@@ -64,19 +65,20 @@ static __init bool parse_madt() {
     return true;
 }
 
-static raw_spinlock_t lock = 0;
+static raw_spinlock_t spin_print = 0;
 
 static void kernel_task_A() {
     char *video = (char*) (KERNEL_VMA + 0xa0000);
     int counter = 0;
     while (1) {
+        raw_spin_lock(&spin_print);
         console_print("KA%d.", counter++);
-        for (int i = 0; i < 1000; ++i) {
+        raw_spin_unlock(&spin_print);
+        for (int i = 0; i < 100; ++i) {
             for (int j = 0; j < 1000; ++j) {
                 video[0] = video[0];
             }
         }
-        // syscall_test();
     }
 }
 
@@ -84,8 +86,10 @@ static void kernel_task_B() {
     char *video = (char*) (KERNEL_VMA + 0xa0000);
     int counter = 0;
     while (1) {
+        raw_spin_lock(&spin_print);
         console_print("KB%d.", counter++);
-        for (int i = 0; i < 1000; ++i) {
+        raw_spin_unlock(&spin_print);
+        for (int i = 0; i < 100; ++i) {
             for (int j = 0; j < 1000; ++j) {
                 video[0] = video[0];
             }
@@ -99,8 +103,10 @@ void user_task_A() {
     int counter = 0;
     while (1) {
         _sprintf(buf, "UA%d.", counter++);
+        raw_spin_lock(&spin_print);
         sys_print(buf);
-        for (int i = 0; i < 1000; ++i) {
+        raw_spin_unlock(&spin_print);
+        for (int i = 0; i < 100; ++i) {
             for (int j = 0; j < 1000; ++j) {
                 video[0] = video[0];
             }
@@ -114,8 +120,10 @@ void user_task_B() {
     int counter = 0;
     while (1) {
         _sprintf(buf, "UB%d.", counter++);
+        raw_spin_lock(&spin_print);
         sys_print(buf);
-        for (int i = 0; i < 1000; ++i) {
+        raw_spin_unlock(&spin_print);
+        for (int i = 0; i < 100; ++i) {
             for (int j = 0; j < 1000; ++j) {
                 video[0] = video[0];
             }
@@ -190,7 +198,7 @@ void init(uint32_t eax, uint32_t ebx) {
     syscall_init();
 
     console_print("Waking up all processors\n");
-    local_apic_start_ap();
+    // local_apic_start_ap();
 
     // 向run_queue中添加进程，当下一次local APIC timer中断触发时，就会自动切换到这些进程中开始执行
     create_process(kernel_task_A);
@@ -199,6 +207,7 @@ void init(uint32_t eax, uint32_t ebx) {
     create_process3(user_task_B);
 
     start_schedule();
+    preempt_enable();
 
     while (true) { }
 }
@@ -216,6 +225,7 @@ void ap_init(int id) {
 
     tss_init();
 
+    local_apic_timer_init_ap();
     console_print("Processor %d started.", id);
 
     while (true) { }
