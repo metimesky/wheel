@@ -175,10 +175,10 @@ void init(uint32_t eax, uint32_t ebx) {
     io_apic_init();     // 初始化IO APIC，默认禁用全部GSI
     local_apic_init();  // 初始化Local APIC，默认禁用全部LVT，启用SVR
 
-    kb_init();
-    __asm__ __volatile__("sti");
-    io_apic_unmask_irq(1);
-    while (1) { }
+    // kb_init();
+    // __asm__ __volatile__("sti");
+    // io_apic_unmask_irq(1);
+    // while (1) { }
         
     // copying per-cpu data
     percpu_area_init();
@@ -197,17 +197,8 @@ void init(uint32_t eax, uint32_t ebx) {
     // 初始化并启用PS/2键盘
     kb_init();
     io_apic_unmask_irq(1);
-    io_apic_unmask_irq(2);
-    io_apic_unmask_irq(3);
-    io_apic_unmask_irq(4);
-    io_apic_unmask_irq(5);
-    io_apic_unmask_irq(6);
-    io_apic_unmask_irq(7);
-    io_apic_unmask_irq(8);
 
     __asm__ __volatile__("sti");
-
-    while (1) { }
 
     console_print("Initializing Local APIC Timer\n");
     local_apic_timer_init();
@@ -226,7 +217,7 @@ void init(uint32_t eax, uint32_t ebx) {
     create_process3(user_task_B);
 
     start_schedule();
-    preempt_enable();
+    // preempt_enable();
 
     while (true) { }
 }

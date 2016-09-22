@@ -204,7 +204,7 @@ void __init local_apic_timer_init() {
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 0;
     local_apic_timer_icr = (t1 - t2) / 1000;
 
-    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = local_apic_timer_icr * 1000;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = local_apic_timer_icr;
 }
 
 void __init local_apic_timer_init_ap() {

@@ -62,7 +62,7 @@ static io_apic_t io_apic_list[16];
 int io_apic_count;
 
 // IRQ到GSI的映射初始均为-1
-static int gsi_override[16] = { -1 };
+static int gsi_override[16] = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 
 // 该函数在BSP上执行，因此在找到IO APIC的同时就可以将其初始化
 void io_apic_add(ACPI_MADT_IO_APIC *io_apic) {
@@ -87,14 +87,14 @@ void io_apic_add(ACPI_MADT_IO_APIC *io_apic) {
     // io_apic_write(base, IO_APIC_BOOT, 1);   // 0表示APIC serial bus, 1表示front side bus
 
     if (io_apic_count == 1) {
-        uint32_t local_apic_id = 0;
+        uint32_t local_apic_id = 0xff;
         uint32_t upper32 = (local_apic_id << 24);
         uint32_t lower32;
 
         int i;
         for (i = 0; i < 16; ++i) {
             lower32 = IO_APIC_EDGE|IO_APIC_HIGH|IO_APIC_FIXED|IO_APIC_INT_MASK|IO_APIC_PHYSICAL; // |IO_APIC_INT_MASK
-            lower32 |= GSI_VEC_BASE + i;
+            lower32 |= (GSI_VEC_BASE + i) & 0xff;
             io_apic_write(base, IO_REDTBL_H(i), upper32);
             io_apic_write(base, IO_REDTBL_L(i), lower32);
             console_print("red%d, %x %x\t", i, upper32, lower32);
@@ -102,7 +102,7 @@ void io_apic_add(ACPI_MADT_IO_APIC *io_apic) {
         console_print("\n");
         for (; i < rednum; ++i) {
             lower32 = IO_APIC_LEVEL|IO_APIC_LOW|IO_APIC_FIXED|IO_APIC_INT_MASK|IO_APIC_PHYSICAL; // |IO_APIC_INT_MASK
-            lower32 |= GSI_VEC_BASE + i;
+            lower32 |= (GSI_VEC_BASE + i) & 0xff;
             io_apic_write(base, IO_REDTBL_H(i), upper32);
             io_apic_write(base, IO_REDTBL_L(i), lower32);
             console_print("red%d, %x %x\t", i, upper32, lower32);
@@ -118,7 +118,6 @@ void io_apic_interrupt_override(ACPI_MADT_INTERRUPT_OVERRIDE *override) {
 
     for (int i = 0; i < io_apic_count; ++i) {
         if (0 <= gsi && gsi < io_apic_list[i].gsi_count) {
-            // console_print("masking index %d in IO APIC %d\n", gsi, i);
             uint32_t upper32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_H(gsi));
             uint32_t lower32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_L(gsi));
             io_apic_write(io_apic_list[i].base, IO_REDTBL_H(gsi), upper32);
@@ -147,7 +146,7 @@ void io_apic_mask(int gsi) {
     // gsi -= GSI_VEC_BASE;
     for (int i = 0; i < io_apic_count; ++i) {
         if (0 <= gsi && gsi < io_apic_list[i].gsi_count) {
-            // console_print("masking index %d in IO APIC %d\n", gsi, i);
+            console_print("masking index %d in IO APIC %d\n", gsi, i);
             uint32_t upper32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_H(gsi));
             uint32_t lower32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_L(gsi));
             io_apic_write(io_apic_list[i].base, IO_REDTBL_H(gsi), upper32);
@@ -162,7 +161,7 @@ void io_apic_unmask(int gsi) {
     // gsi -= GSI_VEC_BASE;
     for (int i = 0; i < io_apic_count; ++i) {
         if (0 <= gsi && gsi < io_apic_list[i].gsi_count) {
-            // console_print("unmasking index %d in IO APIC %d\n", gsi, i);
+            console_print("unmasking index %d in IO APIC %d\n", gsi, i);
             uint32_t upper32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_H(gsi));
             uint32_t lower32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_L(gsi));
             io_apic_write(io_apic_list[i].base, IO_REDTBL_H(gsi), upper32);
