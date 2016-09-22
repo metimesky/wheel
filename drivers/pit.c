@@ -23,7 +23,7 @@ static inline void real_handler() {
     ++pit_tick;
     if (pit_tick % 100 == 0) {
         // pit_tick = 0;
-        // ++video[158];
+        ++video[158];
     }
 }
 
@@ -40,30 +40,23 @@ static void pit_apic_handler(int vec, int_context_t *ctx) {
 void pit_delay(int ticks) {
     int end_tick = pit_tick + ticks;
     while (pit_tick < end_tick) {
-        //video[4] ++;
+        // video[4] ++;
     }
 }
 
 void __init pit_init() {
-    // install handler
+    // install both IRQ and GSI handler
     idt_set_int_handler(IRQ_VEC_BASE + 0, pit_pic_handler);
+    idt_set_int_handler(GSI_VEC_BASE + io_apic_irq_to_gsi(0), pit_apic_handler);
 
     // 00110110b = 32+16+4+2 = 0x36
     out_byte(CTRL_PORT, 0x36);  // mode 2, square wave
     io_wait();
 
-    //out_byte(DATA_PORT, (TIMER/HZ));
+    // out_byte(DATA_PORT, (TIMER/HZ));
     out_byte(DATA_PORT, 11932U & 0xff);
     io_wait();
-    //out_byte(DATA_PORT, (TIMER/HZ) >> 8);
+    // out_byte(DATA_PORT, (TIMER/HZ) >> 8);
     out_byte(DATA_PORT, (11932U >> 8) & 0xff);
     io_wait();
-}
-
-// GSI means Global System Interrupt
-// by default APIC maps 16 8259 irq to GSI 0~15, but that can be changed
-
-void pit_map_gsi(int gsi) {
-    // log("mapping pit to gsi");
-    idt_set_int_handler(gsi, pit_apic_handler);
 }

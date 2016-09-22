@@ -10,6 +10,7 @@
 #include <drivers/console.h>
 #include <drivers/acpi/acpi.h>
 #include <drivers/pit.h>
+#include <drivers/kb.h>
 
 #include <lib/string.h>
 #include <lib/locking.h>
@@ -66,6 +67,7 @@ static __init bool parse_madt() {
 }
 
 static raw_spinlock_t spin_print = 0;
+#define DELAY_TIME 1000
 
 static void kernel_task_A() {
     char *video = (char*) (KERNEL_VMA + 0xa0000);
@@ -74,8 +76,8 @@ static void kernel_task_A() {
         raw_spin_lock(&spin_print);
         console_print("KA%d.", counter++);
         raw_spin_unlock(&spin_print);
-        for (int i = 0; i < 100; ++i) {
-            for (int j = 0; j < 1000; ++j) {
+        for (int i = 0; i < DELAY_TIME; ++i) {
+            for (int j = 0; j < 100; ++j) {
                 video[0] = video[0];
             }
         }
@@ -89,8 +91,8 @@ static void kernel_task_B() {
         raw_spin_lock(&spin_print);
         console_print("KB%d.", counter++);
         raw_spin_unlock(&spin_print);
-        for (int i = 0; i < 100; ++i) {
-            for (int j = 0; j < 1000; ++j) {
+        for (int i = 0; i < DELAY_TIME; ++i) {
+            for (int j = 0; j < 100; ++j) {
                 video[0] = video[0];
             }
         }
@@ -106,8 +108,8 @@ void user_task_A() {
         raw_spin_lock(&spin_print);
         sys_print(buf);
         raw_spin_unlock(&spin_print);
-        for (int i = 0; i < 100; ++i) {
-            for (int j = 0; j < 1000; ++j) {
+        for (int i = 0; i < DELAY_TIME; ++i) {
+            for (int j = 0; j < 100; ++j) {
                 video[0] = video[0];
             }
         }
@@ -123,8 +125,8 @@ void user_task_B() {
         raw_spin_lock(&spin_print);
         sys_print(buf);
         raw_spin_unlock(&spin_print);
-        for (int i = 0; i < 100; ++i) {
-            for (int j = 0; j < 1000; ++j) {
+        for (int i = 0; i < DELAY_TIME; ++i) {
+            for (int j = 0; j < 100; ++j) {
                 video[0] = video[0];
             }
         }
@@ -173,6 +175,11 @@ void init(uint32_t eax, uint32_t ebx) {
     io_apic_init();     // 初始化IO APIC，默认禁用全部GSI
     local_apic_init();  // 初始化Local APIC，默认禁用全部LVT，启用SVR
 
+    kb_init();
+    __asm__ __volatile__("sti");
+    io_apic_unmask_irq(1);
+    while (1) { }
+        
     // copying per-cpu data
     percpu_area_init();
 
@@ -185,20 +192,32 @@ void init(uint32_t eax, uint32_t ebx) {
 
     // 初始化并启用PIT时钟
     pit_init();
-    pit_map_gsi(GSI_VEC_BASE + 2);      // TODO: 这里不要硬编码，根据MADT内容映射
-    io_apic_unmask(GSI_VEC_BASE + 2);
+    io_apic_unmask_irq(0);
+
+    // 初始化并启用PS/2键盘
+    kb_init();
+    io_apic_unmask_irq(1);
+    io_apic_unmask_irq(2);
+    io_apic_unmask_irq(3);
+    io_apic_unmask_irq(4);
+    io_apic_unmask_irq(5);
+    io_apic_unmask_irq(6);
+    io_apic_unmask_irq(7);
+    io_apic_unmask_irq(8);
 
     __asm__ __volatile__("sti");
 
+    while (1) { }
+
     console_print("Initializing Local APIC Timer\n");
     local_apic_timer_init();
-    io_apic_mask(GSI_VEC_BASE + 2);
+    io_apic_mask_irq(0);
 
     // 安装syscall的ISR
     syscall_init();
 
     console_print("Waking up all processors\n");
-    // local_apic_start_ap();
+    local_apic_start_ap();
 
     // 向run_queue中添加进程，当下一次local APIC timer中断触发时，就会自动切换到这些进程中开始执行
     create_process(kernel_task_A);
@@ -211,8 +230,6 @@ void init(uint32_t eax, uint32_t ebx) {
 
     while (true) { }
 }
-
-// static spinlock_t lock = 0;
 
 // AP的初始化函数，由trampoline.asm调用
 void ap_init(int id) {

@@ -28,6 +28,7 @@ void console_init() {
     x = 0;
     y = 0;
     console_attr = 0x1f;    // white on blue
+    console_attr = 0x2f;    // white on green
 
     vga_set_start_addr(0);
     vga_set_cursor_pos(0);

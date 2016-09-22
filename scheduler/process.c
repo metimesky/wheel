@@ -32,14 +32,12 @@ static int process_count = 0;   // init函数也作为一个任务存在
 static int next_pid = -1;
 
 // lock for creating process
-static raw_spinlock_t lock = 0;
-
-// 退出ISR时，需要设置正确的RSP，才能恢复到指定的Task状态。
-uint64_t target_rsp;
+static DEFINE_PERCPU_VAL(raw_spinlock_t, lock_pcb, 0);
 
 // 目前是创建内核层任务
 void create_process(uint64_t entry) {
-    raw_spin_lock(&lock);
+    raw_spinlock_t *lock = raw_percpu_ptr(lock_pcb);
+    raw_spin_lock(lock);
 
     uint64_t stack = alloc_pages(0);
     process_list[process_count].kstack_top = KERNEL_VMA + stack + 4096;
@@ -56,12 +54,13 @@ void create_process(uint64_t entry) {
 
     ++process_count;
 
-    raw_spin_unlock(&lock);
+    raw_spin_unlock(lock);
 }
 
 // 创建一个用户层的任务
 void create_process3(uint64_t entry) {
-    raw_spin_lock(&lock);
+    raw_spinlock_t *lock = raw_percpu_ptr(lock_pcb);
+    raw_spin_lock(lock);
 
     uint64_t kstack = alloc_pages(0);
     uint64_t ustack = alloc_pages(0);
@@ -80,21 +79,29 @@ void create_process3(uint64_t entry) {
 
     ++process_count;
 
-    raw_spin_unlock(&lock);
+    raw_spin_unlock(lock);
 }
 
 // 是否允许在同一CPU内切换进程
-static bool preemption = false;
+static DEFINE_PERCPU_VAL(bool, preempt_enable, false);
+
+// 退出ISR时，需要设置正确的RSP，才能恢复到指定的Task状态。
+// TODO: 改成per-CPU方式
+uint64_t target_rsp;
+DEFINE_PERCPU(uint64_t, rsp_scratch);   // 用于ISR中，记录保存context后RSP的值
 
 // 在local APIC Timer中调用，在中断环境下执行
 void (*clock_isr)(int_context_t *ctx) = NULL;
 
+// 该函数在中断上下文中执行，不会发生迁移
 static void clock_isr_func(int_context_t *ctx) {
-    static char *video = (char *) (KERNEL_VMA + 0xa0000);
+    bool *preempt_enable = raw_percpu_ptr(preempt_enable);
+    uint64_t *rsp_scratch = raw_percpu_ptr(rsp_scratch);
 
-    if (preemption && process_count > 0) {
+    // 其实此时rsp_scratch的值就是ctx
+    if (*preempt_enable && process_count > 0) {
         if (next_pid >= 0 && next_pid < process_count) {
-            process_list[next_pid].resume_rsp = (uint64_t) ctx;
+            process_list[next_pid].resume_rsp = *rsp_scratch;
         }
 
         ++next_pid;
@@ -103,10 +110,12 @@ static void clock_isr_func(int_context_t *ctx) {
         }
 
         // pop时从这里开始
-        target_rsp = process_list[next_pid].resume_rsp;
+        // target_rsp = process_list[next_pid].resume_rsp;
+        *rsp_scratch = process_list[next_pid].resume_rsp;
 
         // 下一次从ring3中断时，切换到这个位置（通常不需要改变）
-        ((tss_t *)PERCPU(tss))->rsp0 = (uint64_t)&(process_list[next_pid].context.r15) + sizeof(int_context_t);
+        tss_t *t = (tss_t *) raw_percpu_ptr(tss);
+        t->rsp0 = (uint64_t)&(process_list[next_pid].context.r15) + sizeof(int_context_t);
     }
 }
 
@@ -114,5 +123,15 @@ void start_schedule() {
     clock_isr = clock_isr_func;
 }
 
-void preempt_enable() { preemption = true; }
-void preempt_disable() { preemption = false; }
+// preempt_preempt_enable/preempt_disable是否也有可能在执行过程中被中断？
+// 需要原子性地操作一个per-CPU变量，考虑将这个变量保存在寄存器中（FS.BASE?）
+
+void preempt_enable() {
+    bool *preempt_enable = raw_percpu_ptr(preempt_enable);
+    *preempt_enable = true;
+}
+
+void preempt_disable() {
+    bool *preempt_enable = raw_percpu_ptr(preempt_enable);
+    *preempt_enable = false;
+}

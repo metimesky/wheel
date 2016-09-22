@@ -5,7 +5,9 @@
 extern int_handler_table
 
 ; 定义在scheduler中
-extern target_rsp
+;extern target_rsp
+extern __percpu_rsp_scratch
+extern __percpu_offset
 
 [section .text]
 [BITS 64]
@@ -68,14 +70,18 @@ isr%1:
     ; 保存上下文（通用寄存器）
     save_regs
 
-    ; 将目前的rsp保存到target_rsp中
-    ; mov     rax, qword target_rsp
-    ; mov     qword [rax], rsp
+    ; 读取percpu_ptr(rsp_scratch)到r15
+    ; r15在调用C函数时会被保持
+    mov     ecx, 0xc0000101
+    rdmsr                           ; 读取GS.BASE，保存在eax中
+    mov     rdx, qword __percpu_offset
+    mul     qword [rdx]             ; rax = __percpu_offset * cpu_id
+    mov     r15, qword __percpu_rsp_scratch
+    add     r15, rax                ; r15 = __percpu_rsp_scratch + (__percpu_offset * cpu_id)
 
-    ; 保存rsp到rbp和target_rsp中
+    ; 保存rsp到rbp和percpu_ptr(rsp_scratch)
     mov     rbp, rsp
-    mov     rdi, qword target_rsp
-    mov     qword [rdi], rbp
+    mov     qword [r15], rsp
 
     ; 首先判断被中断的是用户态还是内核态
     test    word [rsp+160], 3       ; by checking SS selector's RPL
@@ -101,10 +107,9 @@ isr%1:
 
     ; restore saved frame pointer from rbp
     mov     rsp, rbp
-
+    
     ; 切换到目标任务的rsp
-    mov     rax, qword target_rsp
-    mov     rsp, qword [rax]
+    mov     rsp, qword [r15]
     
     ; restore the saved registers.
     restore_regs

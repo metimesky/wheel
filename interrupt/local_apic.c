@@ -173,12 +173,13 @@ void local_apic_send_eoi() {
     *(uint32_t *)(base_addr + LOCAL_APIC_EOI) = 1;
 }
 
-static DEFINE_PERCPU(uint64_t, local_apic_tick);
+static DEFINE_PERCPU(volatile uint64_t, local_apic_tick);
 extern void (*clock_isr)(int_context_t *ctx);   // 定义在scheduler中
 
+// 在中断中执行，不用担心迁移
 static void local_apic_timer_callback(int vec, int_context_t *ctx) {
     // ++local_apic_tick;
-    volatile uint64_t *t = &PERCPU(local_apic_tick);
+    volatile uint64_t *t = raw_percpu_ptr(local_apic_tick);
     ++(*t);
 
     if (clock_isr) {
@@ -203,7 +204,7 @@ void __init local_apic_timer_init() {
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 0;
     local_apic_timer_icr = (t1 - t2) / 1000;
 
-    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = local_apic_timer_icr;
+    *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = local_apic_timer_icr * 1000;
 }
 
 void __init local_apic_timer_init_ap() {
@@ -216,7 +217,7 @@ void __init local_apic_timer_init_ap() {
 }
 
 void local_apic_delay(int ticks) {
-    volatile uint64_t *t = &PERCPU(local_apic_tick);
+    volatile uint64_t *t = raw_percpu_ptr(local_apic_tick);
     uint64_t end_tick = *t + ticks;
     while (*t < end_tick) { }
 }
@@ -251,35 +252,22 @@ void __init local_apic_start_ap() {
         ap_id = i;
         ap_stack_top = __percpu_offset * i + kernel_stack_top;
         ap_init_ok = false;
-        // *(uint16_t *)(KERNEL_VMA + 0x7c000 + 510) = 2*i;
-        // *(uint16_t *)(KERNEL_VMA + (char*)&ap_id) = 2*i;
         
+        // 发送INIT-IPI
         uint32_t upper32 = (local_apic_list[i].id << 24) & 0xff000000;
         uint32_t lower32 = LOCAL_APIC_LEVEL | LOCAL_APIC_ASSERT | MODE_INIT;
         *(uint32_t *)(base_addr + LOCAL_APIC_ICR_H) = upper32;
         *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
-
-        // console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
-        // *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
-
         local_apic_delay(10);
-        // console_print("2\n");
 
         // 发送Startup-IPI，向量号是初始化代码的实模式地址
         lower32 = LOCAL_APIC_LEVEL | LOCAL_APIC_ASSERT | MODE_STARTUP | 0x7c;
         *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
-
-        // console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
-        // *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
-
         local_apic_delay(10);
-        // console_print("3\n");
 
         // 再次发送Startup-IPI
         *(uint32_t *)(base_addr + LOCAL_APIC_ICR_L) = lower32;
 
-        // console_print("err %x\n", *(uint32_t *)(base_addr + LOCAL_APIC_ERROR));
-        // *(uint32_t *)(base_addr + LOCAL_APIC_ERROR) = 0;
         while (!ap_init_ok) { }
         console_print("Done.\n");
     }

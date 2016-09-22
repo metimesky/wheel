@@ -58,8 +58,11 @@ extern int io_apic_count;
 extern void io_apic_add(ACPI_MADT_IO_APIC *io_apic);
 extern void io_apic_interrupt_override(ACPI_MADT_INTERRUPT_OVERRIDE *override);
 extern void io_apic_init();
+extern int io_apic_irq_to_gsi(int irq);
 extern void io_apic_mask(int gsi);
 extern void io_apic_unmask(int gsi);
+static inline void io_apic_mask_irq(int irq) { io_apic_mask(io_apic_irq_to_gsi(irq)); }
+static inline void io_apic_unmask_irq(int irq) { io_apic_unmask(io_apic_irq_to_gsi(irq)); }
 
 // Local APIC
 extern int local_apic_count;

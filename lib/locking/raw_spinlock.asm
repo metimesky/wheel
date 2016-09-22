@@ -6,6 +6,13 @@ global raw_spin_trylock
 global raw_spin_unlock
 global raw_spin_islocked
 
+; 获得自旋锁的同时，还禁用抢占，保证spin_lock和spin_unlock之间的临界区不被打断。
+global spin_lock
+
+; 定义在scheduler模块中，表示是否启用抢占
+extern preempt_enable
+extern preempt_disable
+
 [section .text]
 [BITS 64]
 
@@ -17,7 +24,7 @@ raw_spin_lock:
     ret
  
 .spin_with_pause:
-    pause                       ; Tell CPU we're spinning
+    pause                       ; relax cpu
     test    dword [rdi], 1      ; Is the lock free?
     jnz     .spin_with_pause    ; no, wait
     jmp     raw_spin_lock       ; retry
@@ -35,7 +42,7 @@ raw_spin_trylock:
 
 ; void raw_spin_unlock(raw_spinlock_t *lock);
 raw_spin_unlock:
-    mov dword [rdi], 0
+    mov     dword [rdi], 0
     ret
 
 ; bool raw_spin_islocked(raw_spinlock_t *lock);

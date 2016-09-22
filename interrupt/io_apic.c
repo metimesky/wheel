@@ -61,19 +61,15 @@ typedef struct io_apic io_apic_t;
 static io_apic_t io_apic_list[16];
 int io_apic_count;
 
-// IRQ到GSI的映射
+// IRQ到GSI的映射初始均为-1
 static int gsi_override[16] = { -1 };
 
 // 该函数在BSP上执行，因此在找到IO APIC的同时就可以将其初始化
 void io_apic_add(ACPI_MADT_IO_APIC *io_apic) {
-    // console_print("IO APIC id #%x, addr %x Irq base %d\n", io_apic->Id, io_apic->Address, io_apic->GlobalIrqBase);
     uint64_t base = KERNEL_VMA + io_apic->Address;
-
-    //console_print("id %x, arb id %x, ", io_apic_read(base, IO_APIC_ID), io_apic_read(base, IO_APIC_ARB));
 
     uint32_t v = io_apic_read(base, IO_APIC_VER);
     int rednum = (v & 0x00ff0000) >> 16;
-    //console_print("version %d, redirection entry num: %d\n", v & 0xff, rednum+1);
 
     // 将IO APIC ID设置成已知的值
     io_apic_write(base, IO_APIC_ID, io_apic_count);
@@ -96,32 +92,59 @@ void io_apic_add(ACPI_MADT_IO_APIC *io_apic) {
         uint32_t lower32;
 
         int i;
-        for (int i = 0; i < 16; ++i) {
+        for (i = 0; i < 16; ++i) {
             lower32 = IO_APIC_EDGE|IO_APIC_HIGH|IO_APIC_FIXED|IO_APIC_INT_MASK|IO_APIC_PHYSICAL; // |IO_APIC_INT_MASK
             lower32 |= GSI_VEC_BASE + i;
             io_apic_write(base, IO_REDTBL_H(i), upper32);
             io_apic_write(base, IO_REDTBL_L(i), lower32);
+            console_print("red%d, %x %x\t", i, upper32, lower32);
         }
+        console_print("\n");
         for (; i < rednum; ++i) {
             lower32 = IO_APIC_LEVEL|IO_APIC_LOW|IO_APIC_FIXED|IO_APIC_INT_MASK|IO_APIC_PHYSICAL; // |IO_APIC_INT_MASK
             lower32 |= GSI_VEC_BASE + i;
             io_apic_write(base, IO_REDTBL_H(i), upper32);
             io_apic_write(base, IO_REDTBL_L(i), lower32);
+            console_print("red%d, %x %x\t", i, upper32, lower32);
         }
+        console_print("\n");
     }
 }
 
 void io_apic_interrupt_override(ACPI_MADT_INTERRUPT_OVERRIDE *override) {
-    //console_print("Override bus%d, irq%d to gsi%d\n", override->Bus, override->SourceIrq, override->GlobalIrq);
-    gsi_override[override->SourceIrq] = override->GlobalIrq;
+    // console_print("Override bus%d, irq%d to gsi%d\n", override->Bus, override->SourceIrq, override->GlobalIrq);
+    int gsi = override->GlobalIrq;
+    gsi_override[override->SourceIrq] = gsi;
+
+    for (int i = 0; i < io_apic_count; ++i) {
+        if (0 <= gsi && gsi < io_apic_list[i].gsi_count) {
+            // console_print("masking index %d in IO APIC %d\n", gsi, i);
+            uint32_t upper32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_H(gsi));
+            uint32_t lower32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_L(gsi));
+            io_apic_write(io_apic_list[i].base, IO_REDTBL_H(gsi), upper32);
+            io_apic_write(io_apic_list[i].base, IO_REDTBL_L(gsi), lower32 | IO_APIC_INT_MASK);
+            return;
+        }
+        gsi -= io_apic_list[i].gsi_count;
+    }
 }
 
 void io_apic_init() {
     ;
 }
 
+// GSI means Global System Interrupt
+// by default APIC maps 16 8259 irq to GSI 0~15, but that can be changed
+int io_apic_irq_to_gsi(int irq) {
+    if (gsi_override[irq] != -1) {
+        return gsi_override[irq];
+    } else {
+        return irq;
+    }
+}
+
 void io_apic_mask(int gsi) {
-    gsi -= GSI_VEC_BASE;
+    // gsi -= GSI_VEC_BASE;
     for (int i = 0; i < io_apic_count; ++i) {
         if (0 <= gsi && gsi < io_apic_list[i].gsi_count) {
             // console_print("masking index %d in IO APIC %d\n", gsi, i);
@@ -136,7 +159,7 @@ void io_apic_mask(int gsi) {
 }
 
 void io_apic_unmask(int gsi) {
-    gsi -= GSI_VEC_BASE;
+    // gsi -= GSI_VEC_BASE;
     for (int i = 0; i < io_apic_count; ++i) {
         if (0 <= gsi && gsi < io_apic_list[i].gsi_count) {
             // console_print("unmasking index %d in IO APIC %d\n", gsi, i);

@@ -2,6 +2,7 @@
 #include <interrupt.h>
 #include <multiboot.h>
 #include <lib/bits.h>
+#include <lib/locking.h>
 
 // 内核结束位置的物理地址
 uint64_t kernel_end_addr;
@@ -110,8 +111,12 @@ void __init page_alloc_init(uint32_t mmap_addr, uint32_t mmap_length) {
     }
 }
 
+// 访问buddy时，首先要获得锁
+static raw_spinlock_t lock_buddy = 0;
+
 // 分配2^order个连续的物理页
 uint64_t alloc_pages(int order) {
+    raw_spin_lock(&lock_buddy);
     for (int o = order; o < BUDDY_LEVEL; ++o) {
         // 寻找第一段可用内存
         uint64_t idx = bitmap_find_first_set(buddy_map[o], buddy_length[o]);
@@ -124,14 +129,17 @@ uint64_t alloc_pages(int order) {
                 bitmap_set(buddy_map[o], idx, 2);
             }
             bitmap_clear(buddy_map[o], idx, 1);
+            raw_spin_unlock(&lock_buddy);
             return ((uint64_t)idx << order) << 12;
         }
     }
+    raw_spin_unlock(&lock_buddy);
     return 0;
 }
 
 // addr必须是2^order个页对齐的
 void free_pages(uint64_t addr, int order) {
+    raw_spin_lock(&lock_buddy);
     addr >>= order + 12;
     bitmap_set(buddy_map[order], addr, 1);
     for (; order < 7 && bitmap_test(buddy_map[order], addr^1); ++order) {
@@ -140,6 +148,7 @@ void free_pages(uint64_t addr, int order) {
         addr >>= 1;
         bitmap_set(buddy_map[order+1], addr, 1);
     }
+    raw_spin_unlock(&lock_buddy);
 }
 
 // 回收init section的内存空间

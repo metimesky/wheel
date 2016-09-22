@@ -24,7 +24,7 @@ struct tss {
 } __attribute__((packed));
 typedef struct tss tss_t;
 
-extern DEFINE_PERCPU(tss_t*, tss);
+EXPORT_PERCPU(tss_t, tss);
 
 extern void gdt_init();
 extern void gdt_load();
