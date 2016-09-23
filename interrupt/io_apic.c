@@ -97,17 +97,15 @@ void io_apic_add(ACPI_MADT_IO_APIC *io_apic) {
             lower32 |= (GSI_VEC_BASE + i) & 0xff;
             io_apic_write(base, IO_REDTBL_H(i), upper32);
             io_apic_write(base, IO_REDTBL_L(i), lower32);
-            console_print("red%d, %x %x\t", i, upper32, lower32);
+            // console_print("red%d, %x %x\t", i, upper32, lower32);
         }
-        console_print("\n");
         for (; i < rednum; ++i) {
             lower32 = IO_APIC_LEVEL|IO_APIC_LOW|IO_APIC_FIXED|IO_APIC_INT_MASK|IO_APIC_PHYSICAL; // |IO_APIC_INT_MASK
             lower32 |= (GSI_VEC_BASE + i) & 0xff;
             io_apic_write(base, IO_REDTBL_H(i), upper32);
             io_apic_write(base, IO_REDTBL_L(i), lower32);
-            console_print("red%d, %x %x\t", i, upper32, lower32);
+            // console_print("red%d, %x %x\t", i, upper32, lower32);
         }
-        console_print("\n");
     }
 }
 
@@ -146,7 +144,7 @@ void io_apic_mask(int gsi) {
     // gsi -= GSI_VEC_BASE;
     for (int i = 0; i < io_apic_count; ++i) {
         if (0 <= gsi && gsi < io_apic_list[i].gsi_count) {
-            console_print("masking index %d in IO APIC %d\n", gsi, i);
+            // console_print("masking index %d in IO APIC %d\n", gsi, i);
             uint32_t upper32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_H(gsi));
             uint32_t lower32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_L(gsi));
             io_apic_write(io_apic_list[i].base, IO_REDTBL_H(gsi), upper32);
@@ -161,7 +159,7 @@ void io_apic_unmask(int gsi) {
     // gsi -= GSI_VEC_BASE;
     for (int i = 0; i < io_apic_count; ++i) {
         if (0 <= gsi && gsi < io_apic_list[i].gsi_count) {
-            console_print("unmasking index %d in IO APIC %d\n", gsi, i);
+            // console_print("unmasking index %d in IO APIC %d\n", gsi, i);
             uint32_t upper32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_H(gsi));
             uint32_t lower32 = io_apic_read(io_apic_list[i].base, IO_REDTBL_L(gsi));
             io_apic_write(io_apic_list[i].base, IO_REDTBL_H(gsi), upper32);

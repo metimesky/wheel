@@ -174,11 +174,6 @@ void init(uint32_t eax, uint32_t ebx) {
     pic_init();         // 初始化PIC，默认禁用全部IRQ
     io_apic_init();     // 初始化IO APIC，默认禁用全部GSI
     local_apic_init();  // 初始化Local APIC，默认禁用全部LVT，启用SVR
-
-    // kb_init();
-    // __asm__ __volatile__("sti");
-    // io_apic_unmask_irq(1);
-    // while (1) { }
         
     // copying per-cpu data
     percpu_area_init();
