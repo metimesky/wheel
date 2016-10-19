@@ -5,8 +5,8 @@
 #include <percpu.h>
 #include <drivers/acpi/acpi.h>
 
-// 64位模式下最多128个中断
-#define INTERRUPT_NUM 128
+// 64位模式下最多256个中断
+#define INTERRUPT_NUM 256
 
 #define IRQ_VEC_BASE 32     // PIC中断映射到的IRQ编号
 #define LVT_VEC_BASE 48     // Local APIC LVT映射到的IRQ编号

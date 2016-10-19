@@ -73,14 +73,15 @@ static void kernel_task_A() {
     char *video = (char*) (KERNEL_VMA + 0xa0000);
     int counter = 0;
     while (1) {
-        raw_spin_lock(&spin_print);
-        console_print("KA%d.", counter++);
-        raw_spin_unlock(&spin_print);
-        for (int i = 0; i < DELAY_TIME; ++i) {
-            for (int j = 0; j < 100; ++j) {
-                video[0] = video[0];
-            }
-        }
+        // raw_spin_lock(&spin_print);
+        // console_print("KA%d.", counter++);
+        // raw_spin_unlock(&spin_print);
+        // for (int i = 0; i < DELAY_TIME; ++i) {
+        //     for (int j = 0; j < 100; ++j) {
+        //         video[0] = video[0];
+        //     }
+        // }
+        
     }
 }
 

@@ -54,9 +54,9 @@ void __init pit_init() {
     io_wait();
 
     // out_byte(DATA_PORT, (TIMER/HZ));
-    out_byte(DATA_PORT, 11932U & 0xff);
+    out_byte(DATA_PORT, 1193U & 0xff);
     io_wait();
     // out_byte(DATA_PORT, (TIMER/HZ) >> 8);
-    out_byte(DATA_PORT, (11932U >> 8) & 0xff);
+    out_byte(DATA_PORT, (1193U >> 8) & 0xff);
     io_wait();
 }

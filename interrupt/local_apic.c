@@ -74,7 +74,7 @@
 #define LOCAL_APIC_MASK             0x00010000  // mask
 
 // Local APIC Spurious-Interrupt Register
-#define LOCAL_APIC_ENABLE           0x100       // APIC Enabled
+#define LOCAL_APIC_SVR_ENABLE       0x100       // APIC Enabled
 #define LOCAL_APIC_FOCUS_DISABLE    0x200       // Focus Processor Checking
 
 // Local APIC Timer
@@ -144,8 +144,8 @@ void __init local_apic_init() {
     base_addr = base;
 
     // 获取版本和LVT数目
-    uint32_t v = *(uint32_t *)(base + LOCAL_APIC_VER) & LOCAL_APIC_VERSION_MASK;
-    uint32_t maxLvt = (*(uint32_t *)(base + LOCAL_APIC_VER) & LOCAL_APIC_MAXLVT_MASK) >> 16;
+    // uint32_t v = *(uint32_t *)(base + LOCAL_APIC_VER) & LOCAL_APIC_VERSION_MASK;
+    // uint32_t maxLvt = (*(uint32_t *)(base + LOCAL_APIC_VER) & LOCAL_APIC_MAXLVT_MASK) >> 16;
 
     // reset the DFR, TPR, TIMER_CONFIG, and TIMER_ICR
     *(uint32_t *)(base + LOCAL_APIC_DFR) = 0xffffffff;
@@ -166,7 +166,7 @@ void __init local_apic_init() {
 
     // 设置SVR
     idt_set_int_handler(SVR_VEC_NUM, svr_callback);
-    *(uint32_t *)(base + LOCAL_APIC_SVR) = LOCAL_APIC_ENABLE | SVR_VEC_NUM;
+    *(uint32_t *)(base + LOCAL_APIC_SVR) = LOCAL_APIC_SVR_ENABLE | SVR_VEC_NUM;
 }
 
 void local_apic_send_eoi() {
@@ -178,7 +178,6 @@ extern void (*clock_isr)(int_context_t *ctx);   // 定义在scheduler中
 
 // 在中断中执行，不用担心迁移
 static void local_apic_timer_callback(int vec, int_context_t *ctx) {
-    // ++local_apic_tick;
     volatile uint64_t *t = raw_percpu_ptr(local_apic_tick);
     ++(*t);
 
@@ -188,8 +187,10 @@ static void local_apic_timer_callback(int vec, int_context_t *ctx) {
     local_apic_send_eoi();
 }
 
+// local APIC timer的频率，各个处理器核心是相同的
 static uint32_t local_apic_timer_icr = 0;
 
+// 需要用PIT计算local APIC timer的频率，因此执行此函数时，需保证PIT可用
 void __init local_apic_timer_init() {
     idt_set_int_handler(LVT_VEC_BASE, local_apic_timer_callback);
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_CONFIG) = LOCAL_APIC_TIMER_DIVBY_1 & LOCAL_APIC_TIMER_DIVBY_MASK;
@@ -204,6 +205,7 @@ void __init local_apic_timer_init() {
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = 0;
     local_apic_timer_icr = (t1 - t2) / 1000;
 
+    // 为ICR赋值，启用local APIC timer
     *(uint32_t *)(base_addr + LOCAL_APIC_TIMER_ICR) = local_apic_timer_icr;
 }
 
