@@ -1,24 +1,21 @@
-; OS的入口点，GRUB引导之后从这里开始执行
-; 此时只有BSP在执行
-
 global multiboot_entry
-global tmp_gdt_ptr
+
+extern __early_pgtbl_low
+extern kernel_stack_top
 
 extern init
-extern initial_pml4t_low
-extern kernel_stack_top     ; 定义在kernel.lds中，每个处理器都有一份
-
-KERNEL_VMA  equ 0xffff800000000000  ; located in higher half
-STACK_SIZE  equ 0x1000              ; just a trampoline stack
 
 ; multiboot spec version 1
 MB1_MAGIC   equ 0x1badb002          ; multiboot 1 magic number
 MB1_FLAGS   equ 1<<0|1<<1           ; 4K-aligned, mem info
 
+; 内核虚拟地址基地址
+KERNEL_VMA  equ 0xffff800000000000
 
 [section .boot]
 [BITS 32]
-    ; jump to the real entry
+
+    ; 跳转到真正的入口点
     jmp multiboot_entry
 
 ALIGN 4
@@ -29,8 +26,7 @@ multiboot1_header:
 
 ALIGN 4
 multiboot_entry:
-    ; 关中断
-    cli
+    cli     ; 关中断
 
     ; 保存GRUB的引导信息
     mov     [mb_eax], eax
@@ -45,23 +41,22 @@ multiboot_entry:
     mov     eax, 0x80000000
     cpuid
     cmp     eax, 0x80000001
-    jb      no_long_mode  ; CPUID扩展功能不存在，说明不支持长方式
+    jb      no_long_mode        ; 不支持
 
     ; 检查是否支持长方式
     mov     eax, 0x80000001
     cpuid
     test    edx, 1 << 29
-    jz      no_long_mode
+    jz      no_long_mode        ; 不支持
 
 enter_long_mode:
-    ; 关闭分页
     mov     eax, cr0
     and     eax, 0x7fffffff
-    mov     cr0, eax
+    mov     cr0, eax            ; 关分页
 
     ; clear 24KB of memory for 6 page tables, which covers 4GB address space.
     ; we need to cover 4GB because mem mapped devices like APIC are in 3~4G.
-    mov     edi, initial_pml4t_low
+    mov     edi, __early_pgtbl_low
     mov     cr3, edi
     xor     eax, eax
     mov     ecx, 6144
@@ -71,23 +66,23 @@ enter_long_mode:
     ; creating 1 Page-Map Level-4 Entry (PML4E)
     ; 两段地址前4GB均映射到物理地址0~4G
     mov     eax, 0x0007                     ; present, read/write, user
-    add     eax, initial_pml4t_low + 0x1000 ; point to pml4t + 4K
+    add     eax, __early_pgtbl_low + 0x1000 ; point to pml4t + 4K
     mov     [edi], eax                      ; write to pml4t[0]
     mov     [edi+0x800], eax                ; write to pml4t[256]
     add     edi, 0x1000
 
     ; creating 4 Page Directory Pointer Entries (PDPE)
     mov     dword [edi], 0x2007             ; present, read/write, user
-    add     dword [edi], initial_pml4t_low  ; pointing to pml4t+8K (PD Table)
+    add     dword [edi], __early_pgtbl_low  ; pointing to pml4t+8K (PD Table)
     add     edi, 8
     mov     dword [edi], 0x3007             ; present, read/write, user
-    add     dword [edi], initial_pml4t_low  ; pointing to pml4t+12K
+    add     dword [edi], __early_pgtbl_low  ; pointing to pml4t+12K
     add     edi, 8
     mov     dword [edi], 0x4007             ; present, read/write, user
-    add     dword [edi], initial_pml4t_low  ; pointing to pml4t+16K
+    add     dword [edi], __early_pgtbl_low  ; pointing to pml4t+16K
     add     edi, 8
     mov     dword [edi], 0x5007             ; present, read/write, user
-    add     dword [edi], initial_pml4t_low  ; pointing to pml4t+20K
+    add     dword [edi], __early_pgtbl_low  ; pointing to pml4t+20K
     add     edi, 0x1000 - 24
 
     ; creating 4*512 Page Directory Entries (PDE)
@@ -126,17 +121,17 @@ enter_long_mode:
     jmp     $
 
 no_long_mode:
-    ; write error message
+    ; 不支持长方式，输出错误信息并停机
     mov     edi, 0xb8000
     mov     esi, .err_msg
     mov     ecx, .err_msg_len
-    mov     ah, 0x4e        ; yellow on red
+    mov     ah, 0x4e            ; 红底黄字
 .print:
     lodsb
     stosw
     loop    .print
 
-    ; halt the machine
+    ; 停机
     hlt
     jmp     $
 
@@ -146,6 +141,7 @@ no_long_mode:
 [BITS 64]
 
 long_mode_entry:
+    ; 现已进入长方式
     ; load GDT again, this time load 64 bit GDT, and jump to higher half
     mov     rax, tmp_gdt_ptr + KERNEL_VMA
     lgdt    [rax]
@@ -179,7 +175,7 @@ higher_half:
 
     ; disable lower half mapping
     ; 现在还不能将0~4G的映射禁用，因为AP启动时需要
-    ;mov     qword [initial_pml4t_low], 0
+    ;mov     qword [__early_pgtbl_low], 0
     ;invlpg  [0]
 
     ; begin executing C code in higher half
@@ -220,4 +216,3 @@ tmp_gdt_ptr:
 ; temporary store the multiboot info
 mb_eax: dd  0
 mb_ebx: dd  0
-
